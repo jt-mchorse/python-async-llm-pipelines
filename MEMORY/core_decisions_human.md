@@ -40,3 +40,43 @@ The mismatch is intentional: it forces the user to pick the right primitive for 
 **Reversibility:** Cheap. Either primitive's return shape can be changed (or augmented with a flag) without breaking the other.
 
 **Related issues:** #1, #4.
+
+## D-004 — `ToolRegistry` is a thin dict wrapper; tools are async callables (2026-05-15)
+**Decision:** `ToolRegistry` is a `dict[str, AsyncCallable]` with `register(name, fn)`, decorator-form `tool(name)`, `get(name)`. No abstract base class, no schema-first registration.
+
+**Why:** Tools are just async functions taking a dict. ABC ceremony for a one-method shape is noise. Decorator form reads naturally and matches the rest of the portfolio's single-method-Protocol seams. Schema-first validation is a per-tool concern; the dispatcher doesn't need to know.
+
+**Alternatives considered:**
+- Abstract `Tool` base class — rejected: ceremony for a one-function shape.
+- DI container — rejected: massive overkill.
+- OpenAPI/JSON-Schema-first registry — rejected: per-tool validation belongs in the tool.
+
+**Reversibility:** Cheap. Adding optional `schema` to `register()` is backwards-compatible.
+
+**Related issues:** #2
+
+## D-005 — `ToolResult` carries `tool_call_id` (2026-05-15)
+**Decision:** Every `ToolResult` carries the `tool_call_id` of the `ToolCall` that produced it.
+
+**Why:** Anthropic's `tool_use` / `tool_result` round-trip requires the `tool_use_id` echoed back in the next turn. Without an id on the result, every caller reconstructs the correlation map themselves — error-prone boilerplate. With the id, callers do `ToolResult` → `{"type": "tool_result", "tool_use_id": r.tool_call_id, ...}` directly.
+
+**Alternatives considered:**
+- Results in input order with no id — rejected: breaks if any caller filters or reorders.
+- Results keyed by position — rejected: same problem.
+
+**Reversibility:** Cheap.
+
+**Related issues:** #2
+
+## D-006 — Default fail-fast; `return_exceptions=True` opt-in for partial tolerance (2026-05-15)
+**Decision:** `dispatch_tool_calls()` defaults to fail-fast (parity with `process()` D-003). `return_exceptions=True` opts into partial tolerance.
+
+**Why:** Two-mode design keeps the package's defaults consistent — every primitive fails fast by default, with the partial-tolerance opt-in available. Issue #2's acceptance criterion ("partial failures don't poison the batch") is satisfied by the opt-in. Defaulting to partial tolerance would invert the safety posture: callers who didn't deliberately handle errors would silently get incomplete results.
+
+**Alternatives considered:**
+- Default partial tolerance, opt-in fail-fast — rejected: silent failures are a worse default.
+- Two separate functions — rejected: API surface bloat.
+
+**Reversibility:** Cheap.
+
+**Related issues:** #2

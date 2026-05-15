@@ -38,13 +38,16 @@ itself stays runtime-dep-free ([D-002]).
 
 ```
 async_pipelines/
-└── core.py
-    ├── process(items, fn, *, concurrency, return_exceptions=False) -> list
-    └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False) -> list
+├── core.py
+│   ├── process(items, fn, *, concurrency, return_exceptions=False) -> list
+│   └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False) -> list
+└── tool_dispatch.py    ← #2
+    ├── ToolCall, ToolResult, ToolRegistry
+    └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency) -> list[ToolResult]
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the mermaid of
-shipped (#1) vs pending (#2, #4) layers.
+shipped (#1, #2) vs pending (#4) layers.
 
 ## Quickstart
 
@@ -86,6 +89,44 @@ async def items_from_kafka():
 
 results = await stream(items_from_kafka(), call_llm, concurrency=10, queue_size=50)
 ```
+
+## Tool dispatch (#2 · this PR)
+
+When the model returns multiple `tool_use` blocks, calling them serially
+throws away the whole point of having more than one. `dispatch_tool_calls`
+runs them concurrently inside an `asyncio.TaskGroup`, with optional
+bounded concurrency, partial-failure tolerance, and per-tool telemetry.
+
+```python
+from async_pipelines import ToolCall, ToolRegistry, dispatch_tool_calls
+
+registry = ToolRegistry()
+
+@registry.tool("web_fetch")
+async def web_fetch(args: dict) -> dict:
+    ...  # your real implementation
+
+@registry.tool("file_read")
+async def file_read(args: dict) -> str:
+    ...
+
+# Translate the model's tool_use blocks into ToolCall objects (preserve ids):
+calls = [
+    ToolCall(id="toolu_01", name="web_fetch", arguments={"url": "..."}),
+    ToolCall(id="toolu_02", name="file_read", arguments={"path": "..."}),
+]
+
+# Concurrent dispatch; partial failures don't poison the batch.
+results = await dispatch_tool_calls(calls, registry=registry, return_exceptions=True)
+for r in results:
+    print(r.tool_call_id, r.ok, r.elapsed_ms, "ms")
+```
+
+Default behavior is fail-fast (parity with `process`); pass
+`return_exceptions=True` for the partial-tolerance mode. The
+`tool_call_id` round-trips through `ToolResult` so callers can map results
+straight back to the model's `tool_use_id`s when constructing the next
+turn's messages.
 
 ## Benchmarks / Results
 
