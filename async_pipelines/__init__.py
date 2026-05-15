@@ -1,22 +1,46 @@
 """python-async-llm-pipelines: structured concurrency for LLM workloads.
 
-Issue #1 surface:
+Public surface:
 
     from async_pipelines import process, stream, PipelineError
+    # Tool dispatch (#2):
+    from async_pipelines import (
+        ToolCall, ToolResult, ToolRegistry, dispatch_tool_calls,
+    )
 
-Layers shipped here (#1):
-- ``process(items, fn, *, concurrency, return_exceptions=False)`` — bounded
-  fan-out over a finite input list; returns results in input order.
-- ``stream(producer, fn, *, concurrency, queue_size)`` — bounded
-  fan-out over an unbounded source, with `asyncio.Queue`-based
-  backpressure on the producer.
-- ``PipelineError`` — wraps the first exception when fail-fast.
+Shipped layers:
+- #1: ``process(items, fn, *, concurrency, return_exceptions=False)`` —
+      bounded fan-out over a finite input list; returns results in input order.
+- #1: ``stream(producer, fn, *, concurrency, queue_size)`` — bounded
+      fan-out over an unbounded source, with `asyncio.Queue`-based
+      backpressure on the producer.
+- #2: ``dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency)`` —
+      runs the model's parallel tool_use blocks concurrently inside an
+      `asyncio.TaskGroup`, with optional bounded concurrency, partial-failure
+      tolerance, and per-tool telemetry.
 
 Later issues:
-- #2: concurrent tool-call dispatch.
 - #4: 1000-doc benchmark (serial vs async vs async+batched).
 """
 
 from .core import PipelineError, process, stream
+from .tool_dispatch import (
+    ToolCall,
+    ToolNotFoundError,
+    ToolRegistry,
+    ToolResult,
+    dispatch_tool_calls,
+)
 
-__all__ = ["PipelineError", "process", "stream"]
+__all__ = [
+    # Core (#1)
+    "PipelineError",
+    "process",
+    "stream",
+    # Tool dispatch (#2)
+    "ToolCall",
+    "ToolNotFoundError",
+    "ToolRegistry",
+    "ToolResult",
+    "dispatch_tool_calls",
+]
