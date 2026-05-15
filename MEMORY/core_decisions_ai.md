@@ -27,3 +27,30 @@
   reversibility: cheap
   related_issues: [1, 4]
   superseded_by: null
+
+- id: D-004
+  date: 2026-05-15
+  decision: tool_registry_is_thin_dict_wrapper_async_callables_named_lookup
+  rationale: tools_are_just_async_functions_no_inheritance_or_class_hierarchy_decorator_form_for_natural_registration
+  alternatives_rejected: [abstract_tool_base_class, dependency_injection_container, openapi_schema_first_registry]
+  reversibility: cheap
+  related_issues: [2]
+  superseded_by: null
+
+- id: D-005
+  date: 2026-05-15
+  decision: toolresult_carries_tool_call_id_for_round_trip_to_anthropic_tool_use_id
+  rationale: anthropic_tool_use_response_requires_matching_id_back_callers_should_not_have_to_maintain_their_own_correlation_map
+  alternatives_rejected: [results_in_input_order_no_id, results_keyed_by_position]
+  reversibility: cheap
+  related_issues: [2]
+  superseded_by: null
+
+- id: D-006
+  date: 2026-05-15
+  decision: dispatch_default_fail_fast_return_exceptions_opt_in_for_partial_tolerance
+  rationale: parity_with_async_pipelines_process_d003_acceptance_criterion_partial_failures_dont_poison_satisfied_by_opt_in
+  alternatives_rejected: [default_partial_tolerance_silent_failures, separate_function_for_each_mode]
+  reversibility: cheap
+  related_issues: [2]
+  superseded_by: null
