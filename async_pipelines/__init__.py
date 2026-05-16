@@ -23,6 +23,18 @@ Later issues:
 - #4: 1000-doc benchmark (serial vs async vs async+batched).
 """
 
+from .benchmark import (
+    AsyncPipeline,
+    BatchedAsyncPipeline,
+    FakeLLM,
+    LLMClient,
+    RunResult,
+    SerialPipeline,
+    Workload,
+    attach_speedup,
+    make_batch_caller,
+    run_pipeline,
+)
 from .core import PipelineError, process, stream
 from .tool_dispatch import (
     ToolCall,
@@ -43,4 +55,15 @@ __all__ = [
     "ToolRegistry",
     "ToolResult",
     "dispatch_tool_calls",
+    # Benchmark (#4)
+    "AsyncPipeline",
+    "BatchedAsyncPipeline",
+    "FakeLLM",
+    "LLMClient",
+    "RunResult",
+    "SerialPipeline",
+    "Workload",
+    "attach_speedup",
+    "make_batch_caller",
+    "run_pipeline",
 ]

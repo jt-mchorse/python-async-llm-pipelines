@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "docs_per_second": 23.088938582829478,
+      "duration_seconds": 43.310782624874264,
+      "extra": {},
+      "n_docs": 1000,
+      "pipeline_name": "serial",
+      "speedup_vs_serial": 1.0
+    },
+    {
+      "docs_per_second": 700.5259868228669,
+      "duration_seconds": 1.4274987920653075,
+      "extra": {},
+      "n_docs": 1000,
+      "pipeline_name": "async",
+      "speedup_vs_serial": 30.34032873836072
+    },
+    {
+      "docs_per_second": 5800.109403455421,
+      "duration_seconds": 0.17241054098121822,
+      "extra": {},
+      "n_docs": 1000,
+      "pipeline_name": "async+batched",
+      "speedup_vs_serial": 251.2072775735469
+    }
+  ],
+  "workload": {
+    "batch_size": 8,
+    "concurrency": 32,
+    "llm_call_seconds": 0.02,
+    "n_docs": 1000
+  }
+}
