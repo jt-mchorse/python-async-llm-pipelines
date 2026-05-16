@@ -80,3 +80,30 @@ The mismatch is intentional: it forces the user to pick the right primitive for 
 **Reversibility:** Cheap.
 
 **Related issues:** #2
+
+## D-007 — Benchmark ships with `FakeLLM` for CI; real-API is an operator swap (2026-05-16)
+**Decision:** The 1000-doc benchmark in `scripts/bench_1000_doc.py` defaults to a `FakeLLM` that simulates per-call latency via `asyncio.sleep`. The committed `docs/benchmarks.md` numbers are real measurements from this synthetic configuration. Real-Anthropic-API numbers come from the operator swapping in an `AnthropicLLM` adapter that conforms to the `LLMClient` Protocol and re-running the same script.
+
+**Why:** The spec's "5–20× win" is a *speedup ratio*, not an absolute latency. The ratio is reproducible under deterministic synthetic latency — and what's load-bearing about the claim is the *shape* of the curve (serial scales linearly, async scales sub-linearly, batched scales asymptotically with batch size). Burning Anthropic API budget on N=1000 calls just to confirm the ratio would (a) hit rate limits, (b) cost real dollars per CI run, and (c) introduce non-determinism. The honest path: ship the synthetic harness with real measured numbers and a documented swap.
+
+**Alternatives considered:**
+- Require `ANTHROPIC_API_KEY` in CI — rejected: burns budget, hits rate limits, non-deterministic.
+- No benchmark at all — rejected: misses the v0.1 claim the issue body explicitly asks for.
+- Ship fabricated numbers — rejected: violates the no-fabricated-benchmarks rule (handoff §10).
+
+**Reversibility:** Cheap. The script's `_run_all` helper instantiates `FakeLLM`s; swapping that for `AnthropicLLM(...)` is two lines.
+
+**Related issues:** #4
+
+## D-008 — `BatchedAsyncPipeline` uses one round trip per batch (2026-05-16)
+**Decision:** The batched pipeline collects `batch_size` documents into one consolidated LLM call per batch. `make_batch_caller(llm)` returns a callable that takes a list of items and (in the synthetic case) does **one** `asyncio.sleep` regardless of batch size, simulating the Anthropic Batch API shape where one request processes N inputs. A real implementation swaps this for the actual batch endpoint.
+
+**Why:** Without one-round-trip-per-batch semantics, "batched" is just "chunked async" and the third pipeline is identical to the second. The batched pipeline exists in the matrix specifically to model the Batch-API workload (nightly evals, offline jobs) where the per-request overhead amortizes across many inputs. The synthetic seam captures that asymmetry correctly.
+
+**Alternatives considered:**
+- "Batched" = chunked async with per-item calls inside the chunk — rejected: redundant with `AsyncPipeline`, doesn't model the real win.
+- One `messages.create` per item inside a batch — same redundancy.
+
+**Reversibility:** Cheap. The batch caller is a one-function wrapper; replacing it is a single source change.
+
+**Related issues:** #4

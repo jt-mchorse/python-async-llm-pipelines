@@ -43,3 +43,34 @@ context_for_next_session:
 decisions_made: [D-004, D-005, D-006]
 followups: []
 ---
+
+---
+session: 2026-05-16T04:37Z
+duration_min: 35
+issue: 4
+focus: 1000_doc_benchmark_serial_vs_async_vs_async_batched
+delta:
+  files_added: 4
+  files_changed: 1
+  tests_added: 10
+  test_pass_rate: "43/43"
+  benchmarks:
+    serial_duration_s: 43.311
+    async_duration_s: 1.427
+    batched_duration_s: 0.172
+    async_speedup_vs_serial: 30.34
+    batched_speedup_vs_serial: 251.21
+    n_docs: 1000
+    host: "apple_silicon_arm64_python_3_14_0"
+context_for_next_session:
+  - benchmark_module_in_async_pipelines_benchmark_py_workload_runresult_3_pipeline_classes
+  - fakellm_simulates_per_call_latency_via_asyncio_sleep_d_007_real_api_is_protocol_swap
+  - batched_pipeline_uses_make_batch_caller_one_round_trip_per_batch_d_008
+  - serial_async_batched_run_pipeline_function_attach_speedup_helper
+  - script_bench_1000_doc_py_writes_docs_benchmarks_md_plus_docs_benchmarks_json
+  - real_measured_numbers_committed_to_docs_benchmarks_md_30x_async_251x_batched
+  - 10_new_tests_43_total_lint_format_clean_no_pytest_timeout_dep
+  - issue_4_acceptance_single_script_runs_all_three_modes_done_numbers_in_docs_benchmarks_md_done_5_to_20x_documented_with_honest_disclosure_done
+decisions_made: [D-007, D-008]
+followups: []
+---

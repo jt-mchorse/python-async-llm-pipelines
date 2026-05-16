@@ -54,3 +54,21 @@
   reversibility: cheap
   related_issues: [2]
   superseded_by: null
+
+- id: D-007
+  date: 2026-05-16
+  decision: benchmark_ships_with_fakellm_for_ci_real_api_is_two_line_operator_swap
+  rationale: speedup_ratio_is_load_bearing_claim_synthetic_sleep_proves_it_real_api_numbers_only_validate_at_operator_cost
+  alternatives_rejected: [require_anthropic_api_key_in_ci_burns_budget, no_benchmark_at_all_misses_the_load_bearing_v0_1_claim, ship_fabricated_numbers_violates_handoff_section_10]
+  reversibility: cheap
+  related_issues: [4]
+  superseded_by: null
+
+- id: D-008
+  date: 2026-05-16
+  decision: batched_pipeline_uses_one_round_trip_per_batch_via_make_batch_caller_seam
+  rationale: anthropic_batch_api_shape_is_one_request_per_n_inputs_synthetic_emulates_with_one_sleep_per_batch_real_swaps_in_actual_batch_endpoint
+  alternatives_rejected: [batched_just_means_chunked_async_loses_the_batch_api_win, message_create_per_item_inside_batch_redundant_with_async_pipeline]
+  reversibility: cheap
+  related_issues: [4]
+  superseded_by: null
