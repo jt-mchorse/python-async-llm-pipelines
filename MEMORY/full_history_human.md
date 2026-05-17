@@ -49,3 +49,17 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** Real-Anthropic-API numbers come from an operator running the script with an `AnthropicLLM` adapter; the seam is the `LLMClient` Protocol (`async __call__(prompt) -> str`). No engineering blocker.
 
 **Next session:** python-async-llm-pipelines hits v0.1 with this PR. Move to a different repo.
+
+## 2026-05-17 — Issue #3: Backpressure metrics and OOM-safety demo
+**Duration:** ~40 min · **Branch:** `session/2026-05-17-1908-issue-03`
+
+- Added `StreamMetrics` dataclass to `async_pipelines.core` and an optional `metrics=` keyword-only argument to `stream` (D-009). The dataclass captures `produced`, `consumed`, `producer_pauses` (count of `queue.put`s that had to wait for space), `max_queue_depth` (high-water mark sampled after each successful put), and `producer_pause_seconds` (cumulative wall-time blocked, via `time.perf_counter`). All stdlib — keeps D-002 (runtime-dep-free) intact.
+- Shipped `scripts/bench_backpressure.py`: fast producer (zero per-item latency) × slow consumer × bounded queue, instrumented with `tracemalloc` for peak heap measurement. Writes `docs/backpressure.md` + `docs/backpressure.json`. Optional `--compare` flag runs the same `n` at 4× queue size to make the bound visible side-by-side. Real run on Apple Silicon (CPython 3.14, n=5000, 1 ms consumer, concurrency=2): `qs=8` peaks at exactly 8 items in queue with 2,707 pauses; `qs=32` peaks at exactly 32 items in queue with 2,672 pauses. Duration is essentially identical (~3.05 s) because the consumer is the bottleneck — only the in-memory backlog changes, which is the entire point of the demo.
+- 5 new tests in `tests/test_stream.py` covering: (a) metrics populate counts under no-pressure, (b) `producer_pauses ≥ 1` and `max_queue_depth == queue_size` under slow-consumer pressure, (c) `producer_pauses == 0` when consumer keeps up, (d) **the OOM-safety invariant** — `max_queue_depth ≤ queue_size` across a 1000-item run, (e) the default `metrics=None` path returns identical behavior to the v0 signature. Suite total: 48/48 pass; ruff lint+format clean.
+- README "Backpressure (#3)" subsection added between the streaming code example and the existing "Tool dispatch (#2)" section. Includes the `StreamMetrics` snippet, the real measured table, and the reproduce command.
+
+**Why this work, this session:** Issue #3 is one of two open `priority:med` issues and the lower-numbered one. The bounded-queue *mechanism* was already shipped with `stream()` in #1; what was missing for the acceptance criteria was (a) operator-visible proof that backpressure is engaging (the metrics surface) and (b) a demo script that measures peak heap and proves it stays bounded by `queue_size`. The in-place dataclass keeps the v0 `stream()` signature backward-compatible — the only change to existing callers is they can now optionally pass `metrics=StreamMetrics()` and inspect it after the call returns.
+
+**Open questions / blockers:** None on this issue. Issue #5 (cancellation/timeout patterns) is the remaining `priority:med` for this repo and a natural follow-on if a future session picks it.
+
+**Next session:** Continue the day-session multi-issue loop — pick the next repo (probably `agent-orchestration-platform` or `nextjs-streaming-ai-patterns`, both 36h+ untouched and earlier in build sequence than this one once it ships).

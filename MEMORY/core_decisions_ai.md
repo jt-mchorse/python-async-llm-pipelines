@@ -72,3 +72,12 @@
   reversibility: cheap
   related_issues: [4]
   superseded_by: null
+
+- id: D-009
+  date: 2026-05-17
+  decision: stream_metrics_is_in_place_dataclass_passed_via_keyword_only_arg_default_none
+  rationale: operators_need_to_see_backpressure_engaging_producer_pauses_and_max_queue_depth_in_place_avoids_returning_a_tuple_from_stream_keeps_d002_dep_free_dataclass_is_stdlib
+  alternatives_rejected: [return_tuple_of_results_and_metrics_breaks_back_compat_for_two_existing_callsites, separate_metrics_module_splits_30_line_dataclass_from_only_function_that_writes_it, expose_callback_per_event_overkill_for_demo_repo_and_harder_to_reason_about]
+  reversibility: cheap
+  related_issues: [3]
+  superseded_by: null

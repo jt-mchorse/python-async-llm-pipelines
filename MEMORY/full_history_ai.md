@@ -74,3 +74,33 @@ context_for_next_session:
 decisions_made: [D-007, D-008]
 followups: []
 ---
+
+---
+session: 2026-05-17T19:08Z
+duration_min: 40
+issue: 3
+focus: backpressure_metrics_and_oom_safety_demo
+delta:
+  files_added: 2  # scripts/bench_backpressure.py, docs/backpressure.{md,json}
+  files_changed: 3  # core.py adds StreamMetrics + metrics= kwarg, __init__.py exports, tests/test_stream.py
+  tests_added: 5
+  test_pass_rate: "48/48"
+  benchmarks:
+    bench_n: 5000
+    consumer_ms: 1.0
+    concurrency: 2
+    queue_size_8: { duration_s: 3.051, peak_heap_kb: 201.7, producer_pauses: 2707, max_queue_depth: 8 }
+    queue_size_32: { duration_s: 3.080, peak_heap_kb: 198.2, producer_pauses: 2672, max_queue_depth: 32 }
+context_for_next_session:
+  - stream_metrics_dataclass_lives_in_core_py_d_009_stdlib_only_dep_free_per_d_002
+  - metrics_param_keyword_only_default_none_zero_overhead_when_omitted
+  - metrics_record_produced_consumed_producer_pauses_max_queue_depth_producer_pause_seconds
+  - producer_pauses_incremented_when_queue_full_at_put_time_pause_duration_via_perf_counter
+  - max_queue_depth_high_water_mark_sampled_after_each_put_bounded_by_queue_size_by_construction
+  - scripts_bench_backpressure_py_fast_producer_slow_consumer_tracemalloc_peak_heap_writes_docs_backpressure_md_and_json
+  - issue_3_acceptance_bounded_queue_implemented_already_in_v0_pr_producer_pauses_now_observable_via_metrics_oom_safety_demo_in_docs_backpressure_md
+  - five_new_tests_metrics_present_counts_pauses_no_pauses_when_fast_max_depth_bounded_default_path_unchanged
+  - readme_backpressure_subsection_includes_real_numbers_5000_items_qs_8_vs_qs_32_max_depth_matches_queue_size
+decisions_made: [D-009]
+followups: []
+---

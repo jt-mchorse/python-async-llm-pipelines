@@ -107,3 +107,17 @@ The mismatch is intentional: it forces the user to pick the right primitive for 
 **Reversibility:** Cheap. The batch caller is a one-function wrapper; replacing it is a single source change.
 
 **Related issues:** #4
+
+## D-009 — `StreamMetrics` is an in-place dataclass passed via a keyword-only argument, default `None` (2026-05-17)
+**Decision:** `stream`'s backpressure observability surface (#3) is a stdlib `dataclass` named `StreamMetrics` exposed at the package's top level. `stream` takes an optional keyword-only `metrics: StreamMetrics | None = None`; when non-None, the function writes counters and timings into it in-place during the run. `metrics=None` (the default) keeps the v0 signature backward-compatible and skips the instrumentation entirely.
+
+**Why:** Three forces compose. (1) **Backward compatibility.** `stream` already shipped in #1 returning `list[R | BaseException]`; changing the return shape to a `(results, metrics)` tuple would silently break both existing callsites in `tests/test_stream.py` and any operator who copied the snippet from the README. An optional in-place dataclass is the smallest change that adds the new capability. (2) **D-002 alignment.** The wrapper is committed to runtime-dep-free; `dataclass` is stdlib so the metrics surface doesn't pull in `pydantic`, `attrs`, or anything else. (3) **The semantic fits.** Backpressure metrics are a snapshot of the *single* call to `stream` — they make no sense returned alongside results because they're a property of the *pipeline*, not of any individual output. Threading them through a passed-in collector matches what observability libraries (statsd, prometheus client) do for the same reason.
+
+**Alternatives considered:**
+- Return a `(results, metrics)` tuple from `stream` — rejected: breaks the two existing tests and the README snippet for zero capability benefit beyond what the in-place collector gives.
+- Put `StreamMetrics` in a separate `metrics.py` module — rejected: it's a 30-line dataclass and only `stream` writes to it. Splitting them across modules adds an import edge for no readability win.
+- Per-event callback API (`metrics_callback=callable`) — rejected: overkill for a demo repo, harder to reason about (callback timing relative to `queue.put` is non-obvious), and the dataclass surfaces *exactly* the four numbers operators care about (pauses, max depth, pause time, totals) without further abstraction.
+
+**Reversibility:** Cheap. `StreamMetrics` is one dataclass and the instrumentation is a handful of lines inside `_produce`/`_consume`. Removing it is a smaller change than adding it was.
+
+**Related issues:** #3
