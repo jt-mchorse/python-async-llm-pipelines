@@ -90,6 +90,60 @@ async def items_from_kafka():
 results = await stream(items_from_kafka(), call_llm, concurrency=10, queue_size=50)
 ```
 
+## Backpressure (#3)
+
+`stream`'s bounded `asyncio.Queue` is the backpressure mechanism: when
+the consumer pool can't drain as fast as the producer emits, the
+producer's `queue.put` *blocks* until a consumer pulls. Peak items in
+memory are bounded by `queue_size` regardless of how many items the
+producer would emit — that's the OOM-safety invariant for pointing this
+at an unbounded source.
+
+Pass an optional `StreamMetrics` to observe the backpressure signal:
+
+```python
+from async_pipelines import StreamMetrics, stream
+
+metrics = StreamMetrics()
+results = await stream(
+    items_from_kafka(),
+    call_llm,
+    concurrency=10,
+    queue_size=50,
+    metrics=metrics,
+)
+print(
+    f"produced={metrics.produced} consumed={metrics.consumed} "
+    f"pauses={metrics.producer_pauses} "
+    f"max_depth={metrics.max_queue_depth} "
+    f"pause_s={metrics.producer_pause_seconds:.2f}"
+)
+```
+
+`producer_pauses` is the count of `queue.put`s that had to wait for
+room; `producer_pause_seconds` is the cumulative wall-time blocked. A
+non-zero pause count is the operator's signal that fan-out has more
+headroom than the consumer can use — either grow `concurrency` or
+accept the queue as the rate limiter.
+
+Real numbers from `scripts/bench_backpressure.py` (Apple Silicon,
+CPython 3.14, 5000 items × 1 ms consumer sleep, concurrency 2):
+
+| queue_size | duration_s | peak_heap_kb | producer_pauses | max_queue_depth |
+| ---------: | ---------: | -----------: | --------------: | --------------: |
+| 8 | 3.051 | 201.7 | 2707 | **8** |
+| 32 | 3.080 | 198.2 | 2672 | **32** |
+
+`max_queue_depth` matches `queue_size` exactly in both rows — the
+producer fills the queue and waits for the consumer, never queueing
+ahead. Full report in [`docs/backpressure.md`](docs/backpressure.md);
+raw JSON alongside in `docs/backpressure.json`.
+
+```bash
+python scripts/bench_backpressure.py --n 5000 --queue-size 8 \
+    --consumer-ms 1 --concurrency 2 --compare
+```
+
 ## Tool dispatch (#2 · this PR)
 
 When the model returns multiple `tool_use` blocks, calling them serially

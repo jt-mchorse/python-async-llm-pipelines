@@ -17,7 +17,9 @@ providing backpressure to the producer.
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable
+from dataclasses import dataclass, field
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -32,6 +34,39 @@ class PipelineError(RuntimeError):
     the originating exception propagate so the caller's traceback
     pinpoints the failing item.
     """
+
+
+@dataclass
+class StreamMetrics:
+    """In-place metrics surface for ``stream``.
+
+    Pass an instance via ``stream(..., metrics=m)`` and the call writes
+    counters and timings into it as the pipeline runs. The instance is
+    safe to read after ``stream`` returns; reading during the run gives
+    a live (but not atomically consistent across fields) snapshot.
+
+    Fields:
+        produced: number of items pulled from the producer.
+        consumed: number of items finished by ``fn`` (success or
+            exception when ``return_exceptions=True``).
+        producer_pauses: count of times ``queue.put`` had to wait for
+            space (the backpressure signal — non-zero means the producer
+            was slower than the consumer pool).
+        max_queue_depth: high-water mark of items sitting in the queue.
+        producer_pause_seconds: cumulative wall time the producer spent
+            blocked on a full queue.
+
+    All fields default to zero; the dataclass is stdlib-only so this
+    stays consistent with D-002 (runtime-dep-free wrapper).
+    """
+
+    produced: int = 0
+    consumed: int = 0
+    producer_pauses: int = 0
+    max_queue_depth: int = 0
+    producer_pause_seconds: float = 0.0
+    # Pre-allocated to keep `__init__` cheap; not part of the public API.
+    _started_monotonic: float = field(default=0.0, repr=False, compare=False)
 
 
 async def process(
@@ -94,6 +129,7 @@ async def stream(
     concurrency: int,
     queue_size: int,
     return_exceptions: bool = False,
+    metrics: StreamMetrics | None = None,
 ) -> list[R | BaseException]:
     """Drain an async producer through ``fn`` with bounded concurrency
     and an explicit backpressure queue.
@@ -112,6 +148,13 @@ async def stream(
         concurrency: max consumer fan-out.
         queue_size: bounded queue size; controls backpressure.
         return_exceptions: see ``process``.
+        metrics: optional ``StreamMetrics`` instance written to
+            in-place. When provided, ``producer_pauses``,
+            ``producer_pause_seconds``, ``max_queue_depth``,
+            ``produced``, and ``consumed`` are populated during the
+            run. Cost is one ``qsize()`` call and a ``perf_counter``
+            pair per produced item, so the overhead is negligible
+            relative to any real ``fn`` work.
     """
     if concurrency <= 0:
         raise ValueError(f"concurrency must be positive, got {concurrency}")
@@ -122,10 +165,25 @@ async def stream(
     sentinel = _Sentinel()
     results: list[R | BaseException] = []
     results_lock = asyncio.Lock()
+    m = metrics  # local alias keeps the hot path readable
 
     async def _produce() -> None:
         async for item in producer:
-            await queue.put(item)
+            if m is not None:
+                # Time the put so we can attribute pause time to backpressure.
+                if queue.full():
+                    m.producer_pauses += 1
+                    start = time.perf_counter()
+                    await queue.put(item)
+                    m.producer_pause_seconds += time.perf_counter() - start
+                else:
+                    await queue.put(item)
+                m.produced += 1
+                depth = queue.qsize()
+                if depth > m.max_queue_depth:
+                    m.max_queue_depth = depth
+            else:
+                await queue.put(item)
         for _ in range(concurrency):
             await queue.put(sentinel)
 
@@ -146,6 +204,8 @@ async def stream(
             async with results_lock:
                 results.append(value)
             queue.task_done()
+            if m is not None:
+                m.consumed += 1
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(_produce())

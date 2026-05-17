@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "n": 5000,
+      "queue_size": 8,
+      "consumer_ms": 1.0,
+      "concurrency": 2,
+      "duration_s": 3.0510209160856903,
+      "peak_heap_kb": 201.6640625,
+      "metrics": {
+        "produced": 5000,
+        "consumed": 5000,
+        "producer_pauses": 2707,
+        "max_queue_depth": 8,
+        "producer_pause_seconds": 3.001690393080935,
+        "_started_monotonic": 0.0
+      }
+    },
+    {
+      "n": 5000,
+      "queue_size": 32,
+      "consumer_ms": 1.0,
+      "concurrency": 2,
+      "duration_s": 3.079788874834776,
+      "peak_heap_kb": 198.2109375,
+      "metrics": {
+        "produced": 5000,
+        "consumed": 5000,
+        "producer_pauses": 2672,
+        "max_queue_depth": 32,
+        "producer_pause_seconds": 3.012401585932821,
+        "_started_monotonic": 0.0
+      }
+    }
+  ],
+  "host": "darwin",
+  "python": "3.14.0"
+}

@@ -35,7 +35,7 @@ from .benchmark import (
     make_batch_caller,
     run_pipeline,
 )
-from .core import PipelineError, process, stream
+from .core import PipelineError, StreamMetrics, process, stream
 from .tool_dispatch import (
     ToolCall,
     ToolNotFoundError,
@@ -47,6 +47,7 @@ from .tool_dispatch import (
 __all__ = [
     # Core (#1)
     "PipelineError",
+    "StreamMetrics",
     "process",
     "stream",
     # Tool dispatch (#2)
