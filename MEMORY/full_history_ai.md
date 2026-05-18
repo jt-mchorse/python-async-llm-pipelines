@@ -121,3 +121,24 @@ context_for_next_session:
 decisions_made: [D-010]
 followups: []
 ---
+
+---
+session: 2026-05-18T15:44Z
+duration_min: 20
+issue: 11
+focus: architecture_doc_covers_five_shipped_primitives
+delta:
+  files_changed: 2  # README.md, docs/architecture.md
+  files_added: 0
+  tests_added: 0
+  test_pass_rate: "60/60"
+context_for_next_session:
+  - docs_architecture_md_rewritten_one_integrated_pipeline_lifecycle_mermaid_plus_five_layer_sections
+  - five_layer_sections_process_stream_tool_dispatch_backpressure_benchmark_timeouts
+  - readme_architecture_block_signatures_refreshed_per_item_timeout_metrics_kwargs_visible
+  - pending_section_removed_every_primitive_in_section_2_has_shipped
+  - mermaid_labels_with_parens_fully_double_quoted_same_lint_as_other_repos_this_session
+  - no_new_d_entry_references_d_002_through_d_010
+decisions_made: []
+followups: []
+---

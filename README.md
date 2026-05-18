@@ -40,15 +40,14 @@ itself stays runtime-dep-free ([D-002]).
 ```
 async_pipelines/
 ├── core.py
-│   ├── process(items, fn, *, concurrency, return_exceptions=False) -> list
-│   └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False) -> list
+│   ├── process(items, fn, *, concurrency, per_item_timeout=None, return_exceptions=False) -> list
+│   └── stream(producer, fn, *, concurrency, queue_size, per_item_timeout=None, metrics=None) -> list
 └── tool_dispatch.py    ← #2
     ├── ToolCall, ToolResult, ToolRegistry
     └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency) -> list[ToolResult]
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for the mermaid of
-shipped (#1, #2) vs pending (#4) layers.
+See **[`docs/architecture.md`](docs/architecture.md)** for the integrated pipeline lifecycle, per-layer detail across all five shipped primitives (process/stream #1, tool dispatch #2, backpressure metrics #3, 1000-doc benchmark #4, per-item timeouts #5), and the D-002…D-010 design decisions behind each one.
 
 ## Quickstart
 
