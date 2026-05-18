@@ -76,3 +76,16 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None.
 
 **Next session:** Move on to mcp-server-cookbook #4 (internal-tools bridge MCP server).
+
+## 2026-05-18 — Issue #11: Architecture doc covers all 5 shipped primitives
+**Duration:** ~20 min · **Branch:** `session/2026-05-18-1544-issue-11` · **PR:** [#12](https://github.com/jt-mchorse/python-async-llm-pipelines/pull/12) (ready)
+
+- Rewrote `docs/architecture.md`: integrated all-green pipeline lifecycle mermaid + one section per shipped primitive (#1 process/stream, #2 concurrent tool dispatch, #3 backpressure metrics, #4 1000-doc benchmark, #5 per-item timeouts). Each section has a prose statement of what it does, a mermaid of its own slice, the relevant D-NNN references back to MEMORY (D-002 through D-010), and a "composes with" line.
+- README Architecture block: code-shape signatures refreshed to include the current `per_item_timeout` and `metrics` kwargs; "shipped vs pending" stub replaced with a one-line pointer at the doc.
+- Mermaid hygiene consistent with the rest of the portfolio's architecture-doc PRs this session — labels with parens are fully double-quoted.
+
+**Why this work, this session:** Every original priority:high issue is closed; the last `priority:med` items (#3 backpressure, #5 cancellation/timeouts) shipped on 2026-05-17/18. The architecture doc still labelled #2 and #4 as pending and had no mention of #3 or #5. Filling that gap is the cleanest move toward v0.1.
+
+**Open questions / blockers:** None — PR ready for review.
+
+**Next session:** Pick up the next zero-open-issue repo in §8 build sequence (agent-orchestration-platform), or wait for in-flight PRs to merge first.
