@@ -81,3 +81,12 @@
   reversibility: cheap
   related_issues: [3]
   superseded_by: null
+
+- id: D-010
+  date: 2026-05-18
+  decision: per_item_timeout_is_kwarg_on_process_and_stream_not_separate_decorator
+  rationale: composes_with_existing_fail_fast_and_return_exceptions_policies_one_api_surface_mirrors_asyncio_wait_for_shape_and_d_006_opt_in_partial_tolerance_idiom
+  alternatives_rejected: [separate_timed_decorator_doubles_api_surface, batch_level_deadline_loses_one_slow_item_shouldnt_fail_batch_use_case, throw_timeouterror_directly_no_carried_index_breaks_correlation]
+  reversibility: cheap
+  related_issues: [5]
+  superseded_by: null

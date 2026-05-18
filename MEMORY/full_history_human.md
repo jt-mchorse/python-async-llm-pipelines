@@ -63,3 +63,16 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None on this issue. Issue #5 (cancellation/timeout patterns) is the remaining `priority:med` for this repo and a natural follow-on if a future session picks it.
 
 **Next session:** Continue the day-session multi-issue loop — pick the next repo (probably `agent-orchestration-platform` or `nextjs-streaming-ai-patterns`, both 36h+ untouched and earlier in build sequence than this one once it ships).
+
+## 2026-05-18 — Issue #5: Cancellation and timeout patterns
+**Duration:** ~30 min · **Branch:** `session/2026-05-18-issue-05` · **PR:** #10
+
+- Added a `timeout: float | None = None` kwarg to both `process()` and `stream()`. Each `fn(item)` call is wrapped in `asyncio.wait_for` when the kwarg is set; on expiry the wrapper raises the new typed `PipelineTimeoutError` (subclass of `PipelineError`) with `.index` and `.timeout_s`. Default `timeout=None` is byte-identical with the pre-#5 path.
+- 12 new tests in `tests/test_timeouts.py`. The load-bearing two pin the "no orphaned tasks" invariant from both directions: `finally`-block counters under an internal deadline expiry, and under external `task.cancel()`. Both assert `finished == started`. Plus exception-shape (subclass + attributes), fail-fast vs `return_exceptions` paths on `process` and `stream`, invalid-timeout validation, and a parametrize that keeps `timeout=None` on the original code path.
+- README: new `Timeouts & cancellation` section with two snippets (one per failure-handling policy) and the structured-cancel invariant in plain English.
+
+**Why this work, this session:** Issue #5 was the next med-priority item earliest in build sequence with a contained scope and clear acceptance criteria — exactly the right shape to lead a multi-issue night session.
+
+**Open questions / blockers:** None.
+
+**Next session:** Move on to mcp-server-cookbook #4 (internal-tools bridge MCP server).

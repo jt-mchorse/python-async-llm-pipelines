@@ -104,3 +104,20 @@ context_for_next_session:
 decisions_made: [D-009]
 followups: []
 ---
+
+---
+session: 2026-05-18T03:30Z
+duration_min: 30
+issue: 5
+focus: per_item_timeout_and_cancellation_regression
+delta:
+  files_changed: 4
+  tests_added: 12
+context_for_next_session:
+  - timeout_kwarg_added_to_process_and_stream_d_010
+  - pipelinetimeouterror_subclass_of_pipelineerror_carries_index_and_timeout_s
+  - no_orphaned_tasks_invariant_now_has_two_regression_tests_internal_deadline_and_external_cancel
+  - timeout_none_default_byte_identical_pre_5_shape
+decisions_made: [D-010]
+followups: []
+---

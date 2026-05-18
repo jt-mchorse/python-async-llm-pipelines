@@ -121,3 +121,18 @@ The mismatch is intentional: it forces the user to pick the right primitive for 
 **Reversibility:** Cheap. `StreamMetrics` is one dataclass and the instrumentation is a handful of lines inside `_produce`/`_consume`. Removing it is a smaller change than adding it was.
 
 **Related issues:** #3
+
+## D-010 — Per-item timeout is a kwarg on `process` / `stream`, not a separate decorator (2026-05-18)
+
+**Decision:** Per-item timeouts are configured via `process(..., timeout=N)` and `stream(..., timeout=N)`, raising `PipelineTimeoutError` (subclass of `PipelineError`). Not a separate `timed(fn, timeout)` decorator the caller wraps `fn` with.
+
+**Why:** The timeout has to interact with the *existing* fail-fast / opt-in partial-tolerance policy from D-003 + D-006. Putting it on the primitive means the same `return_exceptions=True` toggle that lets per-item exceptions survive also lets per-item timeouts survive — one mental model, one knob, one API surface. A `timed(fn, timeout)` decorator would force callers to wrap *twice* (once for the timeout, once for `process`) and would either silently swallow the timeout or raise a generic `TimeoutError` with no item-index correlation. The kwarg shape also mirrors `asyncio.wait_for(coro, timeout)` directly — caller intuition transfers. `timeout=None` is the default and is byte-identical with the pre-#5 path: no `wait_for` wrapping, no overhead, no regression risk for existing callsites.
+
+**Alternatives considered:**
+- Separate `timed(fn, timeout)` decorator — rejected: doubles the API surface; doesn't compose with `return_exceptions` without re-implementing exception classification inside the decorator.
+- Batch-level deadline (`process(..., batch_deadline=N)`) — rejected: the use case for #5 is *"one slow item shouldn't fail the batch"*, which is per-item by definition. A batch-level deadline is trivially recoverable from the outside (`asyncio.wait_for(process(...), batch_deadline)`) without baking it into the primitive.
+- Throw `asyncio.TimeoutError` directly — rejected: no carried `index`, no carried `timeout_s`. Breaks the correlation contract every other failure mode in this repo upholds (e.g., `ToolResult.tool_call_id` from D-005).
+
+**Reversibility:** Cheap. `timeout=None` is the original code path. Removing the feature is "delete the `if timeout is None` branches and the kwarg" — about 20 lines.
+
+**Related issues:** #5
