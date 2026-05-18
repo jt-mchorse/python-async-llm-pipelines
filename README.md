@@ -33,6 +33,7 @@ itself stays runtime-dep-free ([D-002]).
 [#2]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/2
 [#4]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/4
 [D-002]: MEMORY/core_decisions_human.md
+[D-003]: MEMORY/core_decisions_human.md
 
 ## Architecture
 
@@ -143,6 +144,58 @@ raw JSON alongside in `docs/backpressure.json`.
 python scripts/bench_backpressure.py --n 5000 --queue-size 8 \
     --consumer-ms 1 --concurrency 2 --compare
 ```
+
+## Timeouts & cancellation (#5)
+
+Real LLM workloads have one item that hangs. The provider returns 200 OK
+and then stops streaming. The rate limiter pauses for 90 seconds. A
+single misbehaving doc shouldn't keep the whole batch on the runway —
+and the batch shouldn't leak tasks when it gives up.
+
+Both primitives accept an optional `timeout` (seconds). It's a *per-item*
+deadline, enforced via `asyncio.wait_for` around each `fn(item)` call.
+When the deadline fires, the wrapper raises `PipelineTimeoutError`
+(a subclass of `PipelineError`) carrying the failing item's index and
+the timeout that fired. The exception then follows the existing
+`return_exceptions` policy: fail-fast by default (the batch is cancelled
+via TaskGroup), or in-line at the offending index when
+`return_exceptions=True`.
+
+```python
+from async_pipelines import process, PipelineTimeoutError
+
+async def call_llm(doc: str) -> str:
+    ...  # may hang
+
+# Fail-fast: one slow item cancels the batch and PipelineTimeoutError
+# propagates with .index and .timeout_s on it.
+try:
+    results = await process(docs, call_llm, concurrency=10, timeout=5.0)
+except* PipelineTimeoutError as eg:
+    for exc in eg.exceptions:
+        print(f"item {exc.index} timed out after {exc.timeout_s}s")
+
+# Or keep the batch alive — slow items land as exceptions in-line.
+results = await process(
+    docs, call_llm, concurrency=10, timeout=5.0, return_exceptions=True
+)
+ok = [r for r in results if not isinstance(r, BaseException)]
+slow = [r for r in results if isinstance(r, PipelineTimeoutError)]
+```
+
+**Cancellation is structured.** Whether the deadline fires or the outer
+task is cancelled from somewhere else, every in-flight `fn(item)`
+observes `CancelledError` and runs its `finally` block before the
+`process()` call returns. The regression tests in
+[`tests/test_timeouts.py`](tests/test_timeouts.py) instrument both paths
+with started/finished counters and assert `finished == started` —
+the load-bearing "no orphaned tasks" invariant. The same property holds
+for `stream()`; consumers get an index assigned at consumption time
+(not producer time, since `stream` returns in completion order per
+[D-003]).
+
+`timeout=None` is the default and is byte-identical with the pre-#5
+shape — no `wait_for` wrapping, no overhead. The new behavior is opt-in.
 
 ## Tool dispatch (#2 · this PR)
 

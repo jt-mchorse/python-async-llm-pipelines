@@ -36,6 +36,21 @@ class PipelineError(RuntimeError):
     """
 
 
+class PipelineTimeoutError(PipelineError):
+    """Raised when a per-item call exceeds the ``timeout`` deadline.
+
+    Carries the item index and the timeout that fired so callers can
+    correlate the failure back to its input. Subclass of
+    ``PipelineError`` so existing exception handlers that catch
+    ``PipelineError`` still observe timeouts.
+    """
+
+    def __init__(self, *, index: int, timeout_s: float) -> None:
+        super().__init__(f"item at index {index} exceeded timeout of {timeout_s}s")
+        self.index = index
+        self.timeout_s = timeout_s
+
+
 @dataclass
 class StreamMetrics:
     """In-place metrics surface for ``stream``.
@@ -75,6 +90,7 @@ async def process(
     *,
     concurrency: int,
     return_exceptions: bool = False,
+    timeout: float | None = None,
 ) -> list[R | BaseException]:
     """Run ``fn`` on every item with at most ``concurrency`` in flight.
 
@@ -88,6 +104,12 @@ async def process(
             cancels every other in-flight task and propagates. When
             True, exceptions land in the output list at the matching
             index — useful when one bad document shouldn't lose 999.
+        timeout: optional per-item deadline in seconds. When set, each
+            ``fn(item)`` call is wrapped in ``asyncio.wait_for``; if it
+            exceeds the deadline, a ``PipelineTimeoutError`` is raised
+            (and follows the ``return_exceptions`` policy above). The
+            timeout applies per item, not to the batch as a whole. Pass
+            ``None`` (the default) to keep the existing untimed shape.
 
     Returns:
         A list with one entry per input, in input order. With
@@ -96,6 +118,8 @@ async def process(
     """
     if concurrency <= 0:
         raise ValueError(f"concurrency must be positive, got {concurrency}")
+    if timeout is not None and timeout <= 0:
+        raise ValueError(f"timeout must be positive when set, got {timeout}")
 
     items_list: list[T] = list(items)
     n = len(items_list)
@@ -108,7 +132,13 @@ async def process(
     async def _run_one(idx: int, item: T) -> None:
         async with sem:
             try:
-                results[idx] = await fn(item)
+                if timeout is None:
+                    results[idx] = await fn(item)
+                else:
+                    try:
+                        results[idx] = await asyncio.wait_for(fn(item), timeout)
+                    except TimeoutError as exc:
+                        raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
             except BaseException as e:
                 if return_exceptions:
                     results[idx] = e
@@ -130,6 +160,7 @@ async def stream(
     queue_size: int,
     return_exceptions: bool = False,
     metrics: StreamMetrics | None = None,
+    timeout: float | None = None,
 ) -> list[R | BaseException]:
     """Drain an async producer through ``fn`` with bounded concurrency
     and an explicit backpressure queue.
@@ -160,12 +191,19 @@ async def stream(
         raise ValueError(f"concurrency must be positive, got {concurrency}")
     if queue_size <= 0:
         raise ValueError(f"queue_size must be positive, got {queue_size}")
+    if timeout is not None and timeout <= 0:
+        raise ValueError(f"timeout must be positive when set, got {timeout}")
 
     queue: asyncio.Queue[T | _Sentinel] = asyncio.Queue(maxsize=queue_size)
     sentinel = _Sentinel()
     results: list[R | BaseException] = []
     results_lock = asyncio.Lock()
     m = metrics  # local alias keeps the hot path readable
+    # Index counter shared across consumers so PipelineTimeoutError carries a
+    # stable, monotonically-increasing identifier even though stream() drops
+    # input order (D-003).
+    consumed_index = 0
+    index_lock = asyncio.Lock()
 
     async def _produce() -> None:
         async for item in producer:
@@ -188,13 +226,23 @@ async def stream(
             await queue.put(sentinel)
 
     async def _consume() -> None:
+        nonlocal consumed_index
         while True:
             item = await queue.get()
             if isinstance(item, _Sentinel):
                 queue.task_done()
                 return
+            async with index_lock:
+                my_idx = consumed_index
+                consumed_index += 1
             try:
-                value: R | BaseException = await fn(item)  # type: ignore[assignment]
+                if timeout is None:
+                    value: R | BaseException = await fn(item)  # type: ignore[assignment]
+                else:
+                    try:
+                        value = await asyncio.wait_for(fn(item), timeout)  # type: ignore[assignment]
+                    except TimeoutError as exc:
+                        raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
             except BaseException as e:
                 if return_exceptions:
                     value = e
