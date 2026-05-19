@@ -162,3 +162,28 @@ context_for_next_session:
 decisions_made: []
 followups: ["#14"]
 ---
+
+---
+session: 2026-05-19T15:31Z
+duration_min: 25
+issue: 16
+focus: snapshot_test_locks_readme_and_benchmarks_md_to_docs_benchmarks_json
+delta:
+  files_added: 1   # tests/test_bench_table_snapshot.py
+  files_changed: 0
+  tests_added: 7   # 1 pipeline-set guard + 3 readme rows + 3 benchmarks_md rows
+  test_pass_rate: "71/71"
+context_for_next_session:
+  - second_snapshot_test_in_this_repo_first_locks_structural_invariants_second_locks_bench_table_cells
+  - three_sources_of_truth_collapsed_docs_benchmarks_json_committed_readme_table_benchmarks_md_table
+  - test_renders_json_into_expected_cells_does_not_rerun_bench_wall_clock_non_deterministic
+  - readme_uses_conditional_speedup_format_2f_below_100x_0f_at_or_above_only_batched_251x_triggers_integer
+  - benchmarks_md_uses_uniform_2f_for_speedup
+  - pipeline_name_set_guard_serial_async_async_batched_silent_drops_fail_loudly
+  - parametrized_over_three_pipelines_for_each_renderer_seven_tests_total
+  - tamper_verified_readme_serial_43_311_to_43_999_fires_with_regen_hint
+  - no_new_d_entry_d_004_governs_fakellm_baseline_json_is_pure_render_source
+  - remaining_gap_docs_backpressure_json_md_pair_same_pattern_would_apply_potential_followup
+decisions_made: []
+followups: []
+---

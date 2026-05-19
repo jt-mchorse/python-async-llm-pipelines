@@ -4,6 +4,21 @@ Chronological log of work sessions. Most recent first below the divider.
 
 ---
 
+## 2026-05-19 — Issue #16: snapshot test for README + docs/benchmarks.md bench tables
+**Duration:** ~25 min · **Branch:** `session/2026-05-19-1531-issue-16` · **PR:** #17
+
+- Added `tests/test_bench_table_snapshot.py` (7 tests). The repo had three sources of truth for the 1000-doc benchmark numbers — `docs/benchmarks.json` (committed raw values), the README's table, and `docs/benchmarks.md`'s rendered table — with nothing asserting they agree. The test renders the JSON's three pipeline runs into the expected row cells and asserts each cell appears in both the README and `benchmarks.md` rows for that pipeline.
+- Captured the renderer rules in the test: the README uses `:.3f` for duration, `:.1f` for docs/s, and a **conditional** speedup format (`:.2f×` for ratios <100, `:.0f×` for ratios ≥100 — only the batched 251.21× triggers the integer form today). `docs/benchmarks.md` uses uniform `:.2f` for speedup. Both formats are documented in the test docstring so a future PR that re-renders the table sees the contract before changing it.
+- A pipeline-name set guard catches silent additions / drops in the committed JSON. Parametrized over the three pipelines for both renderings → 7 tests total.
+- The wall-clock values themselves aren't deterministic across machines, so the test deliberately does **not** re-run the bench; that would be a CI flake. Locking JSON→README and JSON→MD is the right level of strictness — re-running the bench is the documented regen path.
+- Tamper-verified by editing the README's `serial 43.311 → 43.999`; the `test_readme_row_matches_bench_json[serial]` parametrized case fired with the regen hint pointing at `scripts/bench_1000_doc.py`. Reverted to green.
+
+**Why this work, this session:** Continuation of the portfolio-wide drift-lock pattern. The existing `test_readme_snapshot.py` here covers structural invariants but not the numeric cells of the benchmark table. With three renderings of the same JSON living in three places, the highest-leverage missing test was the JSON-to-renderer drift-lock — this one closes that gap.
+
+**Open questions / blockers:** None — PR ready for review.
+
+**Next session:** Drift-locks now cover both the README structural invariants (#13) and the benchmark table cells (#16). Remaining gap is `docs/backpressure.{json,md}` — same pattern would apply but it's a separate file pair; viable follow-up if anyone files it.
+
 ## 2026-05-19 — Issue #13: drop "This PR ships" framing + snapshot test
 **Duration:** ~25 min · **Branch:** `session/2026-05-19-issue-13`
 
