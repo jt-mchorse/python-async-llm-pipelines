@@ -142,3 +142,23 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-19T05:45Z
+duration_min: 25
+issue: 13
+focus: drop_this_pr_ships_framing_plus_readme_snapshot
+delta:
+  files_changed: 1   # README.md
+  files_added: 1     # tests/test_readme_snapshot.py
+  tests_added: 4
+  test_pass_rate: "64/64"
+context_for_next_session:
+  - readme_what_this_is_rewritten_to_five_bullet_present_tense_layer_picture
+  - demo_section_replaces_pending_depends_on_4_with_two_command_hermetic_demo_path
+  - snapshot_test_locks_issue_refs_plus_this_pr_ships_absence_plus_demo_section_invariant
+  - capture_followup_filed_as_issue_14
+  - tamper_verified_reinjecting_this_pr_ships_fires_snapshot
+decisions_made: []
+followups: ["#14"]
+---

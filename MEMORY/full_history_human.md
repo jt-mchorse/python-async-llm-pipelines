@@ -4,6 +4,19 @@ Chronological log of work sessions. Most recent first below the divider.
 
 ---
 
+## 2026-05-19 — Issue #13: drop "This PR ships" framing + snapshot test
+**Duration:** ~25 min · **Branch:** `session/2026-05-19-issue-13`
+
+- Rewrote `What this is` third+fourth paragraphs from "This PR ships the first primitive" / "Everything beyond #1 is staged in follow-up issues" (both true on 2026-05-15) to a five-bullet present-tense layer picture (#1 process+stream, #2 tool_dispatch, #3 backpressure metrics, #4 1000-doc bench, #5 per-item timeouts).
+- Replaced Demo section's "*60-second demo pending — depends on issue [#4].*" with today's two-command hermetic demo path (`pytest` + `scripts/bench_1000_doc.py`) and named the captured-asset follow-up as #14.
+- `tests/test_readme_snapshot.py` (4 tests) locks: every (#N) ref appears in "What this is", `This PR ships` does not appear in the README, every relative file path resolves, Demo section names a follow-up + mentions the bench script + doesn't carry the gating phrase.
+
+**Why this work, this session:** Same drift pattern the autonomous loop has been fixing across the portfolio this week; python-async-llm-pipelines was the last priority:med candidate after the 2026-05-18 cycle.
+
+**Open questions / blockers:** None.
+
+**Next session:** Continues with Phase A; #14 is priority:low demo capture.
+
 ## 2026-05-14 — Issue #1: async batching with bounded concurrency
 **Duration:** ~45 min · **Branch:** `session/2026-05-14-1445-issue-01`
 
