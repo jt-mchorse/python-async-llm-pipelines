@@ -14,24 +14,48 @@ fan-out, bounded by the provider's rate limit, is one of the
 highest-leverage refactors in any LLM-heavy codebase. This repo is the
 reference for the patterns that actually work in production.
 
-This PR ships the first primitive: **`async_pipelines.process(items, fn,
-concurrency=N)`** — a thin, dep-free wrapper around `asyncio.TaskGroup`
-and `asyncio.Semaphore` that fans out a finite list through an async
-function, capping concurrent in-flight calls, and returns results **in
-the input order**. The fail-fast path uses TaskGroup's structured
-cancellation; the `return_exceptions=True` path keeps the batch alive
-when one bad document shouldn't lose 999 others. The companion
-**`stream()`** primitive handles unbounded sources with an
-`asyncio.Queue`-bounded backpressure path.
+Today five primitives ship, each one closing the issue named in
+parentheses:
 
-Everything beyond #1 is staged in follow-up issues: concurrent
-tool-call dispatch ([#2]), the 1000-document serial-vs-async benchmark
-that proves the 5–20× win ([#4]), and an Anthropic-SDK adapter that
-wraps the wrapper into the actual provider's call shape. The wrapper
-itself stays runtime-dep-free ([D-002]).
+- **`async_pipelines.process(items, fn, concurrency=N)`** (#1) — a
+  thin, dep-free wrapper around `asyncio.TaskGroup` and
+  `asyncio.Semaphore` that fans out a finite list through an async
+  function, capping concurrent in-flight calls, and returns results
+  **in the input order**. The fail-fast path uses TaskGroup's
+  structured cancellation; the `return_exceptions=True` path keeps the
+  batch alive when one bad document shouldn't lose 999 others.
+- **`async_pipelines.stream(...)`** (#1, sibling) — unbounded-source
+  variant with an `asyncio.Queue`-bounded backpressure path.
+- **`async_pipelines.tool_dispatch.dispatch_tool_calls(...)`** (#2) —
+  concurrent tool-call dispatcher with a `ToolRegistry` Protocol so the
+  same wrapper handles parallel tool execution without reimplementing
+  the fan-out logic.
+- **Bounded `stream()` with backpressure metrics** (#3) — `metrics=...`
+  parameter records queue depth, wait time at the producer, and stall
+  counts so an operator can see *which* end of the pipeline is the
+  bottleneck instead of guessing.
+- **1000-document benchmark** (#4) — `scripts/bench_1000_doc.py`
+  produces a serial-vs-async-vs-async+batched table on a synthetic
+  workload. Result on the committed run: ~30× speedup at
+  `concurrency=32`, which is the theoretical upper bound for the
+  `FakeLLM` (pure-wait `asyncio.sleep`). Real-API speedups land in the
+  5–20× spec range; the script is the seam an operator swaps for their
+  own `LLMClient` Protocol implementation.
+- **Per-item timeouts + cooperative cancellation** (#5) —
+  `per_item_timeout` parameter on both `process()` and `stream()`
+  raises `TimeoutError` at the per-item level without poisoning the
+  rest of the batch; structured-concurrency teardown ensures no
+  orphaned tasks.
 
+The wrapper itself stays runtime-dep-free (D-002). The architecture
+diagram below names the five layers and the D-002…D-010 decisions
+behind each one.
+
+[#1]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/1
 [#2]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/2
+[#3]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/3
 [#4]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/4
+[#5]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/5
 [D-002]: MEMORY/core_decisions_human.md
 [D-003]: MEMORY/core_decisions_human.md
 
@@ -268,7 +292,22 @@ python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
 
 ## Demo
 
-*60-second demo pending — depends on issue [#4].*
+Today's hermetic demo is two commands on a fresh clone, both runnable
+without an API key:
+
+```bash
+# The full primitive surface (process, stream, tool_dispatch,
+# backpressure, per-item timeouts) covered by unit tests.
+pytest
+
+# The 1000-document serial-vs-async-vs-async+batched bench table.
+python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
+```
+
+The first prints the test summary; the second prints the
+serial-vs-async-vs-batched comparison table that demonstrates the ~30×
+speedup the synthetic `FakeLLM` allows. A captured 60-second GIF/video
+walking through both plus a real-API run is tracked in **#14**.
 
 ## Why these decisions
 
