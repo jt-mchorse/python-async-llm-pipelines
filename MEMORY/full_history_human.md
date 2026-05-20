@@ -117,3 +117,16 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None — PR ready for review.
 
 **Next session:** Pick up the next zero-open-issue repo in §8 build sequence (agent-orchestration-platform), or wait for in-flight PRs to merge first.
+
+## 2026-05-20 — Issue #18: lock async_pipelines public surface
+**Duration:** ~20 min · **Branch:** `session/2026-05-20-0326-issue-18`
+
+- Added `tests/test_public_surface.py` (5 standalone + 3 parametrized = 8 test items) and `__version__ = "0.0.1"` on the package. First variant in the portfolio-wide pattern to combine the README-quickstart-imports axis (locking 7 names quoted across five `from async_pipelines import …` snippets at lines 88, 107, 129, 188, 231) with the README-dotted-path axis (locking the line-29 quoted `async_pipelines.tool_dispatch.dispatch_tool_calls`). Six orthogonal axes total.
+- Tamper-verified four of six: bad version, drop `"StreamMetrics"` from `__all__`, in-process delete of `dispatch_tool_calls` from `tool_dispatch`, alias-rename `process as process2` (which fires three axes simultaneously: bound-and-non-none, readme-quickstart, anchor[core]).
+- Full suite 79/79 (was 71; +8 new), `__init__.py` at 100%.
+
+**Why this work, this session:** Seventh strike of the portfolio-wide public-surface hygiene pattern. The README's import + dotted-path footprint here is the largest in the portfolio (5 + 1 quoted references); fitting them into one suite proves the pattern's two axis variants compose without redundancy.
+
+**Open questions / blockers:** None — PR ready for review.
+
+**Next session:** Only `mcp-server-cookbook` (Python example) remains as a portable target in this pattern.

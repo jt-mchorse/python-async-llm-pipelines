@@ -187,3 +187,24 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-20T03:26Z
+duration_min: 20
+issue: 18
+focus: public_surface_snapshot_test_locks_async_pipelines_top_level_init
+delta:
+  files_added: 1   # tests/test_public_surface.py
+  files_changed: 1   # async_pipelines/__init__.py (+__version__)
+  tests_added: 8   # 5 standalone + 3 parametrized submodule anchors
+  test_pass_rate: "79/79"
+context_for_next_session:
+  - async_pipelines_now_publishes_dunder_version_str_0_0_1
+  - first_variant_combining_readme_quickstart_imports_axis_and_readme_dotted_path_axis_in_same_suite
+  - readme_quotes_five_import_snippets_lines_88_107_129_188_231_union_seven_names
+  - readme_quotes_one_dotted_path_line_29_async_pipelines_tool_dispatch_dispatch_tool_calls
+  - tamper_verified_four_axes_bad_version_drop_streammetrics_monkey_delete_dispatch_alias_rename_process
+  - portable_pattern_seventh_strike_remaining_only_mcp_python_example
+decisions_made: []
+followups: []
+---
