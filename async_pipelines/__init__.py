@@ -23,6 +23,8 @@ Later issues:
 - #4: 1000-doc benchmark (serial vs async vs async+batched).
 """
 
+__version__ = "0.0.1"  # mirror of pyproject.toml [project] version
+
 from .benchmark import (
     AsyncPipeline,
     BatchedAsyncPipeline,
