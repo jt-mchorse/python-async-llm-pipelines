@@ -301,13 +301,24 @@ without an API key:
 pytest
 
 # The 1000-document serial-vs-async-vs-async+batched bench table.
-python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
+# --out keeps the run from mutating the committed docs/benchmarks.md
+# that test_bench_table_snapshot.py locks; omit it only when you
+# intend to refresh the committed snapshot.
+python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8 \
+  --out /tmp/bench.md
 ```
 
 The first prints the test summary; the second prints the
 serial-vs-async-vs-batched comparison table that demonstrates the ~30×
-speedup the synthetic `FakeLLM` allows. A captured 60-second GIF/video
-walking through both plus a real-API run is tracked in **#14**.
+speedup the synthetic `FakeLLM` allows. For the deterministic 60-second
+recording, `bash scripts/capture_demo.sh` runs both surfaces with a
+smaller `--n 200` workload (the *ratios* are the load-bearing claim;
+absolute durations scale with the synthetic per-call latency) and a
+per-run tempdir so re-records can't trip the snapshot test — see
+[#14], and the smoke test at `tests/test_capture_demo_smoke.py` that
+pins each surface's distinctive output so the demo can't bitrot.
+
+[#14]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/14
 
 ## Why these decisions
 
