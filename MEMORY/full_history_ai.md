@@ -208,3 +208,26 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-21T19:29Z
+duration_min: 28
+issue: 14
+focus: scripts_capture_demo_sh_two_surface_60s_driver_plus_smoke_test_plus_readme_out_flag_fix
+delta:
+  files_added: 2   # scripts/capture_demo.sh, tests/test_capture_demo_smoke.py
+  files_changed: 1 # README.md (Demo bench invocation now includes --out)
+  tests_added: 3
+  test_pass_rate: "82/82"
+context_for_next_session:
+  - eighth_repo_to_land_capture_demo_sh_pattern_this_week
+  - two_surfaces_pytest_then_bench_n_200_chosen_so_full_demo_fits_60s_with_ratios_preserved_per_bench_synthetic_llm_disclosure
+  - capture_script_must_pass_ignore_tests_test_capture_demo_smoke_py_to_inner_pytest_so_outer_pytest_invocation_doesnt_recurse
+  - addopts_ra_q_plus_explicit_q_becomes_qq_silencing_summary_line_script_omits_second_q
+  - bench_1000_doc_py_default_out_is_docs_benchmarks_md_passing_out_tmp_keeps_capture_from_mutating_committed_snapshot
+  - readme_demo_block_bench_invocation_also_missed_out_flag_fixed_inline_same_kind_of_accuracy_fix_as_vector_search_at_scale
+  - smoke_test_pins_n_passed_summary_substring_no_failed_substring_bench_header_signature_and_every_pipeline_data_row
+  - no_new_d_entry_pure_glue_plus_documentation_accuracy
+decisions_made: []
+followups: []
+---

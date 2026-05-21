@@ -130,3 +130,19 @@ Chronological log of work sessions. Most recent first below the divider.
 **Open questions / blockers:** None — PR ready for review.
 
 **Next session:** Only `mcp-server-cookbook` (Python example) remains as a portable target in this pattern.
+
+## 2026-05-21 — Issue #14: 60-second demo capture script
+**Duration:** ~28 min · **Branch:** `session/2026-05-21-1929-issue-14` · **PR:** #20
+
+- Added `scripts/capture_demo.sh` driving the two surfaces from the README's Demo section: `pytest --ignore=tests/test_capture_demo_smoke.py` (then `python scripts/bench_1000_doc.py --n 200 --concurrency 32 --batch-size 8 --out <tmp>.md`) followed by `cat` so the speedup table is on camera. `--n 200` (not 1000) keeps the bench under ~10s so the full demo fits 60s; the bench output's own "Synthetic LLM disclosure" already says the *ratios* are load-bearing under FakeLLM, not absolute durations. Per-run tempdir trapped on EXIT/INT/TERM. `CAPTURE_PACE_SECONDS` honored, `CAPTURE_DEMO_N` for take variation.
+- Added `tests/test_capture_demo_smoke.py` (3 tests) that runs the script with `PACE=0` and asserts the pytest "N passed" summary appears + no " failed" substring; the bench markdown header signature matches what `test_bench_table_snapshot.py` locks separately; every pipeline (`serial` / `async` / `async+batched`) has a data row in the rendered table; script exists and is executable.
+- Two non-obvious gotchas discovered and documented inline in the script header:
+  1. The inner `pytest` invocation must `--ignore` the smoke test file, otherwise the outer pytest run that invokes the capture script recursively re-enters it.
+  2. `pyproject.toml`'s `addopts="-ra -q"` plus an explicit `-q` on the command line becomes `-qq`, which silences the "N passed in Xs" summary line. The script omits the second `-q` accordingly.
+- Fixed the README Demo block's `bench_1000_doc.py` invocation to include `--out /tmp/bench.md`. Without it, the default `--out` is `docs/benchmarks.md` — a casual reader running the README example will mutate the committed snapshot the snapshot test locks. Found teeth-first this session when an accidental default-flags run broke `test_bench_table_snapshot.py` mid-debug. Added a paragraph pointing at the capture script and the smoke test. 82/82 tests pass, ruff clean.
+
+**Why this work, this session:** Eighth repo to land the `scripts/capture_demo.sh` pattern this week. Issue #14 was the explicit owner of the README's "pending 60s demo" claim and was sitting at `priority:low` — closing it cleanly closes the last quality-bar gap in this repo's v0.1 story.
+
+**Open questions / blockers:** None. The real-API third surface (`AnthropicLLM`) is deliberately out of scope; needs an API key and can't be hermetic. The capture script's epilogue points operators at the swap.
+
+**Next session:** Continue the multi-issue loop on the remaining stale repos. agent-orchestration-platform #16 is the next in §8 build order.
