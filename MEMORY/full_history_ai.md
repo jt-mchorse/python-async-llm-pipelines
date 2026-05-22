@@ -231,3 +231,24 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-22T03:35Z
+duration_min: 20
+issue: 21
+focus: fix_readme_per_item_timeout_drift_to_match_code_timeout_kwarg
+delta:
+  files_changed: 1   # README.md (two locations: L45 bullet, L67-68 arch block)
+  files_added: 1     # tests/test_readme_kwarg_consistency.py
+  tests_added: 4
+  test_pass_rate: "86/86"
+decisions_made: []
+context_for_next_session:
+  - readme_bullet_l45_and_arch_block_l67_l68_named_the_per_item_timeout_kwarg_real_kwarg_is_timeout_since_5_landed
+  - prose_section_at_l196_l203_was_correct_only_the_bullet_and_arch_block_drifted
+  - test_readme_kwarg_consistency_parses_arch_block_signature_lines_and_python_code_fence_callsites_compares_against_inspect_signature_process_parameters_and_inspect_signature_stream_parameters_unknown_kwargs_raise
+  - call_site_parser_balance_parses_parens_at_depth_zero_so_nested_calls_dont_false_positive_a_kwarg_from_an_outer_call
+  - chose_arch_block_param_order_to_match_actual_function_signature_concurrency_first_return_exceptions_then_timeout_metrics_last_on_stream
+  - fourth_post_v0_1_honesty_fix_today_after_emb_shootout_chunking_lab_vector_search_at_scale
+followups: []
+---
