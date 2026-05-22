@@ -41,9 +41,9 @@ parentheses:
   `FakeLLM` (pure-wait `asyncio.sleep`). Real-API speedups land in the
   5–20× spec range; the script is the seam an operator swaps for their
   own `LLMClient` Protocol implementation.
-- **Per-item timeouts + cooperative cancellation** (#5) —
-  `per_item_timeout` parameter on both `process()` and `stream()`
-  raises `TimeoutError` at the per-item level without poisoning the
+- **Per-item timeouts + cooperative cancellation** (#5) — `timeout`
+  parameter on both `process()` and `stream()` raises
+  `PipelineTimeoutError` at the per-item level without poisoning the
   rest of the batch; structured-concurrency teardown ensures no
   orphaned tasks.
 
@@ -64,8 +64,8 @@ behind each one.
 ```
 async_pipelines/
 ├── core.py
-│   ├── process(items, fn, *, concurrency, per_item_timeout=None, return_exceptions=False) -> list
-│   └── stream(producer, fn, *, concurrency, queue_size, per_item_timeout=None, metrics=None) -> list
+│   ├── process(items, fn, *, concurrency, return_exceptions=False, timeout=None) -> list
+│   └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False, timeout=None, metrics=None) -> list
 └── tool_dispatch.py    ← #2
     ├── ToolCall, ToolResult, ToolRegistry
     └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency) -> list[ToolResult]
