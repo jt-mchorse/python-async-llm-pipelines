@@ -252,3 +252,22 @@ context_for_next_session:
   - fourth_post_v0_1_honesty_fix_today_after_emb_shootout_chunking_lab_vector_search_at_scale
 followups: []
 ---
+
+---
+session: 2026-05-23T03:43Z
+duration_min: 15
+issue: 24
+focus: architecture_doc_drift_lock_dual_axis_test_only
+decisions_made: []
+delta:
+  files_added: 1     # tests/test_architecture_doc.py
+  tests_added: 12
+  test_pass_rate: "98/98"
+context_for_next_session:
+  - test_only_lock_zero_doc_changes_doc_already_in_steady_state
+  - dual_axis_hash_nn_plus_d_nnn_like_rag_production_kit_pr_30
+  - known_shipped_issues_1_through_5_per_handoff_section_2_core_deliverables
+  - tamper_verified_four_axes
+  - fourth_of_five_sister_issues_in_this_night_sweep_one_remaining_agent_orchestration_platform
+followups: []
+---
