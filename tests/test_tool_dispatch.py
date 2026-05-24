@@ -301,3 +301,112 @@ async def test_bench_5_tools_serial_vs_concurrent():
     print(
         f"\n[bench] 5 tools × {sleep_ms}ms sleep: serial={serial_ms:.1f}ms concurrent={concurrent_ms:.1f}ms speedup={serial_ms / concurrent_ms:.2f}×"
     )
+
+
+# ----------------------------------------------------------------------
+# Per-tool timeout (issue #26 — parity with process()/stream())
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dispatch_timeout_raises_pipeline_timeout_when_return_exceptions_false():
+    """A slow tool past the deadline propagates PipelineTimeoutError, wrapped
+    in PipelineError by the existing TaskGroup error funnel."""
+    from async_pipelines import PipelineTimeoutError
+
+    r = ToolRegistry()
+
+    @r.tool("slow")
+    async def slow(_: dict) -> str:
+        await asyncio.sleep(0.5)
+        return "should not reach"
+
+    calls = [ToolCall(id="x", name="slow", arguments={})]
+    with pytest.raises((PipelineTimeoutError, PipelineError)) as exc:
+        await dispatch_tool_calls(calls, registry=r, timeout=0.05)
+    # When the funnel re-wraps, the original PipelineTimeoutError is the cause.
+    # Either way, the surfaced exception's chain should point at PipelineTimeoutError.
+    chain = exc.value if isinstance(exc.value, PipelineTimeoutError) else exc.value.__cause__
+    assert isinstance(chain, PipelineTimeoutError)
+    assert chain.timeout_s == 0.05
+    assert chain.index == 0
+
+
+@pytest.mark.asyncio
+async def test_dispatch_timeout_with_return_exceptions_attaches_to_result():
+    """With return_exceptions=True, the slow tool's ToolResult.error_repr
+    surfaces PipelineTimeoutError and fast tools' results are populated."""
+    r = ToolRegistry()
+
+    @r.tool("fast")
+    async def fast(args: dict) -> str:
+        return f"ok-{args['i']}"
+
+    @r.tool("slow")
+    async def slow(_: dict) -> str:
+        await asyncio.sleep(0.5)
+        return "should not reach"
+
+    calls = [
+        ToolCall(id="a", name="fast", arguments={"i": 0}),
+        ToolCall(id="b", name="slow", arguments={}),
+        ToolCall(id="c", name="fast", arguments={"i": 2}),
+    ]
+    results = await dispatch_tool_calls(calls, registry=r, return_exceptions=True, timeout=0.05)
+    assert len(results) == 3
+    assert results[0].ok is True
+    assert results[0].value == "ok-0"
+    assert results[1].ok is False
+    assert "PipelineTimeoutError" in (results[1].error_repr or "")
+    assert results[2].ok is True
+    assert results[2].value == "ok-2"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_timeout_zero_raises_value_error():
+    r = ToolRegistry()
+
+    @r.tool("noop")
+    async def noop(_: dict) -> None:
+        return None
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        await dispatch_tool_calls(
+            [ToolCall(id="x", name="noop", arguments={})],
+            registry=r,
+            timeout=0,
+        )
+
+
+@pytest.mark.asyncio
+async def test_dispatch_timeout_negative_raises_value_error():
+    r = ToolRegistry()
+
+    @r.tool("noop")
+    async def noop(_: dict) -> None:
+        return None
+
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        await dispatch_tool_calls(
+            [ToolCall(id="x", name="noop", arguments={})],
+            registry=r,
+            timeout=-0.1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_dispatch_timeout_none_is_unchanged_behavior():
+    """Regression guard: timeout=None (default) must not change anything —
+    a tool that takes longer than any imagined timeout still completes."""
+    r = ToolRegistry()
+
+    @r.tool("slow_but_unbounded")
+    async def slow(_: dict) -> str:
+        await asyncio.sleep(0.05)
+        return "completed"
+
+    calls = [ToolCall(id="x", name="slow_but_unbounded", arguments={})]
+    results = await dispatch_tool_calls(calls, registry=r)  # no timeout kwarg
+    assert len(results) == 1
+    assert results[0].ok is True
+    assert results[0].value == "completed"

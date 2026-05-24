@@ -68,7 +68,7 @@ async_pipelines/
 │   └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False, timeout=None, metrics=None) -> list
 └── tool_dispatch.py    ← #2
     ├── ToolCall, ToolResult, ToolRegistry
-    └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency) -> list[ToolResult]
+    └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout=None) -> list[ToolResult]
 ```
 
 See **[`docs/architecture.md`](docs/architecture.md)** for the integrated pipeline lifecycle, per-layer detail across all five shipped primitives (process/stream #1, tool dispatch #2, backpressure metrics #3, 1000-doc benchmark #4, per-item timeouts #5), and the D-002…D-010 design decisions behind each one.
@@ -257,6 +257,13 @@ Default behavior is fail-fast (parity with `process`); pass
 `tool_call_id` round-trips through `ToolResult` so callers can map results
 straight back to the model's `tool_use_id`s when constructing the next
 turn's messages.
+
+Bound a misbehaving tool with `timeout` (parity with `process()` and
+`stream()`): `await dispatch_tool_calls(calls, registry=registry, timeout=2.0)`
+wraps each tool invocation in `asyncio.wait_for`; expiry raises
+`PipelineTimeoutError(index=…, timeout_s=…)` (propagates by default,
+attached to the matching `ToolResult.error_repr` under
+`return_exceptions=True`).
 
 ## 1000-doc benchmark (#4 · this PR)
 

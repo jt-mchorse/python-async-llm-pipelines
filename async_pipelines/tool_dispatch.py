@@ -24,7 +24,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from .core import PipelineError
+from .core import PipelineError, PipelineTimeoutError
 
 # A tool function is async, takes a single dict of arguments, and returns
 # anything JSON-serializable (whatever shape the model expects back).
@@ -118,6 +118,7 @@ async def dispatch_tool_calls(
     registry: ToolRegistry,
     return_exceptions: bool = False,
     concurrency: int | None = None,
+    timeout: float | None = None,
 ) -> list[ToolResult]:
     """Run every `ToolCall` against `registry` concurrently.
 
@@ -130,11 +131,19 @@ async def dispatch_tool_calls(
       concurrency: optional upper bound on simultaneous in-flight calls.
         None (default) means unbounded — each tool runs as soon as it's
         scheduled.
+      timeout: optional per-tool deadline in seconds. None (default) means
+        no per-tool deadline. Positive float: each tool invocation is
+        wrapped in `asyncio.wait_for`; on expiry a `PipelineTimeoutError`
+        is raised (carrying the tool's index in `tool_calls`) and follows
+        the existing `return_exceptions` policy. Parity with
+        `process()` / `stream()`'s `timeout` shape.
 
     Returns: ToolResult list in input order; `tool_call_id` matches each input.
     """
     if concurrency is not None and concurrency <= 0:
         raise ValueError(f"concurrency must be positive or None; got {concurrency}")
+    if timeout is not None and timeout <= 0:
+        raise ValueError(f"timeout must be positive when set, got {timeout}")
 
     if not tool_calls:
         return []
@@ -156,7 +165,14 @@ async def dispatch_tool_calls(
     results: list[ToolResult | None] = [None] * len(resolved)
 
     async def _run_one(idx: int, call: ToolCall, fn: ToolFn) -> None:
-        result = await _invoke_tool(call, fn, semaphore, return_exceptions=return_exceptions)
+        result = await _invoke_tool(
+            idx,
+            call,
+            fn,
+            semaphore,
+            return_exceptions=return_exceptions,
+            timeout=timeout,
+        )
         results[idx] = result
 
     try:
@@ -183,22 +199,41 @@ def _make_missing_tool_stub(name: str) -> ToolFn:
 
 
 async def _invoke_tool(
+    idx: int,
     call: ToolCall,
     fn: ToolFn,
     semaphore: asyncio.Semaphore | None,
     *,
     return_exceptions: bool,
+    timeout: float | None,
 ) -> ToolResult:
     if semaphore is not None:
         async with semaphore:
-            return await _run_with_telemetry(call, fn, return_exceptions=return_exceptions)
-    return await _run_with_telemetry(call, fn, return_exceptions=return_exceptions)
+            return await _run_with_telemetry(
+                idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
+            )
+    return await _run_with_telemetry(
+        idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
+    )
 
 
-async def _run_with_telemetry(call: ToolCall, fn: ToolFn, *, return_exceptions: bool) -> ToolResult:
+async def _run_with_telemetry(
+    idx: int,
+    call: ToolCall,
+    fn: ToolFn,
+    *,
+    return_exceptions: bool,
+    timeout: float | None,
+) -> ToolResult:
     start = time.perf_counter()
     try:
-        value = await fn(call.arguments)
+        if timeout is None:
+            value = await fn(call.arguments)
+        else:
+            try:
+                value = await asyncio.wait_for(fn(call.arguments), timeout)
+            except TimeoutError as exc:
+                raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
     except Exception as e:
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         if not return_exceptions:
