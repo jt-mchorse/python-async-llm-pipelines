@@ -292,3 +292,23 @@ context_for_next_session:
   - eighth_in_night_session_loop_first_safety_gap_fix_rather_than_cli_parity
 followups: []
 ---
+
+---
+session: 2026-05-24T15:45Z
+duration_min: 12
+issue: 28
+focus: async_pipelines_constructor_time_concurrency_validation_plus_stale_init_docstring
+delta:
+  files_changed: 2   # async_pipelines/benchmark.py, async_pipelines/__init__.py
+  files_added: 0
+  tests_added: 5
+  test_pass_rate: "108/108"
+decisions_made: []
+context_for_next_session:
+  - batched_async_pipeline_already_validated_batch_size_ge_1_at_construction_but_neither_async_pipeline_validated_concurrency_misconfigured_workload_only_blew_up_on_first_run
+  - process_itself_validates_concurrency_gt_0_at_call_time_constructor_validation_just_surfaces_one_stack_frame_earlier_no_semantic_change
+  - serial_pipeline_untouched_no_concurrency_param
+  - __init___py_docstring_listed_pre_26_dispatch_tool_calls_signature_timeout_kwarg_was_added_by_26_but_docstring_missed_it_backfilled_now
+  - portfolio_pattern_fifth_in_day_session_loop_after_eval_harness_37_prompt_regression_32_mcp_cookbook_31_emb_shootout_26_first_constructor_validation_polish_rather_than_cli_naming
+followups: []
+---

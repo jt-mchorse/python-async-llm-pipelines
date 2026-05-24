@@ -180,3 +180,21 @@ README signature line for `dispatch_tool_calls` now shows the new kwarg; added o
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Continue to build-sequence #9 (`agent-orchestration-platform`).
+
+## 2026-05-24 — Issue #28: constructor-time concurrency validation + stale `__init__` docstring
+
+**Duration:** ~12 min. **Issue:** [#28](https://github.com/jt-mchorse/python-async-llm-pipelines/issues/28). **Branch:** `session/2026-05-24-1537-issue-28`.
+
+Two related polish gaps surfaced from reading the benchmark module after #26's tool-dispatch timeout fix:
+
+1. **Constructor-time validation parity.** `BatchedAsyncPipeline.__init__` already validated `batch_size >= 1` at construction time, but neither async pipeline validated `concurrency >= 1`. `process()` itself enforces `concurrency > 0` at call-time, so a pipeline constructed with `concurrency=0` only blew up when the operator finally called `run()` — making the failure point inconsistent with the existing `batch_size` validation behavior. Both async pipelines now raise `ValueError("concurrency must be >= 1; got {n}")` at construction, matching the existing guard's shape.
+
+2. **Stale public-API docstring.** `async_pipelines/__init__.py` line 17 listed the pre-#26 `dispatch_tool_calls(..., concurrency)` signature; `timeout` was added by #26 but the module docstring wasn't updated. Backfilled now.
+
+Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and negative concurrency; BatchedAsyncPipeline rejects zero concurrency; both construct cleanly at minimum valid values (concurrency=1, batch_size=1). The existing `test_batched_pipeline_rejects_zero_batch_size` is preserved as the regression-pin for the pre-existing guard.
+
+**Why this work, this session:** Fifth Phase B+C target of a 180-minute day session, after `llm-eval-harness` #37, `prompt-regression-suite` #32, `mcp-server-cookbook` #31, and `embedding-model-shootout` #26. First constructor-validation polish rather than CLI/naming parity — same shape of fix (close a half-implemented capability or restore symmetry), different surface.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Continue the day-session loop. Remaining candidates: `chunking-strategies-lab` (run_matrix already polished), `vector-search-at-scale` (recent dry/no-dry parity fix), `rag-production-kit` (today's #33 already filled the `--suite` filter), `agent-orchestration-platform` (retry-cap landed; might have a docs / public-surface gap), `nextjs-streaming-ai-patterns` / `ai-app-integration-tests` (TS frontends, less touched).
