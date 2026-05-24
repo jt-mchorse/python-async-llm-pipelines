@@ -162,3 +162,21 @@ Why prioritized: this was the fourth post-v0.1 silent-surface-drift fix today, m
 **Duration:** ~15 min. **Issue:** [#24](https://github.com/jt-mchorse/python-async-llm-pipelines/issues/24). **PR:** [#25](https://github.com/jt-mchorse/python-async-llm-pipelines/pull/25).
 
 Test-only lock; doc was already in steady state. Dual-axis (`#NN` + `D-NNN`) like `rag-production-kit` PR #30 from earlier this same session. Four invariants pinned, tamper-verified each. **Why this work, this session:** Fourth of five sister issues in this night sweep. **Next session:** Final repo — `agent-orchestration-platform`, which has real drift (`this PR` / `Pending downstream` framing left over from pre-shipping state).
+
+## 2026-05-24 — Issue #26: `dispatch_tool_calls` per-tool timeout (parity with `process`/`stream`)
+
+**Duration:** ~20 min. **Issue:** [#26](https://github.com/jt-mchorse/python-async-llm-pipelines/issues/26). **Branch:** `session/2026-05-24-0356-issue-26`.
+
+`async_pipelines.process()` and `stream()` both accepted a `timeout: float | None` parameter that bounded per-item wall clock. `dispatch_tool_calls()` did not — a misbehaving tool that never returned could stall the whole batch indefinitely with no recourse beyond cancelling the `TaskGroup` from outside. For real agent loops calling unreliable backends (HTTP, subprocess, downstream LLMs), per-tool timeout is a basic safety knob; the parity gap was unprincipled.
+
+Added `timeout: float | None = None` to `dispatch_tool_calls`. None preserves current behavior. Positive float wraps each tool invocation in `asyncio.wait_for`; expiry raises `PipelineTimeoutError(index=idx, timeout_s=timeout)` (already a public class) and follows the existing `return_exceptions` policy — propagates when False (wrapped by the TaskGroup error funnel into PipelineError), attaches to the matching `ToolResult.error_repr` when True. Validation at dispatch entry: `timeout <= 0` raises `ValueError`, matching `process()`.
+
+The plumbing required passing the tool's index through `_invoke_tool` and `_run_with_telemetry` so `PipelineTimeoutError` carries the correct identifier — five new tests pin the shape: slow tool propagates the error class through the chain; `return_exceptions=True` attaches `PipelineTimeoutError` to the matching ToolResult while fast tools' values still populate; `timeout=0` and `timeout=-0.1` raise ValueError; `timeout=None` is a no-op regression guard.
+
+README signature line for `dispatch_tool_calls` now shows the new kwarg; added one paragraph under the dispatch example referencing the parity with `process`/`stream` and the `PipelineTimeoutError` shape.
+
+**Why this work, this session:** Eighth issue in the night-session multi-issue loop, and the first non-CLI-parity fix tonight — this is a real safety surface gap, not a doc/UX improvement. Same shape of work (read for asymmetry, fix, test, lock) at the library layer instead of the CLI layer.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Continue to build-sequence #9 (`agent-orchestration-platform`).

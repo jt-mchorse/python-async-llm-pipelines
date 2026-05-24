@@ -271,3 +271,24 @@ context_for_next_session:
   - fourth_of_five_sister_issues_in_this_night_sweep_one_remaining_agent_orchestration_platform
 followups: []
 ---
+
+---
+session: 2026-05-24T04:00Z
+duration_min: 20
+issue: 26
+focus: dispatch_tool_calls_timeout_kwarg_parity_with_process_stream
+delta:
+  files_changed: 3   # async_pipelines/tool_dispatch.py, tests/test_tool_dispatch.py, README.md
+  tests_added: 5
+  test_pass_rate: "103/103"
+decisions_made: []
+context_for_next_session:
+  - process_and_stream_already_had_timeout_kwarg_but_dispatch_tool_calls_did_not_real_safety_gap_misbehaving_tool_could_hang_batch_indefinitely
+  - implementation_wraps_fn_call_in_asyncio_wait_for_only_when_timeout_is_set_no_op_overhead_when_timeout_none
+  - pipeline_timeout_error_carries_index_into_tool_calls_list_consistent_with_process_per_item_index
+  - validation_at_dispatch_entry_timeout_le_0_raises_value_error_parity_with_process
+  - return_exceptions_path_works_because_pipeline_timeout_error_is_exception_subclass_caught_by_existing_except_exception_in_run_with_telemetry
+  - readme_signature_line_updated_to_show_new_kwarg_and_added_one_paragraph_under_dispatch_example_describing_the_kwarg_plus_pipeline_timeout_error_shape
+  - eighth_in_night_session_loop_first_safety_gap_fix_rather_than_cli_parity
+followups: []
+---
