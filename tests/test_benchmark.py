@@ -218,6 +218,51 @@ def test_batched_pipeline_constructs_at_minimum_values():
     assert pipe.batch_size == 1
 
 
+# Issue #30: Workload validates fields at construction. Surfaces misconfig
+# at the operator-visible API site, not at an inner pipeline factory call.
+# n_docs=0 silently produces empty results and zero-division speedup math.
+@pytest.mark.parametrize("bad_n", [0, -1, -100])
+def test_workload_rejects_non_positive_n_docs(bad_n: int):
+    with pytest.raises(ValueError, match=r"n_docs must be >= 1"):
+        Workload(n_docs=bad_n)
+
+
+@pytest.mark.parametrize("bad_latency", [-0.001, -1.0])
+def test_workload_rejects_negative_llm_call_seconds(bad_latency: float):
+    with pytest.raises(ValueError, match=r"llm_call_seconds must be >= 0\.0"):
+        Workload(n_docs=10, llm_call_seconds=bad_latency)
+
+
+@pytest.mark.parametrize("bad_concurrency", [0, -1])
+def test_workload_rejects_non_positive_concurrency(bad_concurrency: int):
+    # Defense-in-depth: AsyncPipeline.__init__ catches this too (PR #29), but
+    # the Workload-level guard surfaces the failure at the operator's misconfig
+    # site instead of inside an inner factory call.
+    with pytest.raises(ValueError, match=r"concurrency must be >= 1"):
+        Workload(n_docs=10, concurrency=bad_concurrency)
+
+
+@pytest.mark.parametrize("bad_batch", [0, -1])
+def test_workload_rejects_non_positive_batch_size(bad_batch: int):
+    with pytest.raises(ValueError, match=r"batch_size must be >= 1"):
+        Workload(n_docs=10, batch_size=bad_batch)
+
+
+def test_workload_accepts_zero_llm_call_seconds():
+    # Zero latency is meaningful: instant-LLM smoke test without sleep.
+    w = Workload(n_docs=10, llm_call_seconds=0.0)
+    assert w.llm_call_seconds == 0.0
+
+
+def test_workload_accepts_minimum_valid_values():
+    # All-ones is the boundary: pin it constructs cleanly so a future
+    # contract tightening (e.g. n_docs >= 10) doesn't slip in silently.
+    w = Workload(n_docs=1, llm_call_seconds=0.0, concurrency=1, batch_size=1)
+    assert w.n_docs == 1
+    assert w.concurrency == 1
+    assert w.batch_size == 1
+
+
 # ---------------------------------------------------------------------
 # attach_speedup
 # ---------------------------------------------------------------------
