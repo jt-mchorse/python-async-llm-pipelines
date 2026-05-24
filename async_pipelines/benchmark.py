@@ -133,6 +133,12 @@ class AsyncPipeline:
         *,
         concurrency: int,
     ) -> None:
+        # Eager validation: `process()` itself enforces `concurrency > 0`
+        # at call-time, but a misconfigured workload spec should surface
+        # at construction not at the first `run()` — parity with
+        # BatchedAsyncPipeline's batch_size guard below.
+        if concurrency < 1:
+            raise ValueError(f"concurrency must be >= 1; got {concurrency}")
         self.llm1 = llm1
         self.llm2 = llm2
         self.concurrency = concurrency
@@ -167,6 +173,8 @@ class BatchedAsyncPipeline:
         concurrency: int,
         batch_size: int,
     ) -> None:
+        if concurrency < 1:
+            raise ValueError(f"concurrency must be >= 1; got {concurrency}")
         if batch_size < 1:
             raise ValueError(f"batch_size must be >= 1; got {batch_size}")
         self.llm1_batch = llm1_batch

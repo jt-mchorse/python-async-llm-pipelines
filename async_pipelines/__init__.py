@@ -14,10 +14,10 @@ Shipped layers:
 - #1: ``stream(producer, fn, *, concurrency, queue_size)`` — bounded
       fan-out over an unbounded source, with `asyncio.Queue`-based
       backpressure on the producer.
-- #2: ``dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency)`` —
+- #2: ``dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout)`` —
       runs the model's parallel tool_use blocks concurrently inside an
-      `asyncio.TaskGroup`, with optional bounded concurrency, partial-failure
-      tolerance, and per-tool telemetry.
+      `asyncio.TaskGroup`, with optional bounded concurrency, optional
+      per-tool deadline, partial-failure tolerance, and per-tool telemetry.
 
 Later issues:
 - #4: 1000-doc benchmark (serial vs async vs async+batched).

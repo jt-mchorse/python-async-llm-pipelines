@@ -165,6 +165,60 @@ def test_batched_pipeline_rejects_zero_batch_size():
 
 
 # ---------------------------------------------------------------------
+# Constructor-time concurrency validation parity (issue #28)
+# ---------------------------------------------------------------------
+
+
+def test_async_pipeline_rejects_zero_concurrency():
+    """`AsyncPipeline(concurrency=0)` raises eagerly.
+
+    `process()` itself enforces `concurrency > 0` at call-time, but a
+    misconfigured workload should surface at construction not at the
+    first `run()`. Parity with `BatchedAsyncPipeline`'s existing
+    `batch_size` guard.
+    """
+    with pytest.raises(ValueError, match="concurrency must be >= 1"):
+        AsyncPipeline(FakeLLM(), FakeLLM(), concurrency=0)
+
+
+def test_async_pipeline_rejects_negative_concurrency():
+    """Negative values are also rejected (a `< 1` not a `!= 0` check)."""
+    with pytest.raises(ValueError, match="concurrency must be >= 1"):
+        AsyncPipeline(FakeLLM(), FakeLLM(), concurrency=-3)
+
+
+def test_batched_pipeline_rejects_zero_concurrency():
+    """Sibling guard on `BatchedAsyncPipeline` so the two pipelines have
+    matching constructor-time validation.
+    """
+    with pytest.raises(ValueError, match="concurrency must be >= 1"):
+        BatchedAsyncPipeline(
+            make_batch_caller(FakeLLM()),
+            make_batch_caller(FakeLLM()),
+            concurrency=0,
+            batch_size=8,
+        )
+
+
+def test_async_pipeline_constructs_at_minimum_concurrency_one():
+    """`concurrency=1` is the minimum valid value — the boundary holds."""
+    pipe = AsyncPipeline(FakeLLM(), FakeLLM(), concurrency=1)
+    assert pipe.concurrency == 1
+
+
+def test_batched_pipeline_constructs_at_minimum_values():
+    """`concurrency=1, batch_size=1` constructs cleanly."""
+    pipe = BatchedAsyncPipeline(
+        make_batch_caller(FakeLLM()),
+        make_batch_caller(FakeLLM()),
+        concurrency=1,
+        batch_size=1,
+    )
+    assert pipe.concurrency == 1
+    assert pipe.batch_size == 1
+
+
+# ---------------------------------------------------------------------
 # attach_speedup
 # ---------------------------------------------------------------------
 
