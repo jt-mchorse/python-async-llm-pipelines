@@ -198,3 +198,16 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Continue the day-session loop. Remaining candidates: `chunking-strategies-lab` (run_matrix already polished), `vector-search-at-scale` (recent dry/no-dry parity fix), `rag-production-kit` (today's #33 already filled the `--suite` filter), `agent-orchestration-platform` (retry-cap landed; might have a docs / public-surface gap), `nextjs-streaming-ai-patterns` / `ai-app-integration-tests` (TS frontends, less touched).
+
+## 2026-05-25 — Issue #30: Workload validates fields at construction
+**Duration:** ~15 min · **Branch:** `session/2026-05-24-issue-30`
+
+- `Workload` at `async_pipelines/benchmark.py:32` is a frozen dataclass with `n_docs`, `llm_call_seconds`, `concurrency`, `batch_size`. Three of the four were guarded only downstream (concurrency / batch_size at pipeline `__init__` per #28/#29; latency by `asyncio.sleep`). `n_docs` was completely unguarded — `Workload(n_docs=0)` produced an empty `docs` list at `bench_1000_doc.py:43`, near-zero `duration_seconds`, and the speedup math then divided by zero or yielded `inf`. A silently bogus benchmark could have landed in the published markdown.
+- Added `__post_init__` raising `ValueError(f"{field} must be ...; got {value}")` for `n_docs < 1`, `llm_call_seconds < 0`, `concurrency < 1`, `batch_size < 1`. Defense-in-depth on the last three is intentional: surfaces the failure at the Workload site where the operator misconfigured, not inside an inner pipeline factory call — same "proximate failure" rationale as today's `rag-production-kit` PR #34 (Retriever construct-time `k_rrf`).
+- Eleven new test cases in `tests/test_benchmark.py` under a `#30` block: parametrized over each field × bad-values (3 + 2 + 2 + 2 = 9 cases), plus zero-latency acceptance (instant-LLM smoke test is meaningful), plus all-ones minimum-valid pin (future contract-tightening regression guard). Full suite 119/119 (was 108 after #28).
+
+**Why this work, this session:** Sister to today's portfolio-wide constructor-validation parity sweep. Seventh Phase B+C target of the 180-min day session after `llm-eval-harness` #40, `llm-cost-optimizer` #34, `rag-production-kit` #36, `embedding-model-shootout` #29, `chunking-strategies-lab` #27, `vector-search-at-scale` #27. The pattern is now portfolio-wide: every operator-supplied dataclass / constructor with numeric or load-bearing string fields validates them at construction.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Within the 15-min cleanup buffer of the 180-min cap. Wrap with the final report after this PR.
