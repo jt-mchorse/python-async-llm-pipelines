@@ -58,9 +58,7 @@ class Workload:
         if self.n_docs < 1:
             raise ValueError(f"n_docs must be >= 1; got {self.n_docs}")
         if self.llm_call_seconds < 0.0:
-            raise ValueError(
-                f"llm_call_seconds must be >= 0.0; got {self.llm_call_seconds}"
-            )
+            raise ValueError(f"llm_call_seconds must be >= 0.0; got {self.llm_call_seconds}")
         if self.concurrency < 1:
             raise ValueError(f"concurrency must be >= 1; got {self.concurrency}")
         if self.batch_size < 1:
