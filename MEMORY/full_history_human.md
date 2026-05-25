@@ -211,3 +211,16 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Within the 15-min cleanup buffer of the 180-min cap. Wrap with the final report after this PR.
+
+## 2026-05-25 — Issue #32: isinstance(int) + math.isfinite guards across core, benchmark, tool_dispatch
+**Duration:** ~25 min · **Branch:** `session/2026-05-24-issue-32`
+
+- Three public entry points (`process`, `stream`, `dispatch_tool_calls`) and `Workload` had sign-only checks on integer (concurrency, queue_size, n_docs, batch_size) and finite (timeout, llm_call_seconds) parameters. NaN, +/-Infinity, fractional, and bool slipped through. The worst cases: `concurrency = NaN` propagates into `asyncio.Semaphore(NaN)` raising a cryptic deep TypeError at acquire; `timeout = +Infinity` makes `asyncio.wait_for` never fire — silent disable; `NaN llm_call_seconds` skews published benchmark throughput numbers because the simulated-latency sleep becomes platform-dependent.
+- Tightened each entry point to `isinstance(int)` (bool excluded explicitly) for count fields and `math.isfinite` for timeout/llm_call_seconds. Error messages updated from "must be positive" to "must be a positive int" or "must be a finite positive number" so callers can grep the new contract. Six pre-existing tests pinning the old strings updated via bulk sed.
+- New parametrized tests in `tests/test_process.py` (process concurrency + timeout) and `tests/test_benchmark.py` (Workload four fields). Test count 146.
+
+**Why this work, this session:** Twelfth (and final) Phase B+C target in the 360-min night session. Second PR in python-async-llm-pipelines tonight; the first was via the Phase A fixup-merge of #31 (Workload sign-only `__post_init__`). The two together cover both the construction surface and the runtime-entry surface, completing the portfolio's contract-tightening arc.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** The portfolio finiteness/integer-extension sweep is now at full coverage across all 12 repos (12 Phase B+C PRs + 7 Phase A fixup-merges tonight = 19 substantive items). Next sessions can pivot to a different harm class or pick up the demo-capture operator-required follow-ups.

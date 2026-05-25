@@ -334,3 +334,25 @@ context_for_next_session:
   - seventh_phase_bc_target_in_180_min_day_session_after_phase_a_5_pr_merge_plus_six_prior_phase_bc_targets
 followups: []
 ---
+
+---
+session: 2026-05-25T07:50Z
+duration_min: 25
+issue: 32
+focus: core_benchmark_tool_dispatch_isinstance_int_plus_math_isfinite_guards
+delta:
+  files_changed: 7   # async_pipelines/core.py + benchmark.py + tool_dispatch.py + tests/test_process.py + test_benchmark.py + test_timeouts.py + test_tool_dispatch.py
+  files_added: 0
+  tests_added: 30   # approx (parametrized matrices across multiple sites)
+  test_pass_rate: "146_passed"
+decisions_made: []
+context_for_next_session:
+  - second_pr_in_python_async_tonight_first_via_phase_a_fixup_merge_of_31_workload_sign_only_post_init
+  - three_public_entry_points_process_stream_dispatch_tool_calls_sign_only_on_concurrency_queue_size_timeout_propagated_nan_into_asyncio_semaphore_queue_wait_for_as_cryptic_typeerrors_or_silent_never_firing
+  - workload_post_init_sign_only_on_n_docs_concurrency_batch_size_llm_call_seconds_nan_latency_skews_benchmark_throughput_numbers_bool_silently_flattens_count_intent
+  - tightened_each_entry_to_isinstance_int_with_explicit_bool_exclusion_for_count_fields_math_isfinite_for_timeout_llm_call_seconds
+  - error_messages_tightened_must_be_positive_to_must_be_a_positive_int_or_must_be_a_finite_positive_number_six_pre_existing_tests_pinning_old_strings_bulk_updated_via_sed
+  - twelfth_phase_bc_target_in_360_min_night_session_all_originally_unvisited_tonight_repos_plus_all_already_touched_repos_have_two_phase_bc_iterations_now
+  - portfolio_finiteness_integer_extension_sweep_complete_twelve_phase_bc_prs_plus_seven_phase_a_fixup_merges_nineteen_substantive_items_tonight_pattern_now_at_full_portfolio_coverage_across_python_and_typescript_repos
+followups: []
+---
