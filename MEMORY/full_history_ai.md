@@ -312,3 +312,25 @@ context_for_next_session:
   - portfolio_pattern_fifth_in_day_session_loop_after_eval_harness_37_prompt_regression_32_mcp_cookbook_31_emb_shootout_26_first_constructor_validation_polish_rather_than_cli_naming
 followups: []
 ---
+
+---
+session: 2026-05-25T01:35Z
+duration_min: 15
+issue: 30
+focus: workload_post_init_validates_fields_at_construction_proximate_failure_for_operator_misconfig
+delta:
+  files_changed: 1   # async_pipelines/benchmark.py
+  files_added: 0
+  tests_added: 11  # 3 n_docs param + 2 latency param + 2 concurrency param + 2 batch_size param + 1 zero-latency + 1 minimum-valid
+  test_pass_rate: "119_passed"
+decisions_made: []
+context_for_next_session:
+  - workload_frozen_dataclass_at_benchmark_py_32_post_init_validates_n_docs_ge_one_llm_call_seconds_ge_zero_concurrency_ge_one_batch_size_ge_one
+  - harm_was_n_docs_zero_or_negative_silently_produced_empty_docs_list_near_zero_duration_speedup_math_divides_by_zero_or_yields_inf
+  - concurrency_and_batch_size_already_caught_at_async_pipeline_init_28_29_defense_in_depth_at_workload_surfaces_failure_at_operator_visible_api_not_inner_factory
+  - llm_call_seconds_negative_caught_indirectly_by_asyncio_sleep_but_trace_points_at_inner_llm_call_not_at_workload_misconfig_site
+  - parametrized_decorator_pattern_per_field_with_two_or_three_bad_values_each_plus_zero_latency_pin_plus_all_ones_minimum_valid_pin
+  - sister_to_rag_production_kit_34_retriever_construct_time_k_rrf_validation_same_principle_failure_proximate_to_misconfiguration_site
+  - seventh_phase_bc_target_in_180_min_day_session_after_phase_a_5_pr_merge_plus_six_prior_phase_bc_targets
+followups: []
+---

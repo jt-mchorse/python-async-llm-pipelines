@@ -49,6 +49,21 @@ class Workload:
     """Documents per batch in the batched pipeline; 1 means no
     batching (and the batched pipeline degenerates to AsyncPipeline)."""
 
+    def __post_init__(self) -> None:
+        # `n_docs=0` produces an empty docs list and a near-zero duration —
+        # speedup math then divides by zero or yields `inf`. The other three
+        # fields are also validated at pipeline-constructor time (#28), but
+        # surfacing the failure at the Workload construction site points the
+        # operator at the misconfigured input instead of an inner factory call.
+        if self.n_docs < 1:
+            raise ValueError(f"n_docs must be >= 1; got {self.n_docs}")
+        if self.llm_call_seconds < 0.0:
+            raise ValueError(f"llm_call_seconds must be >= 0.0; got {self.llm_call_seconds}")
+        if self.concurrency < 1:
+            raise ValueError(f"concurrency must be >= 1; got {self.concurrency}")
+        if self.batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1; got {self.batch_size}")
+
 
 @dataclass(frozen=True)
 class RunResult:
