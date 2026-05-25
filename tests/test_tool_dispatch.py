@@ -370,7 +370,7 @@ async def test_dispatch_timeout_zero_raises_value_error():
     async def noop(_: dict) -> None:
         return None
 
-    with pytest.raises(ValueError, match="timeout must be positive"):
+    with pytest.raises(ValueError, match="timeout must be a finite positive number"):
         await dispatch_tool_calls(
             [ToolCall(id="x", name="noop", arguments={})],
             registry=r,
@@ -386,7 +386,7 @@ async def test_dispatch_timeout_negative_raises_value_error():
     async def noop(_: dict) -> None:
         return None
 
-    with pytest.raises(ValueError, match="timeout must be positive"):
+    with pytest.raises(ValueError, match="timeout must be a finite positive number"):
         await dispatch_tool_calls(
             [ToolCall(id="x", name="noop", arguments={})],
             registry=r,

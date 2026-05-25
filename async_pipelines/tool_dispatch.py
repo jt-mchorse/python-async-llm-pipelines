@@ -19,6 +19,7 @@ Two failure modes:
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -140,10 +141,14 @@ async def dispatch_tool_calls(
 
     Returns: ToolResult list in input order; `tool_call_id` matches each input.
     """
-    if concurrency is not None and concurrency <= 0:
-        raise ValueError(f"concurrency must be positive or None; got {concurrency}")
-    if timeout is not None and timeout <= 0:
-        raise ValueError(f"timeout must be positive when set, got {timeout}")
+    # Integer + finite guards (#32). See async_pipelines/core.py:120 for the
+    # full harm rationale; the same shape applies to dispatch_tool_calls.
+    if concurrency is not None and (
+        not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency <= 0
+    ):
+        raise ValueError(f"concurrency must be a positive int or None; got {concurrency!r}")
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
 
     if not tool_calls:
         return []

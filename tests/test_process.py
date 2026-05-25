@@ -172,3 +172,34 @@ async def test_process_does_not_accept_async_iterable():
     `stream()` instead (separate test file)."""
     with pytest.raises(TypeError):
         await process(_async_range(5), _identity, concurrency=2)  # type: ignore[arg-type]
+
+
+# Issue #32: process() validates concurrency as isinstance(int) and timeout
+# as math.isfinite. Pre-#32 sign-only `<= 0` accepted NaN, fractional, bool,
+# +/-Infinity — propagating into asyncio.Semaphore / asyncio.wait_for as
+# cryptic deep TypeErrors or silent never-firing behavior.
+async def _noop(x):
+    return x
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [1.5, float("nan"), float("inf"), True, "5"],
+)
+async def test_process_rejects_non_int_concurrency(bad):
+    with pytest.raises(ValueError, match="concurrency must be a positive int"):
+        await process([1, 2, 3], _noop, concurrency=bad)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [float("nan"), float("inf"), float("-inf"), 0, -1],
+)
+async def test_process_rejects_non_finite_or_non_positive_timeout(bad):
+    with pytest.raises(ValueError, match="timeout must be a finite positive number"):
+        await process([1, 2, 3], _noop, concurrency=1, timeout=bad)
+
+
+async def test_process_accepts_undefined_timeout():
+    result = await process([1, 2, 3], _noop, concurrency=1)
+    assert result == [1, 2, 3]

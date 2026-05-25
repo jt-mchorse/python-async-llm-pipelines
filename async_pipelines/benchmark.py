@@ -21,6 +21,7 @@ swap: anything matching the `LLMClient` Protocol works (D-008).
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
@@ -55,12 +56,26 @@ class Workload:
         # fields are also validated at pipeline-constructor time (#28), but
         # surfacing the failure at the Workload construction site points the
         # operator at the misconfigured input instead of an inner factory call.
+        # Integer + finite guards (#32). Pre-#32 NaN/Infinity/fractional/bool
+        # slipped past sign-only checks: NaN propagates into asyncio.Semaphore
+        # / Queue at runtime as cryptic deep TypeErrors; fractional silently
+        # truncates downstream; bool subclasses int and flattens operator
+        # intent. NaN llm_call_seconds skews the published throughput numbers
+        # because the simulated-latency sleep becomes platform-dependent.
+        if not isinstance(self.n_docs, int) or isinstance(self.n_docs, bool):
+            raise ValueError(f"n_docs must be an int; got {self.n_docs!r}")
         if self.n_docs < 1:
             raise ValueError(f"n_docs must be >= 1; got {self.n_docs}")
-        if self.llm_call_seconds < 0.0:
-            raise ValueError(f"llm_call_seconds must be >= 0.0; got {self.llm_call_seconds}")
+        if not math.isfinite(self.llm_call_seconds) or self.llm_call_seconds < 0.0:
+            raise ValueError(
+                f"llm_call_seconds must be a finite number >= 0.0; got {self.llm_call_seconds!r}"
+            )
+        if not isinstance(self.concurrency, int) or isinstance(self.concurrency, bool):
+            raise ValueError(f"concurrency must be an int; got {self.concurrency!r}")
         if self.concurrency < 1:
             raise ValueError(f"concurrency must be >= 1; got {self.concurrency}")
+        if not isinstance(self.batch_size, int) or isinstance(self.batch_size, bool):
+            raise ValueError(f"batch_size must be an int; got {self.batch_size!r}")
         if self.batch_size < 1:
             raise ValueError(f"batch_size must be >= 1; got {self.batch_size}")
 

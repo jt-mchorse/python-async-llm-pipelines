@@ -17,6 +17,7 @@ providing backpressure to the producer.
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
@@ -116,10 +117,15 @@ async def process(
         ``return_exceptions=True``, failing items appear as the
         ``BaseException`` instance.
     """
-    if concurrency <= 0:
-        raise ValueError(f"concurrency must be positive, got {concurrency}")
-    if timeout is not None and timeout <= 0:
-        raise ValueError(f"timeout must be positive when set, got {timeout}")
+    # Integer + finite guards (#32). Pre-#32 NaN/Infinity/fractional passed
+    # the sign-only check; asyncio.Semaphore(NaN) raises deep at acquire,
+    # Semaphore(1.5) is the same shape, Semaphore(True) silently flattens
+    # to Semaphore(1) (bool subclasses int). NaN timeout makes asyncio.
+    # wait_for behavior implementation-defined; +Infinity silently disables.
+    if not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency <= 0:
+        raise ValueError(f"concurrency must be a positive int, got {concurrency!r}")
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
 
     items_list: list[T] = list(items)
     n = len(items_list)
@@ -187,12 +193,14 @@ async def stream(
             pair per produced item, so the overhead is negligible
             relative to any real ``fn`` work.
     """
-    if concurrency <= 0:
-        raise ValueError(f"concurrency must be positive, got {concurrency}")
-    if queue_size <= 0:
-        raise ValueError(f"queue_size must be positive, got {queue_size}")
-    if timeout is not None and timeout <= 0:
-        raise ValueError(f"timeout must be positive when set, got {timeout}")
+    # Integer + finite guards (#32) — see `process` for harm rationale; asyncio.Queue
+    # additionally raises deep at put/get on a non-int maxsize, NaN included.
+    if not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency <= 0:
+        raise ValueError(f"concurrency must be a positive int, got {concurrency!r}")
+    if not isinstance(queue_size, int) or isinstance(queue_size, bool) or queue_size <= 0:
+        raise ValueError(f"queue_size must be a positive int, got {queue_size!r}")
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
 
     queue: asyncio.Queue[T | _Sentinel] = asyncio.Queue(maxsize=queue_size)
     sentinel = _Sentinel()

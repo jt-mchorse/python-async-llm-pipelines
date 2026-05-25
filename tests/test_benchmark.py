@@ -229,8 +229,49 @@ def test_workload_rejects_non_positive_n_docs(bad_n: int):
 
 @pytest.mark.parametrize("bad_latency", [-0.001, -1.0])
 def test_workload_rejects_negative_llm_call_seconds(bad_latency: float):
-    with pytest.raises(ValueError, match=r"llm_call_seconds must be >= 0\.0"):
+    # Message tightened in #32 to "must be a finite number >= 0.0".
+    with pytest.raises(ValueError, match=r"llm_call_seconds must be a finite number >= 0\.0"):
         Workload(n_docs=10, llm_call_seconds=bad_latency)
+
+
+# Issue #32: extend sign-only Workload checks to isinstance(int) + finiteness.
+# NaN llm_call_seconds skews benchmark throughput numbers; fractional n_docs /
+# concurrency / batch_size silently truncates via asyncio primitives; bool
+# flattens operator intent (Python bool subclasses int).
+@pytest.mark.parametrize(
+    "bad",
+    [1.5, float("nan"), float("inf"), True, "5"],
+)
+def test_workload_rejects_non_int_n_docs(bad):
+    with pytest.raises(ValueError, match="n_docs must be an int"):
+        Workload(n_docs=bad)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [float("nan"), float("inf"), float("-inf")],
+)
+def test_workload_rejects_non_finite_llm_call_seconds(bad: float):
+    with pytest.raises(ValueError, match="llm_call_seconds must be a finite number"):
+        Workload(n_docs=10, llm_call_seconds=bad)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [1.5, float("nan"), True, "5"],
+)
+def test_workload_rejects_non_int_concurrency(bad):
+    with pytest.raises(ValueError, match="concurrency must be an int"):
+        Workload(n_docs=10, concurrency=bad)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [1.5, float("nan"), True, "5"],
+)
+def test_workload_rejects_non_int_batch_size(bad):
+    with pytest.raises(ValueError, match="batch_size must be an int"):
+        Workload(n_docs=10, batch_size=bad)
 
 
 @pytest.mark.parametrize("bad_concurrency", [0, -1])

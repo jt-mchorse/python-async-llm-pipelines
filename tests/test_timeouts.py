@@ -174,7 +174,7 @@ async def test_process_external_cancellation_propagates_to_all_tasks():
 
 @pytest.mark.parametrize("bad", [0, -0.5, -1])
 async def test_process_rejects_non_positive_timeout(bad):
-    with pytest.raises(ValueError, match="timeout must be positive"):
+    with pytest.raises(ValueError, match="timeout must be a finite positive number"):
         await process([1], _identity, concurrency=1, timeout=bad)
 
 
@@ -240,5 +240,5 @@ async def test_stream_rejects_non_positive_timeout():
     async def fn(x: int) -> int:
         return x
 
-    with pytest.raises(ValueError, match="timeout must be positive"):
+    with pytest.raises(ValueError, match="timeout must be a finite positive number"):
         await stream(_producer(1), fn, concurrency=1, queue_size=1, timeout=0)
