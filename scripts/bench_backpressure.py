@@ -32,6 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from async_pipelines import StreamMetrics, stream  # noqa: E402
+from async_pipelines.io_utils import atomic_write_text  # noqa: E402
 
 
 @dataclass
@@ -158,17 +159,15 @@ async def main_async(args: argparse.Namespace) -> int:
         )
 
     if args.out_md:
-        Path(args.out_md).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.out_md).write_text(_render_markdown(results))
+        atomic_write_text(args.out_md, _render_markdown(results))
         print(f"wrote {args.out_md}")
     if args.out_json:
-        Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "results": [asdict(r) for r in results],
             "host": sys.platform,
             "python": sys.version.split()[0],
         }
-        Path(args.out_json).write_text(json.dumps(payload, indent=2))
+        atomic_write_text(args.out_json, json.dumps(payload, indent=2))
         print(f"wrote {args.out_json}")
 
     return 0

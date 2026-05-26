@@ -37,6 +37,7 @@ from async_pipelines.benchmark import (  # noqa: E402
     make_batch_caller,
     run_pipeline,
 )
+from async_pipelines.io_utils import atomic_write_text  # noqa: E402
 
 
 async def _run_all(workload: Workload) -> list[RunResult]:
@@ -134,15 +135,15 @@ async def amain(args: argparse.Namespace) -> int:
     results = await _run_all(workload)
     md = render_markdown(workload, results)
     out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(md, encoding="utf-8")
+    atomic_write_text(out_path, md)
     print(md)
     print(f"\nbenchmarks wrote {out_path}")
     # Stash raw results next to the markdown for further analysis.
     import json
 
     json_path = out_path.with_suffix(".json")
-    json_path.write_text(
+    atomic_write_text(
+        json_path,
         json.dumps(
             {
                 "workload": asdict(workload),
@@ -151,7 +152,6 @@ async def amain(args: argparse.Namespace) -> int:
             indent=2,
             sort_keys=True,
         ),
-        encoding="utf-8",
     )
     print(f"raw results wrote {json_path}")
     return 0
