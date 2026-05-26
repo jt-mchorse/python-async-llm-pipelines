@@ -218,6 +218,60 @@ def test_batched_pipeline_constructs_at_minimum_values():
     assert pipe.batch_size == 1
 
 
+# Issue #34: completes the #32 sweep. Previously `AsyncPipeline.__init__`
+# and `BatchedAsyncPipeline.__init__` used sign-only `< 1` checks; bool /
+# float / NaN slipped through and surfaced deep in `process()` at the
+# wrong site (which broke the eager-validation contract documented in
+# the AsyncPipeline source).
+_BAD_INT = [1.5, float("nan"), float("inf"), True, "4"]
+
+
+@pytest.mark.parametrize("bad", _BAD_INT)
+def test_async_pipeline_concurrency_must_be_int(bad):
+    with pytest.raises(ValueError, match="concurrency must be an int"):
+        AsyncPipeline(FakeLLM(), FakeLLM(), concurrency=bad)
+
+
+@pytest.mark.parametrize("bad", _BAD_INT)
+def test_batched_pipeline_concurrency_must_be_int(bad):
+    with pytest.raises(ValueError, match="concurrency must be an int"):
+        BatchedAsyncPipeline(
+            make_batch_caller(FakeLLM()),
+            make_batch_caller(FakeLLM()),
+            concurrency=bad,
+            batch_size=8,
+        )
+
+
+@pytest.mark.parametrize("bad", _BAD_INT)
+def test_batched_pipeline_batch_size_must_be_int(bad):
+    with pytest.raises(ValueError, match="batch_size must be an int"):
+        BatchedAsyncPipeline(
+            make_batch_caller(FakeLLM()),
+            make_batch_caller(FakeLLM()),
+            concurrency=4,
+            batch_size=bad,
+        )
+
+
+@pytest.mark.parametrize("good", [1, 2, 4, 8, 32])
+def test_async_pipeline_accepts_valid_int_concurrency(good):
+    pipe = AsyncPipeline(FakeLLM(), FakeLLM(), concurrency=good)
+    assert pipe.concurrency == good
+
+
+@pytest.mark.parametrize("good", [1, 2, 4, 8, 32])
+def test_batched_pipeline_accepts_valid_int_values(good):
+    pipe = BatchedAsyncPipeline(
+        make_batch_caller(FakeLLM()),
+        make_batch_caller(FakeLLM()),
+        concurrency=good,
+        batch_size=good * 2,
+    )
+    assert pipe.concurrency == good
+    assert pipe.batch_size == good * 2
+
+
 # Issue #30: Workload validates fields at construction. Surfaces misconfig
 # at the operator-visible API site, not at an inner pipeline factory call.
 # n_docs=0 silently produces empty results and zero-division speedup math.

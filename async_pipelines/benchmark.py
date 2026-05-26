@@ -166,7 +166,12 @@ class AsyncPipeline:
         # Eager validation: `process()` itself enforces `concurrency > 0`
         # at call-time, but a misconfigured workload spec should surface
         # at construction not at the first `run()` — parity with
-        # BatchedAsyncPipeline's batch_size guard below.
+        # BatchedAsyncPipeline's batch_size guard below. The isinstance
+        # check (#34) matches `Workload.__post_init__` and `process()` so
+        # `True` / `1.5` / `NaN` fail loud here, not deep in `process()`
+        # which would point at the wrong site.
+        if not isinstance(concurrency, int) or isinstance(concurrency, bool):
+            raise ValueError(f"concurrency must be an int; got {concurrency!r}")
         if concurrency < 1:
             raise ValueError(f"concurrency must be >= 1; got {concurrency}")
         self.llm1 = llm1
@@ -203,8 +208,15 @@ class BatchedAsyncPipeline:
         concurrency: int,
         batch_size: int,
     ) -> None:
+        # Eager validation parity with `AsyncPipeline.__init__` (#34) — fail
+        # at construction with the misconfig'd field named, not deep in
+        # `process()`.
+        if not isinstance(concurrency, int) or isinstance(concurrency, bool):
+            raise ValueError(f"concurrency must be an int; got {concurrency!r}")
         if concurrency < 1:
             raise ValueError(f"concurrency must be >= 1; got {concurrency}")
+        if not isinstance(batch_size, int) or isinstance(batch_size, bool):
+            raise ValueError(f"batch_size must be an int; got {batch_size!r}")
         if batch_size < 1:
             raise ValueError(f"batch_size must be >= 1; got {batch_size}")
         self.llm1_batch = llm1_batch
