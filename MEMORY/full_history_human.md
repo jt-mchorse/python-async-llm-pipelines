@@ -237,3 +237,16 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Continue the loop. `agent-orchestration-platform` (build #9, TypeScript) and `mcp-server-cookbook` (build #10, TypeScript) are next. The TypeScript validation pattern is different (numeric coercion is more permissive at the type system level, but `typeof === 'number'` + `Number.isInteger` + `!Number.isFinite` is the established shape there).
+
+## 2026-05-26 — Issue #36: Add `async_pipelines/io_utils.atomic_write_text`, route bench scripts through it
+**Duration:** ~22 min · **Branch:** `session/2026-05-26-1938-issue-36`
+
+- Four production write sites in this repo's bench scripts used `Path.write_text` without atomicity: `bench_1000_doc.py` writes the markdown rendered into the README's "Benchmark Results" section plus a companion JSON for downstream tooling, and `bench_backpressure.py` does the same shape. A signal between the implicit `open(..., "w")` truncate and `close()` flush leaves the destination zero-length or partial — README front-page failure on GitHub, `JSONDecodeError` for the tooling.
+- New `async_pipelines/io_utils.py:atomic_write_text(path, text, encoding="utf-8")` matches the portfolio standard. Both bench scripts updated to import and use it.
+- Tests: 6 unit + 2 integration. Integration tests use `importlib.util` to load each script as a module — required pattern detail: the module must be registered in `sys.modules` *before* `exec_module` runs so dataclasses inside the script can find their own `__module__` during class creation (otherwise dataclasses raises AttributeError walking sys.modules). D-011 codifies the helper's placement.
+
+**Why this work, this session:** Fourth Phase B issue of today's DAY session. Closes the python-side atomic-write gap in the four-of-twelve cohort not in the morning arc. Portfolio atomic-write coverage now at 9 of 12 repos.
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Two more candidates remain — `chunking-strategies-lab` (2 sites in run_matrix.py) and `vector-search-at-scale` (5 sites across load.py, harness.py, hnsw_grid.py, cost_table.py). `nextjs-streaming-ai-patterns` has no on-disk write paths to harden. Today's budget has room for both remaining sweeps to reach 12-of-12 saturation.

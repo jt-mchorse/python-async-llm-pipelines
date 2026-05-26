@@ -136,3 +136,17 @@ The mismatch is intentional: it forces the user to pick the right primitive for 
 **Reversibility:** Cheap. `timeout=None` is the original code path. Removing the feature is "delete the `if timeout is None` branches and the kwarg" — about 20 lines.
 
 **Related issues:** #5
+
+## D-011 — Atomic-write helper lives in `async_pipelines/io_utils.py` (2026-05-26)
+**Decision:** The atomic-write helper for this repo lives at `async_pipelines/io_utils.py`, exposing public `atomic_write_text(path, text, encoding="utf-8")`. Pattern matches the 2026-05-26 portfolio atomic-write arc: `rag_kit/io_utils.atomic_write_text` (rag-production-kit#44/#45), `eval_harness/io_utils.atomic_write_text` (llm-eval-harness#51, D-015), `emb_shootout/io_utils.atomic_write_text` (embedding-model-shootout#37, D-009), `prompt_regression/io.atomic_write_text` (prompt-regression-suite#40).
+
+**Why:** Four production write sites in `scripts/` needed atomicity. Placing the helper at the package level (rather than file-private to one script) lets both bench scripts (and any future caller) reach it, and centralizes the test surface — one `io_utils.os.replace` to monkey-patch rather than one per call site.
+
+**Alternatives considered:**
+- File-private helper per script — rejected; ~25-line duplication across two scripts that can drift, and fragments the test surface.
+- Inline the pattern at each call site — rejected; same drift hazard, no central seam.
+- Separate distribution package — rejected; over-engineering for one repo with one consumer.
+
+**Reversibility:** Cheap. Stable API; future evolution is localized.
+
+**Related issues:** #36

@@ -384,3 +384,25 @@ context_for_next_session:
   - portfolio_validation_sweep_now_extends_into_five_repos_this_night_phase_bc_run_plus_four_phase_a_rescue_merges_total_nine_substantive_items
 followups: []
 ---
+
+---
+session: 2026-05-26T19:40Z
+duration_min: 22
+issue: 36
+focus: add_async_pipelines_io_utils_atomic_write_text_route_bench_1000_doc_and_bench_backpressure_through_it
+delta:
+  files_added: 2   # async_pipelines/io_utils.py, tests/test_io_utils_atomic_write.py
+  files_changed: 2 # scripts/bench_1000_doc.py, scripts/bench_backpressure.py
+  tests_added: 8   # 6 unit + 2 integration
+  test_pass_rate: "179_passed"
+decisions_made: [D-011]
+context_for_next_session:
+  - fourth_phase_bc_issue_of_today_day_session_python_atomic_write_pattern_extended_to_this_repo
+  - four_production_write_sites_closed_bench_1000_doc_md_and_json_plus_bench_backpressure_md_and_json
+  - decision_d_011_atomic_write_helper_lives_in_async_pipelines_io_utils_module_matches_portfolio_standard
+  - integration_test_pattern_load_script_as_module_via_importlib_util_register_in_sys_modules_before_exec_module_so_dataclasses_can_find_their_own_module_during_class_creation
+  - portfolio_atomic_write_coverage_now_at_nine_of_twelve_repos_six_morning_arc_plus_llm_eval_harness_pr_51_promotion_plus_embedding_model_shootout_37_plus_agent_orchestration_platform_33_plus_this_one
+  - remaining_three_repos_chunking_strategies_lab_two_sites_run_matrix_py_and_vector_search_at_scale_five_sites_load_py_harness_py_hnsw_grid_py_cost_table_py_plus_nextjs_streaming_ai_patterns_which_has_no_write_paths
+  - elapsed_approx_45_min_of_180_min_budget_room_for_at_least_two_more_issues_to_saturate_atomic_write_coverage_to_12_of_12
+followups: []
+---
