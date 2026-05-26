@@ -406,3 +406,20 @@ context_for_next_session:
   - elapsed_approx_45_min_of_180_min_budget_room_for_at_least_two_more_issues_to_saturate_atomic_write_coverage_to_12_of_12
 followups: []
 ---
+
+---
+session: 2026-05-26T23:55Z
+duration_min: 6
+issue: 38
+focus: readme_decision_range_upper_bound_lock_propagation_7_of_10_caught_real_drift
+delta:
+  files_changed: 2
+  tests_added: 1
+context_for_next_session:
+  - readme_decision_range_lock_pattern_now_eight_repos_chunking_lab_eval_harness_cost_optimizer_prompt_regression_rag_kit_emb_shootout_vector_search_async_pipelines
+  - four_more_repos_pending_agent_orch_mcp_cookbook_nextjs_streaming_ai_integration_tests
+  - smoking_gun_d_011_landed_in_pr_36_async_pipelines_io_utils_but_readme_range_bound_was_stale_at_d_010_until_this_pr
+  - architecture_doc_lock_already_caught_the_doc_omission_in_phase_a_pr_37_this_session_now_the_readme_lock_traps_the_sister_drift_class
+decisions_made: []
+followups: []
+---

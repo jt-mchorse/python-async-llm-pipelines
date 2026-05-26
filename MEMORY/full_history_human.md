@@ -250,3 +250,14 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** Two more candidates remain — `chunking-strategies-lab` (2 sites in run_matrix.py) and `vector-search-at-scale` (5 sites across load.py, harness.py, hnsw_grid.py, cost_table.py). `nextjs-streaming-ai-patterns` has no on-disk write paths to harden. Today's budget has room for both remaining sweeps to reach 12-of-12 saturation.
+
+## 2026-05-26 — Issue #38: README decision-range upper-bound lock
+**Duration:** ~6 min · **Branch:** `session/2026-05-26-2332-issue-38`
+
+- Bumped README range citation D-010 → D-011 (catching the drift from #36).
+- Added `tests/test_readme_decision_range.py` so future drift fires loud.
+
+**Why this work, this session:** Smoking gun — D-011 had landed in #36 (the `async_pipelines.io_utils` package-level helper) but the README's `D-002…D-010` bound was stale. The architecture-doc-lock already caught the doc-side omission in Phase A; the new readme-lock now traps the sister drift class.
+
+**Open questions / blockers:** none.
+**Next session:** Continue to agent-orchestration-platform (TypeScript repo — translate the test).
