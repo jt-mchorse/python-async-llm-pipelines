@@ -71,7 +71,7 @@ async_pipelines/
     └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout=None) -> list[ToolResult]
 ```
 
-See **[`docs/architecture.md`](docs/architecture.md)** for the integrated pipeline lifecycle, per-layer detail across all five shipped primitives (process/stream #1, tool dispatch #2, backpressure metrics #3, 1000-doc benchmark #4, per-item timeouts #5), and the D-002…D-010 design decisions behind each one.
+See **[`docs/architecture.md`](docs/architecture.md)** for the integrated pipeline lifecycle, per-layer detail across all five shipped primitives (process/stream #1, tool dispatch #2, backpressure metrics #3, 1000-doc benchmark #4, per-item timeouts #5), and the D-002…D-011 design decisions behind each one.
 
 ## Quickstart
 
