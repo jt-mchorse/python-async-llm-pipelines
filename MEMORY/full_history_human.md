@@ -224,3 +224,16 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — PR ready for review.
 
 **Next session:** The portfolio finiteness/integer-extension sweep is now at full coverage across all 12 repos (12 Phase B+C PRs + 7 Phase A fixup-merges tonight = 19 substantive items). Next sessions can pivot to a different harm class or pick up the demo-capture operator-required follow-ups.
+
+## 2026-05-26 — Issue #34: AsyncPipeline + BatchedAsyncPipeline constructors complete the #32 sweep
+**Duration:** ~20 min · **Branch:** `session/2026-05-25-2330-issue-34`
+
+- `AsyncPipeline.__init__` and `BatchedAsyncPipeline.__init__` were the two remaining sign-only `< 1` construction sites in `async_pipelines/benchmark.py` after #32 (`Workload.__post_init__` + `process()` + `stream()` + `dispatch_tool_calls()`). Tightened both with `isinstance(int) + reject bool` above the existing `< 1` check, mirroring `Workload.__post_init__` from #32 (same file). `SerialPipeline.__init__` reviewed and skipped — it takes no numeric parameters.
+- Closed the broken-eager-validation-contract failure mode: `AsyncPipeline(..., concurrency=True/1.5/NaN)` previously slipped past the construction-time check (`True < 1` is False, etc.), surfaced from `process()`'s #32-tightened validator with the error pointing at the wrong site. The documented eager-validation guarantee ("a misconfigured workload spec should surface at construction not at the first run()") was effectively false for non-int types. PR makes the comment true.
+- Five new parametrize blocks in `tests/test_benchmark.py` following `_BAD_INT`: three type-reject (AsyncPipeline.concurrency, BatchedAsyncPipeline.concurrency, BatchedAsyncPipeline.batch_size), two acceptance pins over `[1, 2, 4, 8, 32]`. Existing `rejects_zero` / `rejects_negative` tests continue to pass unchanged (preservation pin). 25 new collected cases; full suite 146 → 171. Ruff clean.
+
+**Why this work, this session:** Fifth Phase B+C target in the 360-min night session. Direct continuation of #32 — the same sweep but at the public pipeline class constructors, which is where users actually see the error. Picked via build-sequence #8 after `vector-search-at-scale#32` (#4).
+
+**Open questions / blockers:** none — PR ready for review.
+
+**Next session:** Continue the loop. `agent-orchestration-platform` (build #9, TypeScript) and `mcp-server-cookbook` (build #10, TypeScript) are next. The TypeScript validation pattern is different (numeric coercion is more permissive at the type system level, but `typeof === 'number'` + `Number.isInteger` + `!Number.isFinite` is the established shape there).
