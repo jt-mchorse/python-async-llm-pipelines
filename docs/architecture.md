@@ -204,6 +204,27 @@ doesn't change tool dispatch's surface. Pairs naturally with
 
 ---
 
+## 6. Cross-cutting: atomic file writes (#36)
+
+`async_pipelines/io_utils.py` exposes `atomic_write_text`, the
+package-level helper that every benchmark script
+(`scripts/bench_1000_doc.py`, `scripts/bench_backpressure.py`) calls
+when persisting JSON results.
+It writes to a `<dest>.tmp` sibling in the same directory, `fsync`s,
+then `os.replace`s into place — operators reading the benchmark JSON
+never see a half-written file from a `KeyboardInterrupt` mid-write.
+
+**Why these decisions.**
+
+- **D-011.** Helper lives at the package level (in
+  `async_pipelines.io_utils`) rather than file-private to each
+  script, matching the cross-repo standard (`rag_kit.io_utils`,
+  `eval_harness.io_utils`, `emb_shootout.io_utils`,
+  `prompt_regression.io`). Centralizes the `os.replace` surface to
+  one monkey-patch target for the atomic-write test suite.
+
+---
+
 ## Where to look next
 
 - **Primitives** — `async_pipelines/core.py` (`process`, `stream`),
