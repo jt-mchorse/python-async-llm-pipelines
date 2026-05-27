@@ -261,3 +261,17 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 
 **Open questions / blockers:** none.
 **Next session:** Continue to agent-orchestration-platform (TypeScript repo — translate the test).
+
+## 2026-05-27 — Issue #40: drop stale "· this PR" from two README section headers + banned-phrase lock
+**Duration:** ~12 min · **Branch:** `session/2026-05-27-0330-issue-40`
+
+- Two section headers in `README.md` carried PR-time framing for shipped surface: `Tool dispatch (#2 · this PR)` (line 223), `1000-doc benchmark (#4 · this PR)` (line 268). The benchmark even has a real numbers table in `docs/benchmarks.md` — these are not PRs in flight.
+- Rewrote both to steady-state form.
+- New lock: `tests/test_readme_banned_phrases.py`. **Tightened pattern**: `BANNED_PHRASES = ("· this pr",)` (middle dot + space + "this pr"), not the bare `"this pr"` used in the prior three repos. Reason: this README contains the legitimate prose "Bounded queue applies backpressure to this producer." — substring match on "this pr" would false-positive there. The middle-dot pattern matches the exact section-header drift shape (`## Foo (#N · this PR)`) and doesn't collide with any prose.
+- Lock test 3/3 pass. Full suite 183/183 pass. Verified loud-fail on synthetic reintroduction.
+
+**Why this work, this session:** Iteration 6 of an autonomous NIGHT session, fourth (and final known) repo in the README banned-phrase lock propagation arc.
+
+**Open questions / blockers:** Pattern divergence — three prior repos (`prompt-regression-suite`, `llm-cost-optimizer`, `embedding-model-shootout`) shipped with `BANNED_PHRASES = ("this pr",)`. They don't currently have the false-positive collision, but could acquire one in the future. Worth a follow-up to tighten them for portfolio uniformity.
+
+**Next session:** Touch-up iteration to align the three prior locks to the tightened pattern.
