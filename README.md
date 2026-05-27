@@ -220,7 +220,7 @@ for `stream()`; consumers get an index assigned at consumption time
 `timeout=None` is the default and is byte-identical with the pre-#5
 shape — no `wait_for` wrapping, no overhead. The new behavior is opt-in.
 
-## Tool dispatch (#2 · this PR)
+## Tool dispatch (#2)
 
 When the model returns multiple `tool_use` blocks, calling them serially
 throws away the whole point of having more than one. `dispatch_tool_calls`
@@ -265,7 +265,7 @@ wraps each tool invocation in `asyncio.wait_for`; expiry raises
 attached to the matching `ToolResult.error_repr` under
 `return_exceptions=True`).
 
-## 1000-doc benchmark (#4 · this PR)
+## 1000-doc benchmark (#4)
 
 `scripts/bench_1000_doc.py` runs all three pipelines on a workload of
 N=1000 documents × 2 LLM calls per doc, with the default `FakeLLM`
