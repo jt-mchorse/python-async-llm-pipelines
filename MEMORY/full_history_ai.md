@@ -423,3 +423,21 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-05-27T03:50Z
+duration_min: 12
+issue: 40
+focus: drop_stale_this_pr_from_two_readme_section_headers_plus_banned_phrase_lock
+delta:
+  files_changed: 2   # README.md, tests/test_readme_banned_phrases.py
+  tests_added: 3
+context_for_next_session:
+  - propagation_4_of_readme_banned_phrase_lock_pattern_first_authored_in_prompt_regression_suite_43_now_in_four_repos_prompt_regression_cost_optimizer_emb_shootout_async_pipelines
+  - this_repos_lock_uses_tightened_middle_dot_this_pr_pattern_instead_of_bare_this_pr_because_readme_contains_legitimate_prose_bounded_queue_applies_backpressure_to_this_producer_substring_match_would_false_positive
+  - middle_dot_pattern_intentionally_matches_the_section_header_drift_shape_pound_pound_foo_pound_n_middle_dot_this_pr_doesnt_collide_with_any_prose
+  - followup_to_consider_for_a_future_session_tighten_the_prior_three_repos_lock_pattern_to_middle_dot_this_pr_for_portfolio_uniformity_currently_those_repos_dont_have_the_false_positive_collision_but_could_in_the_future
+  - lock_test_3_of_3_pass_full_suite_183_of_183_pass
+decisions_made: []
+followups: []
+---
