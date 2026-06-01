@@ -21,13 +21,16 @@ swap: anything matching the `LLMClient` Protocol works (D-008).
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 import time
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 from .core import process
+from .io_utils import atomic_write_text
 
 
 @dataclass(frozen=True)
@@ -79,6 +82,21 @@ class Workload:
         if self.batch_size < 1:
             raise ValueError(f"batch_size must be >= 1; got {self.batch_size}")
 
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-stable dict of the four fields. Pinning the surface here so
+        downstream JSON consumers (notebook, CI parser, dashboard) aren't
+        coupled to `dataclasses.asdict`'s greedy behavior — a future
+        internal-only field on `Workload` shouldn't ship in the JSON
+        contract. Mirrors the observability-parity pattern landed in
+        rag-production-kit#51 / llm-cost-optimizer#51/#53 (2026-06-01).
+        """
+        return {
+            "n_docs": self.n_docs,
+            "llm_call_seconds": self.llm_call_seconds,
+            "concurrency": self.concurrency,
+            "batch_size": self.batch_size,
+        }
+
 
 @dataclass(frozen=True)
 class RunResult:
@@ -90,6 +108,23 @@ class RunResult:
     docs_per_second: float
     speedup_vs_serial: float | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-stable dict of the six fields; same rationale as
+        `Workload.to_dict`. `extra` is shallow-copied so callers cannot
+        accidentally mutate the frozen `RunResult`'s default through the
+        returned dict. `speedup_vs_serial` is preserved as `None` when
+        unattached (the serial baseline) — JSON consumers route on
+        `None` to skip the speedup column for that row.
+        """
+        return {
+            "pipeline_name": self.pipeline_name,
+            "n_docs": self.n_docs,
+            "duration_seconds": self.duration_seconds,
+            "docs_per_second": self.docs_per_second,
+            "speedup_vs_serial": self.speedup_vs_serial,
+            "extra": dict(self.extra),
+        }
 
 
 class LLMClient(Protocol):
@@ -291,6 +326,39 @@ async def run_pipeline(pipeline: Any, docs: list[str]) -> RunResult:
         duration_seconds=elapsed,
         docs_per_second=(len(docs) / elapsed) if elapsed > 0 else 0.0,
     )
+
+
+def dump_benchmark_json(
+    path: str | Path,
+    *,
+    workload: Workload,
+    results: Sequence[RunResult],
+) -> None:
+    """Write ``{"workload": ..., "results": [...]}`` atomically to ``path``.
+
+    Centralizes the previously-inlined `asdict(workload)` / `[asdict(r)
+    for r in results]` payload assembly that lived in `scripts/
+    bench_1000_doc.py` (lines 142-155 before #44) and `scripts/
+    bench_backpressure.py` (lines 162-170 before #44). The JSON shape
+    is byte-identical to the pre-#44 `bench_1000_doc` output: same
+    top-level keys, same `sort_keys=True`, same `indent=2`, same
+    per-result field set.
+
+    Uses ``async_pipelines.io_utils.atomic_write_text`` (D-011) so a
+    crashed write doesn't leave a partial file at ``path``.
+
+    Mirrors the observability surface landed in rag-production-kit#51
+    (``TelemetryStore.dump_aggregate_json``) and llm-cost-optimizer
+    #51/#53 (``PromptCacheWrapper.dump_aggregate_json`` /
+    ``SemanticCache.dump_stats_json``). Module-level here because
+    benchmark output isn't tied to a holding class — `Workload` and
+    `list[RunResult]` are the natural carriers.
+    """
+    payload = {
+        "workload": workload.to_dict(),
+        "results": [r.to_dict() for r in results],
+    }
+    atomic_write_text(path, json.dumps(payload, indent=2, sort_keys=True))
 
 
 def attach_speedup(results: Iterable[RunResult]) -> list[RunResult]:

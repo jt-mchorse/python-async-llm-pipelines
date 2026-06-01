@@ -34,6 +34,7 @@ from .benchmark import (
     SerialPipeline,
     Workload,
     attach_speedup,
+    dump_benchmark_json,
     make_batch_caller,
     run_pipeline,
 )
@@ -74,6 +75,7 @@ __all__ = [
     "SerialPipeline",
     "Workload",
     "attach_speedup",
+    "dump_benchmark_json",
     "make_batch_caller",
     "run_pipeline",
 ]

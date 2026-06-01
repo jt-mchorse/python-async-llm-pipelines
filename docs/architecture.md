@@ -171,6 +171,18 @@ batched modes. Doesn't depend on tool dispatch.
   individual items into a single API call (e.g., one prompt with N
   embedded sub-prompts, one tool call with N inputs).
 
+**JSON observability surface (#44).** `Workload.to_dict()` /
+`RunResult.to_dict()` pin the per-instance JSON contract so downstream
+consumers (notebook, CI parser, dashboard) aren't coupled to
+`dataclasses.asdict`'s greedy behavior. `async_pipelines.benchmark.dump_benchmark_json(path, *, workload, results)`
+writes the combined `{"workload": ..., "results": [...]}` payload
+atomically via `atomic_write_text` (D-011) — byte-identical to the
+pre-#44 inline shape used by `scripts/bench_1000_doc.py`, so existing
+parsers don't break. Mirrors the observability-parity pattern landed in
+`rag-production-kit#51` (`TelemetryStore.dump_aggregate_json`),
+`llm-cost-optimizer#51` (`PromptCacheWrapper.dump_aggregate_json`), and
+`llm-cost-optimizer#53` (`SemanticCache.dump_stats_json`).
+
 ---
 
 ## 5. Per-item timeout + cancellation

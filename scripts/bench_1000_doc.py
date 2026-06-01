@@ -19,7 +19,6 @@ import asyncio
 import platform
 import sys
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +33,7 @@ from async_pipelines.benchmark import (  # noqa: E402
     SerialPipeline,
     Workload,
     attach_speedup,
+    dump_benchmark_json,
     make_batch_caller,
     run_pipeline,
 )
@@ -139,20 +139,8 @@ async def amain(args: argparse.Namespace) -> int:
     print(md)
     print(f"\nbenchmarks wrote {out_path}")
     # Stash raw results next to the markdown for further analysis.
-    import json
-
     json_path = out_path.with_suffix(".json")
-    atomic_write_text(
-        json_path,
-        json.dumps(
-            {
-                "workload": asdict(workload),
-                "results": [asdict(r) for r in results],
-            },
-            indent=2,
-            sort_keys=True,
-        ),
-    )
+    dump_benchmark_json(json_path, workload=workload, results=results)
     print(f"raw results wrote {json_path}")
     return 0
 

@@ -280,7 +280,10 @@ CPython 3.14, concurrency 32, batch size 8:
 
 The full report (with the host + date provenance lines) lives in
 [`docs/benchmarks.md`](docs/benchmarks.md); raw JSON is alongside in
-`docs/benchmarks.json`.
+`docs/benchmarks.json`. The raw JSON shape is pinned by
+`Workload.to_dict()` / `RunResult.to_dict()` and written atomically by
+`async_pipelines.benchmark.dump_benchmark_json` (#44) so downstream
+parsers aren't coupled to `dataclasses.asdict`'s greedy behavior.
 
 **Honest framing on the numbers.** The spec's range of "5–20× win"
 assumes real-API I/O, which has per-request overhead (TCP, TLS, JSON
