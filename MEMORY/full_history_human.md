@@ -286,3 +286,19 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none.
 
 **Next session:** continue portfolio propagation.
+
+## 2026-06-01 — Issue #44: Workload/RunResult to_dict + dump_benchmark_json observability parity
+**Duration:** ~18 min · **Branch:** `session/2026-06-01-2327-issue-44`
+
+- Shipped `Workload.to_dict()` and `RunResult.to_dict()` on the two benchmark dataclasses, pinning the JSON contract so future internal-only fields don't leak into the JSON surface that downstream consumers parse. `RunResult.to_dict` preserves `speedup_vs_serial=None` for the serial baseline (consumers route on `None`) and shallow-copies `extra` so the frozen dataclass can't be mutated through the returned dict.
+- Shipped `async_pipelines.benchmark.dump_benchmark_json(path, *, workload, results)` — package-level helper that writes the combined `{"workload": ..., "results": [...]}` payload atomically via `atomic_write_text` (D-011). JSON shape is byte-identical to the pre-#44 inline output that `scripts/bench_1000_doc.py` produced.
+- Refactored `scripts/bench_1000_doc.py` to use the new helper and dropped its `dataclasses.asdict` import. `scripts/bench_backpressure.py` is intentionally untouched: its `BackpressureResult` and `StreamMetrics` shapes are different dataclasses outside this issue's `Workload`/`RunResult` scope.
+- `tests/test_benchmark_dump.py` is 11 cases — including a load-bearing byte-identical-to-pre-#44 shape lock that constructs the old `asdict` payload in the test and byte-compares against the new helper's output. The atomic-write contract test monkey-patches `os.replace` to raise mid-write, then asserts no partial file remains at the destination path.
+- README "1000-doc benchmark (#4)" gains one sentence about the pinned JSON surface; `docs/architecture.md` §4 gains a "JSON observability surface (#44)" paragraph cross-referencing the three sister-repo PRs that established the pattern earlier in this session.
+- Live-tested with `scripts/bench_1000_doc.py --n 50 --latency 0.001 --concurrency 4 --batch-size 2`: real speedup numbers (serial 1×, async 3.8×, async+batched 7×) with byte-identical JSON shape. Full suite 194 / 194 pass, ruff clean.
+
+**Why this work, this session:** Third iteration of the day-session loop. After the validate-pattern propagation in iterations 1-2 (emb-shootout #46, chunking-lab #38), the OTHER pattern that landed today in Phase A — the observability-parity to_dict + dump_aggregate_json shape from rag-kit #51 / cost-optimizer #51/#53 — generalizes cleanly to async-pipelines' benchmark JSON output. The fail-fast-read class of repos was already saturated; this was the next-highest-leverage gap.
+
+**Open questions / blockers:** None — ready for review.
+
+**Next session:** Continue the day-session loop. Remaining untouched-since-2026-05-27 candidates: `vector-search-at-scale` (no JSONL inputs, no obvious analog), `agent-orchestration-platform`, `mcp-server-cookbook`, `nextjs-streaming-ai-patterns`, `ai-app-integration-tests`. Check `agent-orchestration-platform` next per build sequence.
