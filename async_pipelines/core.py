@@ -21,7 +21,7 @@ import math
 import time
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -83,6 +83,22 @@ class StreamMetrics:
     producer_pause_seconds: float = 0.0
     # Pre-allocated to keep `__init__` cheap; not part of the public API.
     _started_monotonic: float = field(default=0.0, repr=False, compare=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        # Explicit five-field public contract (#46). Mirrors the
+        # observability-parity pattern landed in #45 for `Workload.to_dict`
+        # / `RunResult.to_dict`. The `_started_monotonic` private field
+        # is intentionally excluded — `asdict(self)` would have included
+        # it, which would leak an internal timing checkpoint into JSON
+        # consumers (downstream operators reading the bench JSON would
+        # see a confusing field with no documented meaning).
+        return {
+            "produced": self.produced,
+            "consumed": self.consumed,
+            "producer_pauses": self.producer_pauses,
+            "max_queue_depth": self.max_queue_depth,
+            "producer_pause_seconds": self.producer_pause_seconds,
+        }
 
 
 async def process(

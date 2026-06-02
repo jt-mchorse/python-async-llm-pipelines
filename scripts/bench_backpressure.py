@@ -25,8 +25,9 @@ import sys
 import time
 import tracemalloc
 from collections.abc import AsyncIterator
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # Allow ``python scripts/bench_backpressure.py`` from a fresh checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -46,6 +47,20 @@ class BackpressureResult:
     duration_s: float
     peak_heap_kb: float
     metrics: dict[str, float | int]
+
+    def to_dict(self) -> dict[str, Any]:
+        # Seven-field contract (#46). `metrics` is shallow-copied so
+        # caller mutation of the returned dict's metrics doesn't bleed
+        # back into the BackpressureResult instance.
+        return {
+            "n": self.n,
+            "queue_size": self.queue_size,
+            "consumer_ms": self.consumer_ms,
+            "concurrency": self.concurrency,
+            "duration_s": self.duration_s,
+            "peak_heap_kb": self.peak_heap_kb,
+            "metrics": dict(self.metrics),
+        }
 
 
 async def _fast_producer(n: int) -> AsyncIterator[int]:
@@ -93,7 +108,7 @@ async def run_one(
         concurrency=concurrency,
         duration_s=duration_s,
         peak_heap_kb=peak / 1024.0,
-        metrics=asdict(m),
+        metrics=m.to_dict(),
     )
 
 
@@ -163,7 +178,7 @@ async def main_async(args: argparse.Namespace) -> int:
         print(f"wrote {args.out_md}")
     if args.out_json:
         payload = {
-            "results": [asdict(r) for r in results],
+            "results": [r.to_dict() for r in results],
             "host": sys.platform,
             "python": sys.version.split()[0],
         }

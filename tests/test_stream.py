@@ -181,3 +181,52 @@ async def test_stream_metrics_omitted_means_no_overhead_path():
     """
     out = await stream(_producer(20), _doubler, concurrency=4, queue_size=5)
     assert sorted(out) == [x * 2 for x in range(20)]
+
+
+# ----------------------------------------------------------------------
+# #46: StreamMetrics.to_dict — explicit field-by-field contract
+# (excludes the private _started_monotonic field). Sibling of
+# Workload.to_dict / RunResult.to_dict shipped in #44/#45.
+# ----------------------------------------------------------------------
+
+
+def test_stream_metrics_to_dict_field_set_is_pinned():
+    m = StreamMetrics()
+    d = m.to_dict()
+    assert sorted(d.keys()) == [
+        "consumed",
+        "max_queue_depth",
+        "produced",
+        "producer_pause_seconds",
+        "producer_pauses",
+    ]
+
+
+def test_stream_metrics_to_dict_excludes_started_monotonic():
+    # The private `_started_monotonic` field must not leak into JSON
+    # consumers. `asdict(m)` would have included it — the to_dict
+    # contract is the regression net.
+    m = StreamMetrics()
+    m._started_monotonic = 1234.5
+    d = m.to_dict()
+    assert "_started_monotonic" not in d
+    # And the public surface still reflects the right values.
+    assert d["produced"] == 0
+    assert d["consumed"] == 0
+
+
+def test_stream_metrics_to_dict_values_round_trip():
+    m = StreamMetrics(
+        produced=10,
+        consumed=8,
+        producer_pauses=2,
+        max_queue_depth=4,
+        producer_pause_seconds=0.05,
+    )
+    assert m.to_dict() == {
+        "produced": 10,
+        "consumed": 8,
+        "producer_pauses": 2,
+        "max_queue_depth": 4,
+        "producer_pause_seconds": 0.05,
+    }
