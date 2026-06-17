@@ -318,3 +318,16 @@ Five new tests in `tests/test_benchmark.py`: AsyncPipeline rejects zero and nega
 **Open questions / blockers:** none — ready for review.
 
 **Next session:** Observability-parity arc fully saturated across both package and script levels in this repo. Future iterations can pivot to operator-blocked items (demo capture) or novel parity opportunities outside the asdict / to_dict arc.
+
+## 2026-06-17 — Issue #48: Workflow YAML-parseability lock
+**Duration:** ~7 min · **Branch:** `session/2026-06-17-1926-issue-48`
+
+Added `tests/test_workflows_yaml_parseable.py` (3 tests for `ci.yml`)
+and pulled `pyyaml>=6.0` into `dev` extras.
+
+**Why this work, this session:** Ninth hop of the `portfolio-ops#30`
+propagation arc.
+
+**Open questions / blockers:** none — PR #49 open.
+
+**Next session:** continue propagation to the remaining 3 repos.
