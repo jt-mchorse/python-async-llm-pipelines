@@ -343,3 +343,16 @@ propagation arc.
 **Open questions / blockers:** none.
 
 **Next session:** continue propagation. Four repos remain: agent-orchestration-platform (TS), mcp-server-cookbook (TS), ai-app-integration-tests (TS), portfolio-ops itself.
+
+## 2026-06-18 — Issue #52: concurrency guard + lock test
+**Duration:** ~9 min · **Branch:** `session/2026-06-18-1532-issue-52`
+
+- Added top-level `concurrency:` to `ci.yml`.
+- Copied lock test; docstring origin updated.
+
+**Why this work, this session:** ninth per-repo hop in the
+concurrency-lock arc.
+
+**Open questions / blockers:** none. Test count 211 → 218.
+
+**Next session:** continue propagation to remaining 3 repos.
