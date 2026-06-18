@@ -331,3 +331,15 @@ propagation arc.
 **Open questions / blockers:** none — PR #49 open.
 
 **Next session:** continue propagation to the remaining 3 repos.
+
+## 2026-06-18 — Issue #50: timeout-minutes guard + lock test
+**Duration:** ~10 min · **Branch:** `session/2026-06-18-0329-issue-50`
+
+- Added `timeout-minutes: 15` to every job in `ci.yml` (`lint`, `test`, `memory-check`).
+- Added `tests/test_workflows_timeout_minutes.py` — 10 new tests (1 smoke + 3 jobs × 3 parametrized invariants).
+
+**Why this work, this session:** seventh hop in the portfolio-wide timeout-minutes propagation arc.
+
+**Open questions / blockers:** none.
+
+**Next session:** continue propagation. Four repos remain: agent-orchestration-platform (TS), mcp-server-cookbook (TS), ai-app-integration-tests (TS), portfolio-ops itself.

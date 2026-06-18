@@ -521,3 +521,20 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-06-18T03:29Z
+duration_min: 10
+issue: 50
+focus: workflow_timeout_minutes_lock_propagation_hop_7
+phase: night_session_phase_b_iteration_6
+delta:
+  files_added: 1   # tests/test_workflows_timeout_minutes.py
+  files_changed: 1 # .github/workflows/ci.yml
+  tests_added: 10  # 1 smoke + 3 jobs * 3 invariants
+context_for_next_session:
+  - seventh_propagation_hop_three_jobs_lint_test_memory_check_all_get_uniform_15_min_no_outliers_warranted_at_current_workload
+  - audit_phase_a_py_will_drop_python_async_llm_pipelines_from_missing_timeout_finding_set_after_this_pr_merges
+decisions_made: []
+followups: []
+---
