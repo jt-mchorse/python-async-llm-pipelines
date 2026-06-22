@@ -102,6 +102,23 @@ async def test_stream_return_exceptions_collects_failures():
     assert successes == [0, 10, 20, 40]
 
 
+class _FatalSignal(BaseException):
+    """Non-Exception BaseException stand-in (see test_process.py #36)."""
+
+
+async def test_stream_return_exceptions_does_not_swallow_base_exception():
+    # Regression for #36: a non-Exception BaseException raised by fn must
+    # propagate out of the consumer pool instead of being stored as a result.
+    async def fn(x: int) -> int:
+        if x == 3:
+            raise _FatalSignal("fatal mid-stream")
+        return x * 10
+
+    with pytest.raises(BaseExceptionGroup) as ei:
+        await stream(_producer(6), fn, concurrency=2, queue_size=3, return_exceptions=True)
+    assert any(isinstance(e, _FatalSignal) for e in ei.value.exceptions)
+
+
 async def test_stream_metrics_records_produced_and_consumed_counts():
     """With no slow consumer, metrics still capture totals."""
     m = StreamMetrics()

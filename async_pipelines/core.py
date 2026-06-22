@@ -162,7 +162,15 @@ async def process(
                     except TimeoutError as exc:
                         raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
             except BaseException as e:
-                if return_exceptions:
+                # `return_exceptions` collects *fn's* failures so one bad item
+                # doesn't lose the batch — those are `Exception`s. A
+                # non-`Exception` `BaseException` (CancelledError, KeyboardInterrupt,
+                # SystemExit) must still propagate: storing CancelledError as a
+                # "result" defeats cooperative cancellation, and swallowing a
+                # KeyboardInterrupt hides a Ctrl-C inside the results list (#36).
+                # This mirrors `asyncio.gather(return_exceptions=True)`, which
+                # only collects `Exception`.
+                if return_exceptions and isinstance(e, Exception):
                     results[idx] = e
                 else:
                     raise
@@ -268,7 +276,11 @@ async def stream(
                     except TimeoutError as exc:
                         raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
             except BaseException as e:
-                if return_exceptions:
+                # See `process._run_one` (#36): only `Exception`s are collected
+                # under `return_exceptions`. A non-`Exception` `BaseException`
+                # (CancelledError / KeyboardInterrupt / SystemExit) propagates so
+                # cancellation isn't silently turned into a stored result.
+                if return_exceptions and isinstance(e, Exception):
                     value = e
                 else:
                     queue.task_done()
