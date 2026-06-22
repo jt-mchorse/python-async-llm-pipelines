@@ -108,6 +108,43 @@ async def test_return_exceptions_keeps_batch_alive():
     assert out[5] == 50
 
 
+class _FatalSignal(BaseException):
+    """A BaseException that is *not* an Exception — stands in for
+    KeyboardInterrupt/SystemExit without the asyncio.run signal-handling
+    quirks those two carry in a test harness."""
+
+
+async def test_return_exceptions_does_not_swallow_base_exception():
+    # Regression for #36: return_exceptions collects fn's *Exception*
+    # failures, not BaseExceptions. A non-Exception BaseException
+    # (KeyboardInterrupt/SystemExit/CancelledError) must propagate, not be
+    # stored as a "result" — otherwise a Ctrl-C mid-batch silently lands in
+    # the output list.
+    async def fn(x: int) -> int:
+        if x == 2:
+            raise _FatalSignal("fatal mid-item")
+        return x * 10
+
+    with pytest.raises(BaseExceptionGroup) as ei:
+        await process(range(4), fn, concurrency=4, return_exceptions=True)
+    # The fatal signal propagated rather than being collected.
+    assert any(isinstance(e, _FatalSignal) for e in ei.value.exceptions)
+
+
+async def test_return_exceptions_still_collects_plain_exceptions():
+    # The flip side of #36: ordinary Exceptions are still collected so one
+    # bad item doesn't lose the batch.
+    async def fn(x: int) -> int:
+        if x == 1:
+            raise RuntimeError("ordinary failure")
+        return x
+
+    out = await process(range(3), fn, concurrency=3, return_exceptions=True)
+    assert out[0] == 0
+    assert isinstance(out[1], RuntimeError)
+    assert out[2] == 2
+
+
 async def test_invalid_concurrency_rejected():
     with pytest.raises(ValueError, match="positive"):
         await process([1], _identity, concurrency=0)

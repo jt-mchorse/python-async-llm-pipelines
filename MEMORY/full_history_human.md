@@ -356,3 +356,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none. Test count 211 → 218.
 
 **Next session:** continue propagation to remaining 3 repos.
+
+## 2026-06-22 — Issue #54: return_exceptions must not collect BaseException
+**Duration:** ~25 min · **Branch:** `session/2026-06-22-0510-issue-54`
+
+- Found by reading the bounded-concurrency core: both `process._run_one` and `stream._consume` caught `BaseException` and stored it in the results list under `return_exceptions=True`. That option exists to keep a batch alive when one item's `fn` raises an ordinary `Exception` — but `BaseException` is too broad, so `KeyboardInterrupt`, `SystemExit`, and `asyncio.CancelledError` were swallowed into the output list. Demonstrated empirically: a `KeyboardInterrupt` raised mid-batch came back as `[10, KeyboardInterrupt(...), 30]` instead of interrupting the program. A stored `CancelledError` is worse — it defeats cooperative cancellation.
+- Fix: collect only when `isinstance(e, Exception)`; re-raise anything else, at both sites. This mirrors `asyncio.gather(return_exceptions=True)`, which deliberately only collects `Exception`. The `return_exceptions=False` path is unchanged and `stream` still calls `queue.task_done()` before re-raising. 3 regression tests (custom non-Exception BaseException subclass to avoid `asyncio.run`'s KeyboardInterrupt signal quirks). Suite 218 → 221, ruff clean. PR #55 ready.
+
+**Why this work, this session:** with the priority tier's genuine-bug surface exhausted for this run (nextjs, prompt-regression-suite, and embedding-model-shootout all reviewed and found genuinely clean — no fabricated work), I rotated to a non-tier repo. Concurrency code is the likeliest place for a real, review-resistant bug, and this one is a clean correctness/operability hazard (a swallowed Ctrl-C / cancellation), filed priority:high.
+
+**Open questions / blockers:** none.
+
+**Next session:** `StreamMetrics.max_queue_depth` is sampled after `await queue.put`, so it can undercount the true peak depth when a consumer drains during the put. Metrics-accuracy nit; low-pri filler if needed.
