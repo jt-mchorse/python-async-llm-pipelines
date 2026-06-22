@@ -362,12 +362,26 @@ def dump_benchmark_json(
 
 
 def attach_speedup(results: Iterable[RunResult]) -> list[RunResult]:
-    """Set each result's `speedup_vs_serial` field. Returns a new list."""
-    by_name = {r.pipeline_name: r for r in results}
-    serial = by_name.get("serial")
+    """Set each result's `speedup_vs_serial` field. Returns a new list,
+    one entry per input, in input order.
+
+    Output is mapped over the materialized input list — not a
+    ``{name: result}`` dict — so repeated measurements of the same
+    pipeline (a normal benchmarking practice: run each pipeline N times
+    for stable timings) all survive and input order is preserved. The
+    name lookup is used only to find the ``serial`` baseline; when more
+    than one ``serial`` row is present the first is taken as the baseline.
+    """
+    # Materialize once: `results` may be a one-shot generator, and we both
+    # scan it for the serial baseline and map over every entry. Routing the
+    # output through a name-keyed dict (the prior shape) silently dropped
+    # duplicate-named measurements and coupled output identity to the dict
+    # instead of the input sequence.
+    materialized = list(results)
+    serial = next((r for r in materialized if r.pipeline_name == "serial"), None)
     serial_duration = serial.duration_seconds if serial else None
     out: list[RunResult] = []
-    for r in by_name.values():
+    for r in materialized:
         if serial_duration and serial_duration > 0:
             speedup = serial_duration / r.duration_seconds if r.duration_seconds > 0 else 0.0
         else:

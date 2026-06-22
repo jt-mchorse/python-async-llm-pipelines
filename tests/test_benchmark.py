@@ -391,6 +391,58 @@ def test_attach_speedup_handles_zero_serial_duration():
     assert by_name["async"].speedup_vs_serial is None
 
 
+def test_attach_speedup_preserves_duplicate_named_measurements():
+    # Running a pipeline more than once for stable timings is normal
+    # benchmarking practice. The prior dict-keyed implementation collapsed
+    # same-named results to one (3 in -> 2 out), silently dropping a
+    # measurement. Every input must produce exactly one output.
+    raw = [
+        RunResult(pipeline_name="serial", n_docs=10, duration_seconds=1.0, docs_per_second=10.0),
+        RunResult(pipeline_name="async", n_docs=10, duration_seconds=0.25, docs_per_second=40.0),
+        RunResult(pipeline_name="async", n_docs=10, duration_seconds=0.20, docs_per_second=50.0),
+    ]
+    with_speedup = attach_speedup(raw)
+    assert len(with_speedup) == len(raw)
+    assert [r.pipeline_name for r in with_speedup] == ["serial", "async", "async"]
+    # Both async measurements keep their own duration and get their own
+    # speedup against the shared serial baseline (1.0 / 0.25, 1.0 / 0.20).
+    assert with_speedup[1].speedup_vs_serial == pytest.approx(4.0)
+    assert with_speedup[2].speedup_vs_serial == pytest.approx(5.0)
+
+
+def test_attach_speedup_preserves_input_order_when_serial_not_first():
+    # Output order must follow the input sequence, independent of where the
+    # serial baseline appears (the prior impl's order was an accident of
+    # dict-insertion order of first-seen names).
+    raw = [
+        RunResult(pipeline_name="async", n_docs=10, duration_seconds=0.25, docs_per_second=40.0),
+        RunResult(
+            pipeline_name="async+batched", n_docs=10, duration_seconds=0.05, docs_per_second=200.0
+        ),
+        RunResult(pipeline_name="serial", n_docs=10, duration_seconds=1.0, docs_per_second=10.0),
+    ]
+    with_speedup = attach_speedup(raw)
+    assert [r.pipeline_name for r in with_speedup] == ["async", "async+batched", "serial"]
+    assert with_speedup[0].speedup_vs_serial == pytest.approx(4.0)
+    assert with_speedup[2].speedup_vs_serial == pytest.approx(1.0)
+
+
+def test_attach_speedup_accepts_a_one_shot_generator():
+    # `results` is typed `Iterable[RunResult]`; a generator is consumed
+    # exactly once. Materializing internally must not drop entries.
+    def gen():
+        yield RunResult(
+            pipeline_name="serial", n_docs=10, duration_seconds=1.0, docs_per_second=10.0
+        )
+        yield RunResult(
+            pipeline_name="async", n_docs=10, duration_seconds=0.5, docs_per_second=20.0
+        )
+
+    with_speedup = attach_speedup(gen())
+    assert [r.pipeline_name for r in with_speedup] == ["serial", "async"]
+    assert with_speedup[1].speedup_vs_serial == pytest.approx(2.0)
+
+
 # ---------------------------------------------------------------------
 # bench_1000_doc.py script
 # ---------------------------------------------------------------------
