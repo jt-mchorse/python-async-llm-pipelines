@@ -368,3 +368,16 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** `StreamMetrics.max_queue_depth` is sampled after `await queue.put`, so it can undercount the true peak depth when a consumer drains during the put. Metrics-accuracy nit; low-pri filler if needed.
+
+## 2026-06-22 — Issue #56: benchmark — attach_speedup dropped duplicate-named results
+**Duration:** ~20 min · **Branch:** `session/2026-06-22-2322-issue-56`
+
+- Found by a Phase A dogfood read of `benchmark.py`. `attach_speedup` built a `{pipeline_name: result}` dict from its input and then iterated `by_name.values()` to produce its output. That silently dropped duplicate-named measurements (running a pipeline twice for stable timings: 3 results in → 2 out) and coupled output identity to dict-insertion order rather than the input sequence — violating the docstring's per-input "Returns a new list" contract. The dict's only real job is to locate the `serial` baseline.
+- Fix: materialize the input once (it's typed `Iterable`, possibly a one-shot generator), find the `serial` baseline by scanning that list, and map over the materialized list so output is 1:1 with input, order and duplicates preserved. No change to the speedup math or the serial/zero-duration handling the existing tests pin.
+- 3 regression tests (duplicate measurements survive, input order preserved when serial isn't first, one-shot generator handled). The duplicate test fails pre-fix (2 ≠ 3), verified via git-stash. Suite 221 → 224, ruff clean. PR #57 ready.
+
+**Why this work, this session:** the portfolio is saturated (no open actionable issues). I swept `core.py` and `tool_dispatch.py` (both genuinely clean, hardened through #32/#36/#46) and chunking-strategies-lab (clean; an agent's "semantic offset gap" candidate was a false positive — per-chunk D-005 holds and gap-free tiling isn't a semantic-strategy contract), then found this real silent-drop bug in the benchmark utility — exactly the "silent numerical quality" class the portfolio guards against, in a repo whose deliverable is trustworthy speedup numbers.
+
+**Open questions / blockers:** none.
+
+**Next session:** `StreamMetrics.max_queue_depth` is sampled after `await queue.put`, so it can undercount the true peak depth when a consumer drains during the put — metrics-accuracy nit, low-pri filler if needed (carried from the prior session and still open).
