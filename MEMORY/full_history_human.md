@@ -381,3 +381,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** `StreamMetrics.max_queue_depth` is sampled after `await queue.put`, so it can undercount the true peak depth when a consumer drains during the put — metrics-accuracy nit, low-pri filler if needed (carried from the prior session and still open).
+
+## 2026-06-23 — Issue #58: bench --out *.json clobbered the markdown report
+**Duration:** ~20 min · **Branch:** `session/2026-06-23-0358-issue-58`
+
+- Fixed a silent-data-loss bug in `scripts/bench_1000_doc.py`. It wrote the markdown report to `--out`, then derived the raw-JSON path with `out_path.with_suffix(".json")` — a no-op when `--out` already ends in `.json`. The JSON dump (no overwrite guard) then overwrote the markdown report on the same path, while the script still printed "benchmarks wrote <path>".
+- On collision the script now appends `.json` to the name (`report.json` → `report.json.json`) so both survive. Added a regression test via the existing `_load_script` helper. Red pre-fix, green post-fix. Suite 224 → 225, ruff clean.
+
+**Why this work, this session:** found by a different-angle second pass in the night session's Phase A dogfood wave (first pass on this repo was clean). A real silent-data-loss bug on the documented `--out` CLI flag.
+
+**Open questions / blockers:** none.
+
+**Next session:** `attach_speedup` returning `0.0×` (vs `None`) for a non-serial row with non-positive duration is only reachable with hand-built results; left out of scope.
