@@ -140,6 +140,11 @@ async def amain(args: argparse.Namespace) -> int:
     print(f"\nbenchmarks wrote {out_path}")
     # Stash raw results next to the markdown for further analysis.
     json_path = out_path.with_suffix(".json")
+    if json_path == out_path:
+        # `--out foo.json`: with_suffix(".json") is a no-op when the suffix is
+        # already .json, so the JSON dump would clobber the markdown report we
+        # just wrote. Append instead of replace so both artifacts survive.
+        json_path = out_path.with_name(out_path.name + ".json")
     dump_benchmark_json(json_path, workload=workload, results=results)
     print(f"raw results wrote {json_path}")
     return 0

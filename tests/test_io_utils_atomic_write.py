@@ -31,6 +31,7 @@ What this file pins:
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -184,6 +185,45 @@ def test_bench_1000_doc_routes_through_atomic_helper(
             ]
         )
     assert not out_md.exists(), "bench --out md must not write destination on replace failure"
+
+
+def test_bench_1000_doc_json_does_not_clobber_markdown_when_out_ends_in_json(
+    tmp_path: Path,
+) -> None:
+    """`--out foo.json` must not let the raw-JSON dump overwrite the markdown
+    report. `Path.with_suffix(".json")` is a no-op on a `.json` path, so the
+    JSON sibling used to collide with `--out` and win (markdown silently lost).
+    """
+    bench = _load_script("bench_1000_doc.py")
+
+    out = tmp_path / "report.json"
+    rc = bench.main(
+        [
+            "--n",
+            "5",
+            "--latency",
+            "0.0",
+            "--concurrency",
+            "2",
+            "--batch-size",
+            "2",
+            "--out",
+            str(out),
+        ]
+    )
+    assert rc == 0
+
+    # The markdown report at --out must survive as markdown, not be replaced
+    # by the JSON dump.
+    assert out.exists()
+    text = out.read_text(encoding="utf-8")
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(text)
+
+    # The raw JSON lands at a distinct, non-colliding path.
+    json_path = out.with_name(out.name + ".json")
+    assert json_path.exists()
+    assert json.loads(json_path.read_text(encoding="utf-8"))["workload"]["n_docs"] == 5
 
 
 def test_bench_backpressure_routes_through_atomic_helper(
