@@ -393,3 +393,16 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** `attach_speedup` returning `0.0×` (vs `None`) for a non-serial row with non-positive duration is only reachable with hand-built results; left out of scope.
+
+---
+## 2026-06-24 — Issue #60: attach_speedup returned 0.0 (not None) for a zero-duration candidate
+**Duration:** ~14 min · **Branch:** `session/2026-06-24-0421-issue-60`
+
+- `attach_speedup` returns `None` to signal an undefined speedup when the serial baseline ran in zero time, but the same divide-by-zero on the candidate axis (a non-serial run with `duration_seconds == 0`) returned `0.0` — which reads as the slowest result and would mis-rank an infinitely-fast pipeline. Made both branches return `None`.
+- 1 new test mirroring the zero-serial case. Red via `git stash`, green after. Suite 225 → 226, ruff clean.
+
+**Why this work, this session:** python-async-llm-pipelines was next non-tier in build sequence; tool_dispatch.py and core/benchmark were largely hardened, so the dogfood surfaced this low-reachability-but-genuine divide-by-zero sentinel inconsistency. Filed `priority:low` and was honest about reachability.
+
+**Open questions / blockers:** none.
+
+**Next session:** io_utils.py remains; vector-search-at-scale's dogfood this run produced a false positive (HNSW returning fewer than k with small ef_search is the recall sweep's measured behavior, not a bug) — don't re-file it.
