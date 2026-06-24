@@ -391,6 +391,24 @@ def test_attach_speedup_handles_zero_serial_duration():
     assert by_name["async"].speedup_vs_serial is None
 
 
+def test_attach_speedup_handles_zero_candidate_duration():
+    # Mirror of the zero-serial case on the candidate axis: a non-serial run
+    # that took zero time is infinitely fast → the ratio is undefined, so it
+    # must be None (not 0.0, which would read as the slowest result), while the
+    # other rows still compute finite ratios against the serial baseline.
+    raw = [
+        RunResult(pipeline_name="serial", n_docs=10, duration_seconds=1.0, docs_per_second=10.0),
+        RunResult(pipeline_name="async", n_docs=10, duration_seconds=0.0, docs_per_second=0.0),
+        RunResult(
+            pipeline_name="async+batched", n_docs=10, duration_seconds=0.25, docs_per_second=40.0
+        ),
+    ]
+    by_name = {r.pipeline_name: r for r in attach_speedup(raw)}
+    assert by_name["async"].speedup_vs_serial is None
+    assert by_name["serial"].speedup_vs_serial == pytest.approx(1.0)
+    assert by_name["async+batched"].speedup_vs_serial == pytest.approx(4.0)
+
+
 def test_attach_speedup_preserves_duplicate_named_measurements():
     # Running a pipeline more than once for stable timings is normal
     # benchmarking practice. The prior dict-keyed implementation collapsed

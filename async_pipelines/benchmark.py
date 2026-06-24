@@ -383,7 +383,11 @@ def attach_speedup(results: Iterable[RunResult]) -> list[RunResult]:
     out: list[RunResult] = []
     for r in materialized:
         if serial_duration and serial_duration > 0:
-            speedup = serial_duration / r.duration_seconds if r.duration_seconds > 0 else 0.0
+            # A candidate that ran in zero time is *infinitely fast* — the ratio
+            # is undefined, so signal it with None (the same convention used when
+            # the serial baseline itself is zero), not 0.0 (which reads as the
+            # slowest-possible result and would mis-rank it on a dashboard/plot).
+            speedup = serial_duration / r.duration_seconds if r.duration_seconds > 0 else None
         else:
             speedup = None
         out.append(
