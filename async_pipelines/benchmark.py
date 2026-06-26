@@ -296,6 +296,23 @@ def make_batch_caller(
     `asyncio.gather` the per-item calls with a single sleep upfront,
     simulating a single round trip.
     """
+    # Finite + non-negative guard (#62) — `batch_seconds` is the one
+    # latency/timing seam in this module that previously skipped the check
+    # every sibling enforces (`Workload.llm_call_seconds`, the `timeout`
+    # params in core.py / tool_dispatch.py, the int seams in #32/#34). It
+    # flows straight into `asyncio.sleep(per_call)` below: a negative value
+    # makes that sleep return immediately, collapsing the batched pipeline's
+    # simulated round trip and inflating `speedup_vs_serial` with a
+    # plausible-but-wrong number (the published-throughput corruption
+    # `Workload.__post_init__` warns about); NaN / +Inf corrupt the timer
+    # heap or hang. Fail eagerly here, naming the field, rather than deep
+    # in `asyncio.sleep` at first `call_batch`. `>= 0.0` mirrors
+    # `llm_call_seconds`: 0.0 (no simulated latency) is legitimate. `None`
+    # falls through to the validated llm-latency fallback and is fine.
+    if batch_seconds is not None and (not math.isfinite(batch_seconds) or batch_seconds < 0.0):
+        raise ValueError(
+            f"batch_seconds must be a finite number >= 0.0 when set, got {batch_seconds!r}"
+        )
 
     async def call_batch(items: list[str]) -> list[str]:
         # One simulated "round trip" for the batch, regardless of size.

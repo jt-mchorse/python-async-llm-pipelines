@@ -272,6 +272,35 @@ def test_batched_pipeline_accepts_valid_int_values(good):
     assert pipe.batch_size == good * 2
 
 
+# Issue #62: `make_batch_caller`'s `batch_seconds` was the one latency seam in
+# the module that skipped the finite/non-negative guard its siblings enforce.
+# It flows into `asyncio.sleep`: a negative value returns immediately and
+# collapses the batched pipeline's simulated round trip (inflating
+# `speedup_vs_serial`); NaN/+Inf corrupt the timer heap or hang. Guard eagerly
+# at the factory call, naming the field, like the #34 eager-validation tests.
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf"), -0.001, -1.0])
+def test_make_batch_caller_rejects_non_finite_or_negative_batch_seconds(bad: float):
+    with pytest.raises(ValueError, match=r"batch_seconds must be a finite number >= 0\.0"):
+        make_batch_caller(FakeLLM(), batch_seconds=bad)
+
+
+@pytest.mark.parametrize("good", [0.0, 0.001, 0.02, 1.0])
+def test_make_batch_caller_accepts_finite_non_negative_batch_seconds(good: float):
+    # 0.0 (no simulated latency) is legitimate, mirroring llm_call_seconds; the
+    # returned caller must still produce one batched output per input item.
+    caller = make_batch_caller(FakeLLM(), batch_seconds=good)
+    out = asyncio.run(caller(["a", "b", "c"]))
+    assert len(out) == 3
+    assert all(o.endswith("-batched") for o in out)
+
+
+def test_make_batch_caller_accepts_none_batch_seconds():
+    # None falls through to the llm's (validated) latency fallback — unchanged.
+    caller = make_batch_caller(FakeLLM(), batch_seconds=None)
+    out = asyncio.run(caller(["x"]))
+    assert out == ["x:fake-batched"]
+
+
 # Issue #30: Workload validates fields at construction. Surfaces misconfig
 # at the operator-visible API site, not at an inner pipeline factory call.
 # n_docs=0 silently produces empty results and zero-division speedup math.

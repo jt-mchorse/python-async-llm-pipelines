@@ -406,3 +406,16 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** io_utils.py remains; vector-search-at-scale's dogfood this run produced a false positive (HNSW returning fewer than k with small ef_search is the recall sweep's measured behavior, not a bug) — don't re-file it.
+
+## 2026-06-26 — Issue #62: guard make_batch_caller's batch_seconds
+**Duration:** ~20 min · **Branch:** session/2026-06-26-0311-issue-62
+
+- `make_batch_caller` is a public exported helper whose `batch_seconds` value went straight into `asyncio.sleep` without validation — the one latency/timing seam in `benchmark.py` that skipped the finite/non-negative guard every sibling already enforces (`Workload.llm_call_seconds`, the `timeout` params, the `concurrency`/`batch_size` int seams from #32/#34).
+- A negative value makes the sleep return immediately (a `-5` sleep returns in ~0.02 ms), collapsing the batched pipeline's simulated round trip and inflating the reported `speedup_vs_serial` — the exact published-throughput corruption `Workload.__post_init__`'s comment already warns about. NaN/+Inf corrupt the asyncio timer heap or hang.
+- Added an eager fail-at-construction guard naming the field, plus 10 parametrized tests (rejected: NaN/±Inf/negative; accepted: 0.0/positive/None). Full suite green (236), ruff clean.
+
+**Why this work, this session:** Phase A selection landed here via the 36h staleness rule with zero open issues, so the README/code was audited for a real defect — this closes the last unguarded latency input in the benchmark module, extending the #32/#34/#54/#58/#60 hardening arc.
+
+**Open questions / blockers:** none. `FakeLLM.latency_seconds` itself is still unvalidated (the fallback path) — deferred as a separate low-priority seam, only reachable if a caller hand-builds a FakeLLM with a bad latency.
+
+**Next session:** python-async-llm-pipelines is fully hardened on the timing/finite-guard axis; rotate per selection rules.
