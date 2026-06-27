@@ -431,3 +431,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** committed bench artifacts now match the post-#46 5-field metrics surface.
+
+## 2026-06-27 — Issue #66: timeout path relabeled fn's own TimeoutError
+**Duration:** ~25 min · **Branch:** `session/2026-06-27-0438-issue-66`
+
+- All three timeout sites (`process`, `stream`, `dispatch_tool_calls`) wrapped the call in `asyncio.wait_for(fn(item), timeout)` and caught `TimeoutError` unconditionally as `PipelineTimeoutError`. But `wait_for` propagates the coroutine's *own* `TimeoutError` unchanged, so a `fn` re-raising a downstream socket/httpx timeout was indistinguishable from the harness deadline firing — the bare `except` relabeled the unrelated failure as a deadline breach with a deadline that never fired. The `timeout=None` path preserves the original error, proving the intended contract. This corrupts error types for any `fn` touching network IO — the library's primary use case.
+- Fixed at all three sites with `async with asyncio.timeout(timeout) as cm:` + `if cm.expired(): raise PipelineTimeoutError(...)` / else `raise`, so only the deadline's own firing maps to `PipelineTimeoutError`. Added 3 tests (process/stream/dispatch preserve the domain `TimeoutError` under a generous non-firing timeout); the existing slow-path tests confirm a genuine deadline still raises `PipelineTimeoutError`. Suite 236 → 239, ruff clean.
+
+**Why this work, this session:** fourteenth issue of a multi-issue NIGHT run; python-async's first dedicated bug-hunt surfaced this high-confidence three-site logic bug.
+
+**Open questions / blockers:** none.
+
+**Next session:** the timeout feature now preserves `fn`'s own `TimeoutError`; only a real deadline maps to `PipelineTimeoutError`.

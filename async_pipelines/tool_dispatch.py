@@ -235,10 +235,17 @@ async def _run_with_telemetry(
         if timeout is None:
             value = await fn(call.arguments)
         else:
+            # Attribute only the deadline's own firing to PipelineTimeoutError;
+            # preserve fn's own TimeoutError (a downstream tool/socket timeout),
+            # which wait_for() + a bare `except TimeoutError` could not tell
+            # apart from the deadline firing (#66).
             try:
-                value = await asyncio.wait_for(fn(call.arguments), timeout)
+                async with asyncio.timeout(timeout) as cm:
+                    value = await fn(call.arguments)
             except TimeoutError as exc:
-                raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                if cm.expired():
+                    raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                raise
     except Exception as e:
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         if not return_exceptions:
