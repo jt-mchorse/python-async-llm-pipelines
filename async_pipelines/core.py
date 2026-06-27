@@ -157,10 +157,19 @@ async def process(
                 if timeout is None:
                     results[idx] = await fn(item)
                 else:
+                    # Use asyncio.timeout()/cm.expired() so only the deadline's
+                    # OWN firing maps to PipelineTimeoutError. wait_for() + a bare
+                    # `except TimeoutError` couldn't tell a fired deadline from
+                    # `fn`'s own TimeoutError (a downstream socket/httpx timeout),
+                    # relabeling unrelated failures with a deadline that never
+                    # fired — inconsistent with the timeout=None path (#66).
                     try:
-                        results[idx] = await asyncio.wait_for(fn(item), timeout)
+                        async with asyncio.timeout(timeout) as cm:
+                            results[idx] = await fn(item)
                     except TimeoutError as exc:
-                        raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                        if cm.expired():
+                            raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                        raise
             except BaseException as e:
                 # `return_exceptions` collects *fn's* failures so one bad item
                 # doesn't lose the batch — those are `Exception`s. A
@@ -271,10 +280,15 @@ async def stream(
                 if timeout is None:
                     value: R | BaseException = await fn(item)  # type: ignore[assignment]
                 else:
+                    # Attribute only the deadline's own firing to
+                    # PipelineTimeoutError; preserve fn's own TimeoutError (#66).
                     try:
-                        value = await asyncio.wait_for(fn(item), timeout)  # type: ignore[assignment]
+                        async with asyncio.timeout(timeout) as cm:
+                            value = await fn(item)  # type: ignore[assignment]
                     except TimeoutError as exc:
-                        raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
+                        if cm.expired():
+                            raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
+                        raise
             except BaseException as e:
                 # See `process._run_one` (#36): only `Exception`s are collected
                 # under `return_exceptions`. A non-`Exception` `BaseException`

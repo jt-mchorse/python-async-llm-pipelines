@@ -242,3 +242,52 @@ async def test_stream_rejects_non_positive_timeout():
 
     with pytest.raises(ValueError, match="timeout must be a finite positive number"):
         await stream(_producer(1), fn, concurrency=1, queue_size=1, timeout=0)
+
+
+# --- fn's OWN TimeoutError is preserved, not relabeled (#66) ----------------
+
+
+async def _raises_domain_timeout(_x: object) -> int:
+    # Simulates fn re-raising a downstream socket/httpx timeout as TimeoutError.
+    raise TimeoutError("downstream socket timeout")
+
+
+async def test_process_preserves_fn_own_timeout_error():
+    # A generous, never-firing deadline must NOT relabel fn's own TimeoutError
+    # as a PipelineTimeoutError (#66) — same as the timeout=None path.
+    out = await process(
+        [1], _raises_domain_timeout, concurrency=1, timeout=5.0, return_exceptions=True
+    )
+    assert type(out[0]) is TimeoutError
+    assert not isinstance(out[0], PipelineTimeoutError)
+    assert str(out[0]) == "downstream socket timeout"
+
+
+async def test_stream_preserves_fn_own_timeout_error():
+    out = await stream(
+        _producer(1),
+        _raises_domain_timeout,
+        concurrency=1,
+        queue_size=1,
+        timeout=5.0,
+        return_exceptions=True,
+    )
+    assert len(out) == 1
+    assert type(out[0]) is TimeoutError
+    assert not isinstance(out[0], PipelineTimeoutError)
+
+
+async def test_dispatch_tool_calls_preserves_fn_own_timeout_error():
+    from async_pipelines import ToolCall, dispatch_tool_calls
+
+    out = await dispatch_tool_calls(
+        [ToolCall(id="t1", name="x", arguments={})],
+        registry={"x": _raises_domain_timeout},
+        timeout=5.0,
+        return_exceptions=True,
+    )
+    assert out[0].ok is False
+    # The preserved domain error is reported, not a fabricated deadline breach.
+    assert "TimeoutError" in out[0].error_repr
+    assert "PipelineTimeoutError" not in out[0].error_repr
+    assert "downstream socket timeout" in out[0].error_repr
