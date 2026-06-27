@@ -420,6 +420,18 @@ concurrency-lock arc.
 
 **Next session:** python-async-llm-pipelines is fully hardened on the timing/finite-guard axis; rotate per selection rules.
 
+## 2026-06-27 — Issue #64: regenerate stale backpressure artifact
+**Duration:** ~15 min · **Branch:** `session/2026-06-27-0340-issue-64`
+
+- The committed `docs/backpressure.json` predated #46 and still carried `metrics._started_monotonic` (a private timing checkpoint, 2 occurrences) — a field `StreamMetrics.to_dict` has correctly excluded since #46. The code path was already correct (the bench serializes via `r.to_dict()`); only the committed artifact was stale.
+- Regenerated `docs/backpressure.{json,md}` honestly by re-running `python scripts/bench_backpressure.py --compare` (dep-free asyncio + tracemalloc, no API key). The new JSON has the clean 5-field metrics contract, the OOM-safety invariant (`max_queue_depth` ≤ `queue_size`, 8 and 32) holds, and timing fields differ as expected for a real re-measure (not hand-edited). Full suite green; the shape pins in `test_bench_backpressure.py` still hold. Docs-only change.
+
+**Why this work, this session:** sixth issue of a multi-issue NIGHT run; chose to close a real pre-existing tracked issue rather than manufacture new dogfood work.
+
+**Open questions / blockers:** none.
+
+**Next session:** committed bench artifacts now match the post-#46 5-field metrics surface.
+
 ## 2026-06-27 — Issue #66: timeout path relabeled fn's own TimeoutError
 **Duration:** ~25 min · **Branch:** `session/2026-06-27-0438-issue-66`
 
