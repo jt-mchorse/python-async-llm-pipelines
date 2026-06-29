@@ -33,10 +33,13 @@ Hard-pin tests lock each constant.
 
 from __future__ import annotations
 
+import inspect
 import re
 from pathlib import Path
 
 import pytest
+
+from async_pipelines import process, stream
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOC = REPO_ROOT / "docs" / "architecture.md"
@@ -211,3 +214,28 @@ def test_min_active_decision_id_hard_pin() -> None:
 
 def test_operator_supplied_paths_hard_pin_set() -> None:
     assert OPERATOR_SUPPLIED_PATHS == ()
+
+
+def test_architecture_doc_uses_real_timeout_kwarg_name(doc_text: str) -> None:
+    """The per-item timeout kwarg is named ``timeout`` on both ``process`` and
+    ``stream``; architecture.md must not resurrect the pre-#21 ``per_item_timeout``
+    name (#70).
+
+    This mirrors ``tests/test_readme_kwarg_consistency.py`` (which locks the
+    same kwarg in the README under #21) — but that test only reads README.md,
+    so the identical drift survived in docs/architecture.md uncaught. Derive the
+    real name from the live signatures so the lock can't itself go stale.
+    """
+    process_params = set(inspect.signature(process).parameters)
+    stream_params = set(inspect.signature(stream).parameters)
+    # The real kwarg is `timeout`; `per_item_timeout` is not a parameter.
+    assert "timeout" in process_params
+    assert "timeout" in stream_params
+    assert "per_item_timeout" not in (process_params | stream_params)
+    # So the doc must use `timeout`, not the nonexistent `per_item_timeout` —
+    # a reader copying `process(..., per_item_timeout=5.0)` hits a TypeError.
+    assert "per_item_timeout" not in doc_text, (
+        "docs/architecture.md references a `per_item_timeout` kwarg that doesn't "
+        "exist on process()/stream(); the real keyword-only arg is `timeout` "
+        "(renamed in #21 for the README; same drift recurred here)."
+    )

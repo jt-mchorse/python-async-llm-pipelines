@@ -455,3 +455,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** repo remains saturated; future drift on the `to_dict` speedup contract is now locked by an explicit attach-then-serialize test.
+
+## 2026-06-29 — Issue #70: architecture.md documented a nonexistent per_item_timeout kwarg
+**Duration:** ~17 min · **Branch:** `session/2026-06-29-0412-arch-timeout-kwarg`
+
+- `docs/architecture.md` documented a `per_item_timeout` kwarg on process/stream, but the real keyword-only arg is `timeout` (a reader copying `process(..., per_item_timeout=5.0)` gets a TypeError). This is the exact #21 drift — already fixed in the README and locked, but the README-only lock test never checked architecture.md. Also fixed the `asyncio.wait_for` → `asyncio.timeout` mechanism wording.
+- Renamed all three doc sites and added a lock test that derives the kwarg from `inspect.signature` and asserts architecture.md doesn't resurrect `per_item_timeout`.
+
+**Why this work, this session:** fourteenth and final issue of the night run. Second PR in this repo (alongside #69); both append MEMORY → serial rebase at merge time expected. This issue exemplifies the systemic pattern the night run surfaced: every repo's architecture-doc test locks paths/decisions/banned-phrases but not symbol/kwarg/count accuracy, which is why doc-contract drift accumulated portfolio-wide.
+
+**Open questions / blockers:** none.
+
+**Next session:** the timeout kwarg name is now locked in both README and architecture.md.
