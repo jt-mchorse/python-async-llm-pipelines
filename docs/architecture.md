@@ -22,7 +22,7 @@ flowchart LR
     Disp --> TR["ToolResult[]<br/>(carries tool_call_id)"]:::shipped
 
     Stream --> Met["StreamMetrics<br/>(queue depth, blocked time)<br/>D-009"]:::shipped
-    Process --> TO["per_item_timeout kwarg<br/>D-010"]:::shipped
+    Process --> TO["timeout kwarg<br/>D-010"]:::shipped
     Stream --> TO
 
     Out --> Bench["scripts/bench_1000_doc.py<br/>serial vs async vs batched"]:::shipped
@@ -187,14 +187,14 @@ parsers don't break. Mirrors the observability-parity pattern landed in
 
 ## 5. Per-item timeout + cancellation
 
-**What it does.** A keyword-only `per_item_timeout` arg on `process`
-and `stream` that wraps each `fn(item)` call in `asyncio.wait_for`.
+**What it does.** A keyword-only `timeout` arg on `process`
+and `stream` that wraps each `fn(item)` call in `asyncio.timeout`.
 Times out individual items without cancelling the rest of the batch
 (when `return_exceptions=True`).
 
 ```mermaid
 flowchart LR
-    CALL["fn(item)"] --> WAIT["asyncio.wait_for(<br/>fn(item), timeout=per_item_timeout)"]
+    CALL["fn(item)"] --> WAIT["asyncio.timeout(timeout)<br/>around fn(item)"]
     WAIT -- "ok within timeout" --> R["result"]
     WAIT -- "exceeded" --> TO["asyncio.TimeoutError"]
     TO --> RE{"return_exceptions?"}
