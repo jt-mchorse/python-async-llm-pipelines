@@ -113,9 +113,17 @@ class RunResult:
         """JSON-stable dict of the six fields; same rationale as
         `Workload.to_dict`. `extra` is shallow-copied so callers cannot
         accidentally mutate the frozen `RunResult`'s default through the
-        returned dict. `speedup_vs_serial` is preserved as `None` when
-        unattached (the serial baseline) — JSON consumers route on
-        `None` to skip the speedup column for that row.
+        returned dict.
+
+        `speedup_vs_serial` is preserved as `None` when **unattached** —
+        i.e. no serial baseline has been computed: the `run_pipeline`
+        default before `attach_speedup` runs, or a result set with no
+        `serial` row at all (in which case *every* row is `None`). It is
+        NOT a marker for "this is the serial row": after `attach_speedup`
+        the serial row carries its self-ratio `1.0` (see the shipped
+        `docs/benchmarks.json` and the README's `1.00×` cell). A JSON
+        consumer therefore skips the speedup column for `None` rows — the
+        no-baseline case — not for the serial row.
         """
         return {
             "pipeline_name": self.pipeline_name,
