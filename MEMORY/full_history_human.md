@@ -443,3 +443,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** the timeout feature now preserves `fn`'s own `TimeoutError`; only a real deadline maps to `PipelineTimeoutError`.
+
+## 2026-06-29 — Issue #68: serial-baseline speedup contract docstring was wrong
+**Duration:** ~16 min · **Branch:** `session/2026-06-29-0318-issue-new`
+
+- `RunResult.to_dict`'s docstring and `tests/test_benchmark_dump.py` claimed the serial row serializes `speedup_vs_serial=None` and that JSON consumers should route on `None` to skip the serial row. The shipped code does the opposite: `attach_speedup` gives the serial row its self-ratio `1.0`, `bench_1000_doc` always attaches before dumping, and the committed `docs/benchmarks.json` carries `("serial", 1.0)` with the README rendering `1.00×`. `None` actually marks the *unattached* case (the `run_pipeline` default, or a result set with no serial row), not the serial row — so a consumer following the documented contract would mishandle serial.
+- Rewrote the `to_dict` docstring, fixed the coverage-matrix note, renamed the misnamed `..._for_serial_baseline` test to `..._when_unattached`, and added `test_attach_speedup_serial_row_serializes_as_one_not_none` to lock the real contract. No runtime behavior change (serial→`1.0` was already tested).
+
+**Why this work, this session:** second issue of the night run; `python-async-llm-pipelines` was the stalest real repo (36h, selection rule 2). The repo is otherwise extremely mature (240 tests, every seam hardened) — this doc-contract drift was the one genuine gap found.
+
+**Open questions / blockers:** none.
+
+**Next session:** repo remains saturated; future drift on the `to_dict` speedup contract is now locked by an explicit attach-then-serialize test.

@@ -6,7 +6,10 @@ Coverage matrix:
 - ``Workload.to_dict`` returns all four fields under stable keys; round-
   trips through JSON.
 - ``RunResult.to_dict`` returns all six fields under stable keys;
-  preserves ``speedup_vs_serial=None`` for the serial baseline; deep-
+  preserves ``speedup_vs_serial=None`` for an *unattached* result (the
+  ``run_pipeline`` default, before ``attach_speedup``), while the
+  ``attach_speedup``-d serial row serializes its self-ratio ``1.0`` —
+  ``None`` marks "no baseline computed", not "the serial row"; deep-
   copies ``extra`` so callers can't mutate the frozen dataclass via the
   returned dict.
 - ``dump_benchmark_json`` writes the byte-identical pre-#44 shape:
@@ -33,6 +36,7 @@ import async_pipelines
 from async_pipelines.benchmark import (
     RunResult,
     Workload,
+    attach_speedup,
     dump_benchmark_json,
 )
 
@@ -89,15 +93,38 @@ def test_run_result_to_dict_returns_all_six_fields() -> None:
     assert d["extra"] == {"batch_size": 8}
 
 
-def test_run_result_to_dict_preserves_none_speedup_for_serial_baseline() -> None:
-    """The serial row has ``speedup_vs_serial=None``; JSON consumers
-    route on ``None`` to skip the column for that row.
+def test_run_result_to_dict_preserves_none_speedup_when_unattached() -> None:
+    """An *unattached* ``RunResult`` (the ``run_pipeline`` default, before
+    ``attach_speedup``) serializes ``speedup_vs_serial=None``. ``None`` marks
+    "no serial baseline computed" — the no-baseline case JSON consumers skip —
+    NOT "the serial row"; the ``attach_speedup``-d serial row ships ``1.0``
+    (see ``test_attach_speedup_serial_row_serializes_as_one_not_none`` below).
     """
+    # Default speedup (the row carries no baseline yet), pipeline name is
+    # irrelevant to the None — use "serial" to show even the serial row is None
+    # *until* attach_speedup runs.
     r = RunResult(pipeline_name="serial", n_docs=1000, duration_seconds=40.0, docs_per_second=25.0)
     d = r.to_dict()
     assert d["speedup_vs_serial"] is None
     # ``None`` round-trips through JSON as ``null`` → ``None``.
     assert json.loads(json.dumps(d))["speedup_vs_serial"] is None
+
+
+def test_attach_speedup_serial_row_serializes_as_one_not_none() -> None:
+    """The contract the shipped ``docs/benchmarks.json`` actually obeys: after
+    ``attach_speedup`` the serial row's ``to_dict()`` carries its self-ratio
+    ``1.0``, never ``None``. This pins the ``None == unattached, not serial``
+    distinction so the to_dict docstring can't drift back to claiming the serial
+    row serializes as ``None`` (it doesn't — the committed JSON ships ``1.0``).
+    """
+    raw = [
+        RunResult("serial", n_docs=100, duration_seconds=40.0, docs_per_second=2.5),
+        RunResult("async", n_docs=100, duration_seconds=2.0, docs_per_second=50.0),
+    ]
+    by_name = {r.pipeline_name: r.to_dict() for r in attach_speedup(raw)}
+    assert by_name["serial"]["speedup_vs_serial"] == pytest.approx(1.0)
+    assert by_name["serial"]["speedup_vs_serial"] is not None
+    assert by_name["async"]["speedup_vs_serial"] == pytest.approx(20.0)
 
 
 def test_run_result_to_dict_shallow_copies_extra() -> None:
