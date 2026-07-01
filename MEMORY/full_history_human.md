@@ -467,3 +467,16 @@ concurrency-lock arc.
 **Open questions / blockers:** none.
 
 **Next session:** the timeout kwarg name is now locked in both README and architecture.md.
+
+## 2026-07-01 — Issue #72: timed-path docstrings named `asyncio.wait_for`, code uses `asyncio.timeout`
+**Duration:** ~30 min · **Branch:** `session/2026-07-01-0305-issue-72`
+
+- The `process` docstring (`core.py:125`) — the contract a reader of this reference repo copies — described the per-item timed path as wrapping `fn` in `asyncio.wait_for`. Post-#66 the implementation uses `asyncio.timeout()` + `cm.expired()` so only the deadline's own firing maps to `PipelineTimeoutError` (an inner downstream `TimeoutError` propagates unrelabeled). Fixed the named site plus two siblings of the same defect — the `dispatch_tool_calls` docstring (`tool_dispatch.py:137`) and the `core.py:140` NaN-rationale comment — and three README contract mentions (~179/221/263).
+- Left the two intentional `wait_for()` *contrast* comments (`core.py:163`, `tool_dispatch.py:240`) that explain why #66 moved away, and two incidental test-internal mentions.
+- +4 lock tests (`tests/test_docstring_timeout_api.py`, parametrized over `process`/`dispatch_tool_calls`): each docstring must name `asyncio.timeout` and must not carry `wait_for`. `inspect.getdoc` sees only the docstring, so it doesn't fight the contrast comments. All four fail pre-fix (stash-and-rerun), pass post-fix. Suite 245 passed, ruff + format clean.
+
+**Why this work, this session:** python-async-llm-pipelines was the only repo stale beyond the 36h floor (~47h); all five priority-tier repos were under 18h. #72 was its single open issue — a low-priority docs followup — and is a further instance of the wait_for→timeout rename from #66 not fully propagating.
+
+**Open questions / blockers:** none — ready for review.
+
+**Next session:** continue the multi-issue loop; re-run repo selection.
