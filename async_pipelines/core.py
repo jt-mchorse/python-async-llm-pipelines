@@ -122,9 +122,11 @@ async def process(
             True, exceptions land in the output list at the matching
             index — useful when one bad document shouldn't lose 999.
         timeout: optional per-item deadline in seconds. When set, each
-            ``fn(item)`` call is wrapped in ``asyncio.wait_for``; if it
+            ``fn(item)`` call is wrapped in ``asyncio.timeout``; if it
             exceeds the deadline, a ``PipelineTimeoutError`` is raised
-            (and follows the ``return_exceptions`` policy above). The
+            (and follows the ``return_exceptions`` policy above). Only
+            the deadline's own firing maps to ``PipelineTimeoutError`` —
+            ``fn``'s own ``TimeoutError`` propagates unrelabeled (#66). The
             timeout applies per item, not to the batch as a whole. Pass
             ``None`` (the default) to keep the existing untimed shape.
 
@@ -137,7 +139,7 @@ async def process(
     # the sign-only check; asyncio.Semaphore(NaN) raises deep at acquire,
     # Semaphore(1.5) is the same shape, Semaphore(True) silently flattens
     # to Semaphore(1) (bool subclasses int). NaN timeout makes asyncio.
-    # wait_for behavior implementation-defined; +Infinity silently disables.
+    # timeout behavior implementation-defined; +Infinity silently disables.
     if not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency <= 0:
         raise ValueError(f"concurrency must be a positive int, got {concurrency!r}")
     if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):

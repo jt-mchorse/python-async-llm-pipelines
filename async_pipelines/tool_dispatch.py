@@ -134,7 +134,7 @@ async def dispatch_tool_calls(
         scheduled.
       timeout: optional per-tool deadline in seconds. None (default) means
         no per-tool deadline. Positive float: each tool invocation is
-        wrapped in `asyncio.wait_for`; on expiry a `PipelineTimeoutError`
+        wrapped in `asyncio.timeout`; on expiry a `PipelineTimeoutError`
         is raised (carrying the tool's index in `tool_calls`) and follows
         the existing `return_exceptions` policy. Parity with
         `process()` / `stream()`'s `timeout` shape.

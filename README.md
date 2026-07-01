@@ -176,7 +176,7 @@ single misbehaving doc shouldn't keep the whole batch on the runway —
 and the batch shouldn't leak tasks when it gives up.
 
 Both primitives accept an optional `timeout` (seconds). It's a *per-item*
-deadline, enforced via `asyncio.wait_for` around each `fn(item)` call.
+deadline, enforced via `asyncio.timeout` around each `fn(item)` call.
 When the deadline fires, the wrapper raises `PipelineTimeoutError`
 (a subclass of `PipelineError`) carrying the failing item's index and
 the timeout that fired. The exception then follows the existing
@@ -218,7 +218,7 @@ for `stream()`; consumers get an index assigned at consumption time
 [D-003]).
 
 `timeout=None` is the default and is byte-identical with the pre-#5
-shape — no `wait_for` wrapping, no overhead. The new behavior is opt-in.
+shape — no `asyncio.timeout` wrapping, no overhead. The new behavior is opt-in.
 
 ## Tool dispatch (#2)
 
@@ -260,7 +260,7 @@ turn's messages.
 
 Bound a misbehaving tool with `timeout` (parity with `process()` and
 `stream()`): `await dispatch_tool_calls(calls, registry=registry, timeout=2.0)`
-wraps each tool invocation in `asyncio.wait_for`; expiry raises
+wraps each tool invocation in `asyncio.timeout`; expiry raises
 `PipelineTimeoutError(index=…, timeout_s=…)` (propagates by default,
 attached to the matching `ToolResult.error_repr` under
 `return_exceptions=True`).
