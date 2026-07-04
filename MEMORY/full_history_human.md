@@ -480,3 +480,15 @@ concurrency-lock arc.
 **Open questions / blockers:** none — ready for review.
 
 **Next session:** continue the multi-issue loop; re-run repo selection.
+
+## 2026-07-03 — Issue #74: symbol-resolution doc-lock (propagates portfolio-ops #55) (~30 min)
+
+**What got done.** Added a symbol-resolution invariant to `tests/test_architecture_doc.py`: every `<submodule>.<symbol>` ref and multi-word CamelCase public type named in `docs/architecture.md` must resolve against the `async_pipelines` package, its submodules, or the Python builtins. This repo already carried the #70 `timeout` kwarg-name lock; the new check is orthogonal — it guards every named *type* (`FakeLLM`, `RunResult`, `StreamMetrics`, `ToolRegistry`, `ToolResult`, plus builtin `KeyboardInterrupt`). `None` is correctly excluded (no internal boundary). Baked in an inverse-safety-net test and hard-pins. Suite +4 tests, ruff clean. This completes the Python side of #55 propagation.
+
+**Process note.** The code commit was briefly authored on `main` by mistake (the loop iteration skipped the `git checkout -b` step after filing the issue). Caught immediately: created the session branch at the commit, `reset --hard` local main to the prior commit, and force-restored `origin/main` to that prior commit (`44bed63`) with `--force-with-lease`. No trace remains on main; the work is homed on the session branch and PR #75.
+
+**Why prioritized.** Fourth worked issue of the DAY run, the last Python gap repo for #55.
+
+**Open questions / blockers.** None — ready for review.
+
+**Next session:** verify the TS variants (mcp-server-cookbook, nextjs-streaming-ai-patterns, ai-app-integration-tests) already carry equivalent exported-name locks per their docstrings; if any lacks one, that's the remaining #55 scope.
