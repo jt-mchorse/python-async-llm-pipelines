@@ -527,3 +527,70 @@ def test_bench_script_writes_markdown_and_json(tmp_path: Path):
     assert payload["workload"]["n_docs"] == 20
     pipeline_names = {r["pipeline_name"] for r in payload["results"]}
     assert pipeline_names == {"serial", "async", "async+batched"}
+
+
+# ---------------------------------------------------------------------
+# Bad-input handling: clean exit 2, not a raw traceback at exit 1 (#76).
+# The sibling `bench_backpressure.py:main_async` already translates bad
+# operator input to a clean stderr line + exit 2; `bench_1000_doc.py`
+# constructed `Workload(...)` bare, letting `__post_init__`'s ValueError
+# escape as an unhandled traceback. These lock the parity.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("flag", "value", "needle"),
+    [
+        ("--n", "0", "n_docs"),
+        ("--concurrency", "0", "concurrency"),
+        ("--batch-size", "0", "batch_size"),
+        ("--latency", "-1", "llm_call_seconds"),
+    ],
+)
+def test_bench_script_bad_input_exits_2_not_traceback(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    flag: str,
+    value: str,
+    needle: str,
+):
+    from bench_1000_doc import main
+
+    out_md = tmp_path / "bench.md"
+    rc = main([flag, value, "--out", str(out_md)])
+
+    # Clean exit-2 contract, matching bench_backpressure.py.
+    assert rc == 2
+    err = capsys.readouterr().err
+    # The field-named message from Workload.__post_init__ is preserved so the
+    # operator learns which flag was wrong; no raw traceback leaks.
+    assert "invalid workload:" in err
+    assert needle in err
+    assert "Traceback" not in err
+    # A rejected workload must not write any artifact.
+    assert not out_md.exists()
+    assert not out_md.with_suffix(".json").exists()
+
+
+def test_bench_script_valid_boundary_input_still_runs(tmp_path: Path):
+    # The lower boundary (n_docs=1, concurrency=1, batch_size=1) is valid and
+    # must NOT be swept up by the exit-2 guard — it runs and writes output.
+    from bench_1000_doc import main
+
+    out_md = tmp_path / "bench.md"
+    rc = main(
+        [
+            "--n",
+            "1",
+            "--concurrency",
+            "1",
+            "--batch-size",
+            "1",
+            "--latency",
+            "0.001",
+            "--out",
+            str(out_md),
+        ]
+    )
+    assert rc == 0
+    assert out_md.exists()

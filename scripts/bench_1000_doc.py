@@ -126,12 +126,23 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
 
 
 async def amain(args: argparse.Namespace) -> int:
-    workload = Workload(
-        n_docs=args.n,
-        llm_call_seconds=args.latency,
-        concurrency=args.concurrency,
-        batch_size=args.batch_size,
-    )
+    # Translate a bad operator input (n_docs/concurrency/batch_size < 1,
+    # non-finite/negative latency) to a clean stderr line + exit 2 instead of
+    # letting `Workload.__post_init__`'s ValueError escape as a raw traceback
+    # at exit 1. This mirrors the exit-2 input-validation contract the sibling
+    # `bench_backpressure.py:main_async` already honors (#76); the field-named
+    # message from `__post_init__` is preserved so the operator still learns
+    # which flag was wrong.
+    try:
+        workload = Workload(
+            n_docs=args.n,
+            llm_call_seconds=args.latency,
+            concurrency=args.concurrency,
+            batch_size=args.batch_size,
+        )
+    except ValueError as e:
+        print(f"invalid workload: {e}", file=sys.stderr)
+        return 2
     results = await _run_all(workload)
     md = render_markdown(workload, results)
     out_path = Path(args.out)
