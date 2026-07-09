@@ -787,3 +787,25 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-07-09T23:11Z
+issue: 76
+focus: bench_1000_doc_bad_input_exit_2_parity_with_sibling_bench_backpressure
+phase: day_session_phase_b
+duration_min: 25
+delta:
+  files_changed: 2  # scripts/bench_1000_doc.py + tests/test_benchmark.py
+  tests_added: 5    # 4 parametrized bad-input exit-2 locks (--n/--concurrency/--batch-size/--latency) + 1 lower-boundary still-runs
+context_for_next_session:
+  - found_via_sibling_incomplete_fix_meta_lens_bench_backpressure_main_async_151_156_translates_bad_operator_input_to_clean_stderr_exit_2_but_sibling_bench_1000_doc_amain_constructed_Workload_bare_letting_post_init_valueerror_escape_as_raw_traceback_exit_1
+  - reproduced_firsthand_bench_1000_doc_n_0_and_concurrency_0_gave_traceback_exit_1_bench_backpressure_n_0_gave_clean_msg_exit_2_before_filing
+  - fix_wrap_Workload_construction_in_amain_try_except_valueerror_print_invalid_workload_field_named_msg_stderr_return_2_preserves_post_init_field_named_message
+  - 4_parametrized_tests_fail_pre_fix_raw_valueerror_pass_post_fix_plus_boundary_test_n1_concurrency1_batch1_still_runs_rc0_guard_rejects_only_invalid
+  - full_suite_254_pass_ruff_format_check_plus_ruff_check_clean
+  - LENS_exit_code_contract_clean_error_not_traceback_fired_across_portfolio_this_cycle_leh_158_prs_113_ems_87_cli_write_seams_and_now_pyasync_76_operator_script_input_seam_same_class_different_surface_scripts_not_cli
+  - DEFERRED_run_pipeline_docs_per_second_0_0_on_zero_duration_run_same_misranking_shape_as_61_attach_speedup_but_needs_float_or_none_contract_change_touching_to_dict_markdown_readme_doc_locks_file_separately_if_pursued_not_churn_worthy_alone
+  - pr_77_ready_closes_76_no_core_decision
+decisions_made: []
+followups: []
+---

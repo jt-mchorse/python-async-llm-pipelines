@@ -492,3 +492,15 @@ concurrency-lock arc.
 **Open questions / blockers.** None — ready for review.
 
 **Next session:** verify the TS variants (mcp-server-cookbook, nextjs-streaming-ai-patterns, ai-app-integration-tests) already carry equivalent exported-name locks per their docstrings; if any lacks one, that's the remaining #55 scope.
+
+## 2026-07-09 — Issue #76: bench_1000_doc bad-input exit-2 parity (~25 min)
+
+**What got done.** `scripts/bench_1000_doc.py` constructed `Workload(...)` directly in `amain`, so a bad operator input (`--n 0`, `--concurrency 0`, `--batch-size 0`, negative `--latency`) let `Workload.__post_init__`'s `ValueError` escape as a raw traceback at exit 1. Its sibling `scripts/bench_backpressure.py` (`main_async`) already translates the same class of bad input to a clean stderr line at exit 2. Wrapped the `Workload(...)` construction in a `try/except ValueError` → `print("invalid workload: …", file=sys.stderr); return 2`, preserving the field-named message so the operator still learns which flag was wrong. Added 4 parametrized regression tests (each fails pre-fix with a raw `ValueError`, passes post-fix asserting `rc == 2`, a clean stderr line, no traceback, no artifact written) plus a lower-boundary test proving valid `n=1/concurrency=1/batch_size=1` still runs. Full suite 254 pass, ruff clean.
+
+**Why prioritized.** No open issues in the priority tier; fell through lco (both open issues are JT-gated `decision-revisit`) and vsas (#71/#78 both JT-gated) to python-async-llm-pipelines, the stalest repo (~5 days). Found via the sibling-incomplete-fix meta-lens; on-theme with this cycle's portfolio-wide exit-code-contract sweep (leh#158, prs#113, ems#87), applied here to the operator-script input seam instead of a CLI write seam.
+
+**Deferred.** `run_pipeline`'s `docs_per_second=0.0` on a zero-duration run has the same "0.0 misranks an infinitely-fast result" shape that #61's `attach_speedup` fix addressed, but fixing it needs a `float | None` contract change touching `to_dict` / the markdown renderer / README doc-locks — out of scope for this issue; file separately if pursued.
+
+**Open questions / blockers.** None — PR #77 ready for review.
+
+**Next session:** pyasync's exit-code / clean-error contract is now consistent across both bench scripts; the timeout-relabel guard (#66) is confirmed present in all three core paths (process/stream/tool_dispatch) — that lens is exhausted here.
