@@ -504,3 +504,13 @@ concurrency-lock arc.
 **Open questions / blockers.** None — PR #77 ready for review.
 
 **Next session:** pyasync's exit-code / clean-error contract is now consistent across both bench scripts; the timeout-relabel guard (#66) is confirmed present in all three core paths (process/stream/tool_dispatch) — that lens is exhausted here.
+
+## 2026-07-10 — Issue #78: non-finite --consumer-ms guard in bench_backpressure (~18 min, night)
+
+**What got done.** `bench_backpressure.py`'s `main_async` validated `--consumer-ms` with only `if args.consumer_ms < 0:`, so `nan`/`inf` (both valid `float()` inputs argparse accepts, both `< 0` == `False`) slipped into `asyncio.sleep(consumer_ms / 1000.0)`: `nan` raised `ValueError: Invalid delay` (raw traceback, exit 1) and `inf` **hung forever** — worse than the pre-#76 state (a silent hang, no exit). This is the sibling gap of #62/#32 (timing/latency fields must be finite: `Workload.llm_call_seconds`, `make_batch_caller.batch_seconds`) and #76 (bad operator input → clean stderr + exit 2). `--consumer-ms` got the sign check but not the finiteness check.
+
+Changed the guard to `not math.isfinite(args.consumer_ms) or args.consumer_ms < 0` (added `import math`), message "consumer-ms must be a finite number >= 0", mirroring the sibling timing guards. Four tests (parametrized `nan`/`inf` → exit 2 + clean stderr + no traceback + no artifact, which also pins "no hang" since `inf` would otherwise block the test; valid-finite still runs; negative still exits 2). Full suite (258) + ruff green. Verified firsthand, including confirming the `inf` hang via a background-process liveness check.
+
+**Why prioritized.** Static priority:high queue globally exhausted; found via a dedicated deep pass (the first-wave combined agent had only lightly swept this repo) using the sibling-incomplete-fix / exit-code-contract lens.
+
+**Open questions / blockers.** None — PR ready for review.
