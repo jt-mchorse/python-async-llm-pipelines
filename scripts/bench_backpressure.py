@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import sys
 import time
 import tracemalloc
@@ -151,8 +152,15 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.n <= 0 or args.queue_size <= 0 or args.concurrency <= 0:
         print("n, queue-size, and concurrency must all be positive", file=sys.stderr)
         return 2
-    if args.consumer_ms < 0:
-        print("consumer-ms must be non-negative", file=sys.stderr)
+    if not math.isfinite(args.consumer_ms) or args.consumer_ms < 0:
+        # `< 0` alone lets nan/inf through (both comparisons are False), and both
+        # are valid float() inputs argparse accepts. A non-finite value flows into
+        # asyncio.sleep(consumer_ms / 1000.0): nan raises `ValueError: Invalid
+        # delay` (raw traceback, exit 1) and inf hangs forever. Mirror the
+        # finiteness guard the timing seams enforce (Workload.llm_call_seconds,
+        # make_batch_caller.batch_seconds #62) so bad operator input lands as a
+        # clean exit 2 (#76), never a traceback or a silent hang.
+        print("consumer-ms must be a finite number >= 0", file=sys.stderr)
         return 2
 
     cells: list[tuple[int, int, float, int]] = [
