@@ -120,7 +120,7 @@ curves on a slow sink.
 flowchart LR
     P["fast producer"] --> Q["asyncio.Queue(maxsize=queue_size)"]
     Q --> C["N consumer tasks (slow fn)"]
-    C --> M["StreamMetrics<br/>· queue_depth_samples<br/>· producer_blocked_seconds<br/>· consumer_idle_seconds"]
+    C --> M["StreamMetrics<br/>· produced · consumed<br/>· producer_pauses<br/>· max_queue_depth<br/>· producer_pause_seconds"]
     M --> BENCH["scripts/bench_backpressure.py"]
 ```
 
@@ -196,7 +196,7 @@ Times out individual items without cancelling the rest of the batch
 flowchart LR
     CALL["fn(item)"] --> WAIT["asyncio.timeout(timeout)<br/>around fn(item)"]
     WAIT -- "ok within timeout" --> R["result"]
-    WAIT -- "exceeded" --> TO["asyncio.TimeoutError"]
+    WAIT -- "exceeded" --> TO["asyncio.timeout fires<br/>→ PipelineTimeoutError"]
     TO --> RE{"return_exceptions?"}
     RE -- "True (partial)" --> CAP["captured at item index;<br/>batch continues"]
     RE -- "False (fail-fast)" --> CG["TaskGroup cancels siblings"]
