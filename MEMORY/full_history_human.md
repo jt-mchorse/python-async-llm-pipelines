@@ -514,3 +514,14 @@ Changed the guard to `not math.isfinite(args.consumer_ms) or args.consumer_ms < 
 **Why prioritized.** Static priority:high queue globally exhausted; found via a dedicated deep pass (the first-wave combined agent had only lightly swept this repo) using the sibling-incomplete-fix / exit-code-contract lens.
 
 **Open questions / blockers.** None — PR ready for review.
+
+## 2026-07-12 — Issue #80: architecture.md mermaid names non-existent StreamMetrics fields + wrong timeout exception
+**Duration:** ~16 min · **Branch:** `session/2026-07-12-0954-issue-80`
+
+- The §3 mermaid node listed `StreamMetrics` fields `queue_depth_samples`/`producer_blocked_seconds`/`consumer_idle_seconds` — none of which exist (the real fields are `produced`, `consumed`, `producer_pauses`, `max_queue_depth`, `producer_pause_seconds`, used correctly by the README + `to_dict()`). The §5 timeout diagram labeled the captured exception `asyncio.TimeoutError`, but the code relabels it `PipelineTimeoutError` (what the caller catches). Fixed both mermaid nodes and added two lock tests deriving the truth from `dataclasses.fields(StreamMetrics)` and the exported `PipelineTimeoutError`, mirroring the existing kwarg-name lock.
+
+**Why this work, this session:** Eighth hit of the run — the doc-drift lens on architecture.md mermaid diagrams; invented symbols a reader would grep for in vain.
+
+**Open questions / blockers:** none — ready for review.
+
+**Next session:** Phase A merge PR for #80. (aop architecture.md event-kind snippet 7-vs-9 is a lower-confidence sibling, noted for consideration.)
