@@ -405,3 +405,46 @@ def test_architecture_doc_uses_real_timeout_kwarg_name(doc_text: str) -> None:
         "exist on process()/stream(); the real keyword-only arg is `timeout` "
         "(renamed in #21 for the README; same drift recurred here)."
     )
+
+
+def test_architecture_doc_streammetrics_fields_are_real(doc_text: str) -> None:
+    """The §3 mermaid node enumerates ``StreamMetrics`` fields; they must match
+    the real dataclass. Pre-#80 the node listed ``queue_depth_samples`` /
+    ``producer_blocked_seconds`` / ``consumer_idle_seconds`` — none of which
+    exist on the dataclass (a reader grepping for them finds nothing).
+
+    Derive the real field set from ``dataclasses.fields`` so the lock can't go
+    stale: every public field must be named in the doc, and no non-existent
+    field name may appear.
+    """
+    import dataclasses
+
+    from async_pipelines import StreamMetrics
+
+    real_fields = {f.name for f in dataclasses.fields(StreamMetrics) if not f.name.startswith("_")}
+    # Every real public field is named in the architecture doc's mermaid node,
+    # so the diagram can't silently drop or rename one vs the dataclass.
+    for name in real_fields:
+        assert name in doc_text, (
+            f"docs/architecture.md StreamMetrics node is missing the real field {name!r}"
+        )
+    # The pre-#80 invented names must never reappear.
+    for invented in ("queue_depth_samples", "producer_blocked_seconds", "consumer_idle_seconds"):
+        assert invented not in doc_text, (
+            f"docs/architecture.md references a non-existent StreamMetrics field {invented!r}"
+        )
+
+
+def test_architecture_doc_names_the_real_timeout_exception(doc_text: str) -> None:
+    """The §5 timeout diagram must name the exception the caller actually sees.
+    `stream`/`process` relabel an expired `asyncio.timeout` as
+    `PipelineTimeoutError` (core.py) — that's what is captured at the item index
+    and what the README tells users to catch. Pre-#80 the diagram labeled the
+    captured node `asyncio.TimeoutError`, a type the caller never receives.
+    """
+    from async_pipelines import PipelineTimeoutError
+
+    assert PipelineTimeoutError.__name__ in doc_text, (
+        "docs/architecture.md timeout diagram must name PipelineTimeoutError "
+        "(the relabeled exception the caller catches), not the raw asyncio one"
+    )
