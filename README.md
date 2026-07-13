@@ -48,7 +48,7 @@ parentheses:
   orphaned tasks.
 
 The wrapper itself stays runtime-dep-free (D-002). The architecture
-diagram below names the five layers and the D-002…D-010 decisions
+diagram below names the five layers and the D-002…D-011 decisions
 behind each one.
 
 [#1]: https://github.com/jt-mchorse/python-async-llm-pipelines/issues/1
@@ -66,9 +66,13 @@ async_pipelines/
 ├── core.py
 │   ├── process(items, fn, *, concurrency, return_exceptions=False, timeout=None) -> list
 │   └── stream(producer, fn, *, concurrency, queue_size, return_exceptions=False, timeout=None, metrics=None) -> list
-└── tool_dispatch.py    ← #2
-    ├── ToolCall, ToolResult, ToolRegistry
-    └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout=None) -> list[ToolResult]
+├── tool_dispatch.py    ← #2
+│   ├── ToolCall, ToolResult, ToolRegistry
+│   └── dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout=None) -> list[ToolResult]
+├── benchmark.py        ← #4
+│   ├── Workload, RunResult, SerialPipeline, AsyncPipeline, BatchedAsyncPipeline
+│   └── run_pipeline(pipeline, docs) -> RunResult
+└── io_utils.py         ← cross-cutting: atomic_write_text(path, text)
 ```
 
 See **[`docs/architecture.md`](docs/architecture.md)** for the integrated pipeline lifecycle, per-layer detail across all five shipped primitives (process/stream #1, tool dispatch #2, backpressure metrics #3, 1000-doc benchmark #4, per-item timeouts #5), and the D-002…D-011 design decisions behind each one.

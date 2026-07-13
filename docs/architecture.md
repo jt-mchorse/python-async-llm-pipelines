@@ -97,9 +97,10 @@ posture as `process` (D-006).
 **Why these decisions.**
 
 - **D-004.** `ToolRegistry` is a thin dict wrapper — name → async
-  callable. No inheritance, no decorator-based registration. The
-  cookbook principle: a reader can copy the dispatch primitive
-  without dragging in registry infrastructure.
+  callable, populated by `register(name, fn)` or the equivalent
+  `@registry.tool(name)` decorator over that same dict. No inheritance,
+  no class hierarchy. The cookbook principle: a reader can copy the
+  dispatch primitive without dragging in registry infrastructure.
 - **D-005.** `ToolResult` carries `tool_call_id` so the round-trip
   back to the Anthropic API works without the caller threading
   per-call ids by hand.

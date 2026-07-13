@@ -80,3 +80,65 @@ def test_demo_section_names_followup_and_describes_today() -> None:
     assert "depends on issue [#4]" not in demo, (
         "Demo section still references the gating phrase 'depends on issue [#4]' — #4 is closed."
     )
+
+
+# ---------------------------------------------------------------------------
+# Package directory-tree completeness lock (#82).
+#
+# The README's Architecture section opens with a fenced `async_pipelines/`
+# directory tree. Its bare `foo.py` entries aren't markdown links (so
+# `test_referenced_files_exist` skips them) and nothing asserted the tree
+# matches the package — that is how `benchmark.py` (#4) and `io_utils.py`
+# stayed out of the tree even though `benchmark.py` is a documented shipped
+# primitive. Parse the tree block and assert its `*.py` entries equal the
+# package's non-dunder module set. Same directory-tree-completeness class as
+# nextjs #83, llm-eval-harness #171, prompt-regression-suite #123, ems #99.
+_PKG_DIR = REPO_ROOT / "async_pipelines"
+
+
+def _tree_py_modules(readme: str) -> set[str]:
+    """Basenames of the `*.py` entries in the fenced tree that opens with the
+    `async_pipelines/` header line (scan stops at the closing fence)."""
+    modules: set[str] = set()
+    in_tree = False
+    for line in readme.splitlines():
+        if line.strip() == "async_pipelines/":
+            in_tree = True
+            continue
+        if in_tree:
+            if line.strip().startswith("```"):
+                break
+            m = re.search(r"([A-Za-z_][A-Za-z0-9_]*\.py)\b", line)
+            if m:
+                modules.add(m.group(1))
+    return modules
+
+
+def test_readme_tree_lists_every_package_module() -> None:
+    """The fenced `async_pipelines/` tree names exactly the package's non-dunder
+    `*.py` modules — no omission (the #4 benchmark/io_utils drift) and no stale
+    leftover (#82)."""
+    tree = _tree_py_modules(_readme())
+    assert tree, "expected an `async_pipelines/` directory tree with *.py entries in the README"
+    disk = {p.name for p in _PKG_DIR.glob("*.py") if p.name != "__init__.py"}
+    missing = sorted(disk - tree)
+    extra = sorted(tree - disk)
+    drift = [
+        *(f"missing from tree: {m}" for m in missing),
+        *(f"in tree but not on disk: {e}" for e in extra),
+    ]
+    assert not drift, (
+        "README async_pipelines/ directory tree is out of sync with the package:\n"
+        + "\n".join(f"  {d}" for d in drift)
+        + "\n(update the tree so it depicts the current package layout)"
+    )
+
+
+def test_readme_tree_parser_and_diff_catch_drift() -> None:
+    """Inverse safety net: exercise the real parser + set-diff on synthetic
+    trees so a vacuous parse can't let drift through."""
+    good = "async_pipelines/\n├── a.py\n└── b.py\n```"
+    assert _tree_py_modules(good) == {"a.py", "b.py"}
+    assert sorted({"a.py", "b.py", "c.py"} - _tree_py_modules(good)) == ["c.py"]
+    stale = "async_pipelines/\n├── a.py\n└── gone.py\n```"
+    assert sorted(_tree_py_modules(stale) - {"a.py"}) == ["gone.py"]
