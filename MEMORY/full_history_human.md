@@ -525,3 +525,19 @@ Changed the guard to `not math.isfinite(args.consumer_ms) or args.consumer_ms < 
 **Open questions / blockers:** none — ready for review.
 
 **Next session:** Phase A merge PR for #80. (aop architecture.md event-kind snippet 7-vs-9 is a lower-confidence sibling, noted for consideration.)
+
+## 2026-07-13 (Night) — Issue #82: README tree + D-004 decorator claim + stale D-range
+**Duration:** ~30 min · **Branch:** `session/2026-07-13-0549-issue-82` · **PR:** #83
+
+Three doc-accuracy drifts, same class, one PR:
+- **README tree** listed only `core.py` + `tool_dispatch.py`, omitting `benchmark.py` (#4, a documented shipped primitive) and `io_utils.py`. Added both + a tree-completeness lock (set-equality with the package's non-dunder modules, inverse-verified).
+- **architecture.md D-004** claimed "no decorator-based registration" — but `@registry.tool(name)` is the *intended* design: D-004's own recorded rationale is `decorator_form_for_natural_registration`, it shipped in the original #2 impl, is used 10+ times in the tests, and the README demonstrates it. Corrected the prose to match the recorded decision (register()/decorator, no inheritance) — the decision itself is unchanged.
+- **Stale `D-002…D-010` range**: the README carried both `D-010` and `D-011`; `test_readme_decision_range` took `max()`, so the stale lower citation passed green. Fixed the citation and strengthened the lock to require *every* `D-002…D-NNN` citation to equal the latest active id.
+
+Verified all three flag pre-fix. Full suite 262 pass; ruff clean.
+
+**Why this work, this session:** parallel Explore agents scanned the untouched repos (aop/ems/vsas/pyasync); pyasync's three drifts were all verified firsthand.
+
+**Open questions / blockers:** none — ready for review.
+
+**Next session:** the `max()`-based decision-range lock gap likely exists in the 7 sister repos that propagated the same test (chunking, leh, lco, prs, rag, ems, vsas — named in the test docstring) — check each for a stale *lower* `D-002…D-NNN` citation its max-based lock misses. Also still open from the agent sweep: vsas `weaviate-oss` vs the actual `weaviate` module dir; aop "five named tools" vs six registered (borderline — use-case acceptance framing).
