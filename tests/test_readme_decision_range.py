@@ -51,11 +51,16 @@ def test_decision_range_cites_latest_active() -> None:
         "`D-002…D-NNN` somewhere (the architecture-section summary "
         "paragraph by convention). Not found."
     )
-    cited = max(int(m) for m in matches)
     latest = _max_active_decision_id()
-    assert cited == latest, (
-        f"README.md cites decision range up to D-{cited:03d}, but the "
-        f"highest active D-NNN in MEMORY/core_decisions_ai.md is "
-        f"D-{latest:03d}. Update the README's architecture-section "
-        f"summary to D-002…D-{latest:03d}."
+    # Every `D-002…D-NNN` citation must cite the latest active id, not just the
+    # max of them. A prior `max()`-only check let a stale *lower* citation sail
+    # through green when a correct citation elsewhere dominated the max (the
+    # README carried both `D-002…D-010` and `D-002…D-011`). Reject any stale one.
+    cited = sorted({int(m) for m in matches})
+    stale = [c for c in cited if c != latest]
+    assert not stale, (
+        f"README.md cites decision range(s) up to "
+        f"{', '.join(f'D-{c:03d}' for c in stale)} that don't match the highest "
+        f"active D-NNN in MEMORY/core_decisions_ai.md (D-{latest:03d}). Every "
+        f"`D-002…D-NNN` citation must read D-002…D-{latest:03d}; update the stale one(s)."
     )
