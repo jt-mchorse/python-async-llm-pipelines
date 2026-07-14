@@ -552,3 +552,14 @@ Both benchmark scripts document an exit-2 operator-input contract (`bench_1000_d
 **Open questions / blockers:** none — PR #85 ready for review.
 
 **Next session:** Phase A merge PR for #84.
+
+## 2026-07-14 (night) — Issue #86: atomic_write_text overflows NAME_MAX on a long basename
+**Duration:** ~10 min · **Branch:** `session/2026-07-14-0756-issue-86` · **PR:** #87
+
+The cross-repo `atomic_write_text` temp-name-overflow bug (rag#128 / mcp#96), final leg: a destination basename near `NAME_MAX` (255 bytes) overflowed the temp name and raised `OSError` ENAMETOOLONG, though a plain `write_text` succeeds. Reachable from the bench scripts' `--out`/`--out-md`/`--out-json` paths. Verified firsthand; ported `_cap_base_for_temp`. Full suite (265) green.
+
+**Why this work, this session:** Twelfth hit — completes the cross-repo atomic-write sweep. The identical vulnerable helper is now fixed in 8 of 9 repos (rag, mcp, leh, chunking, lco, ems, prs, pyasync); only `vector-search-at-scale` remains (deferred — it already received two PRs this run), a documented one-line follow-up (`vector_bench/io_utils.py`).
+
+**Open questions / blockers:** none — PR #87 ready for review.
+
+**Next session:** Phase A merge PR for #86; port the same cap to vsas to close the vein portfolio-wide.
