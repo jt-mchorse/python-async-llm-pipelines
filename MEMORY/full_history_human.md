@@ -541,3 +541,14 @@ Verified all three flag pre-fix. Full suite 262 pass; ruff clean.
 **Open questions / blockers:** none — ready for review.
 
 **Next session:** the `max()`-based decision-range lock gap likely exists in the 7 sister repos that propagated the same test (chunking, leh, lco, prs, rag, ems, vsas — named in the test docstring) — check each for a stale *lower* `D-002…D-NNN` citation its max-based lock misses. Also still open from the agent sweep: vsas `weaviate-oss` vs the actual `weaviate` module dir; aop "five named tools" vs six registered (borderline — use-case acceptance framing).
+
+## 2026-07-14 (night) — Issue #84: bench scripts leak a raw OSError on an unwritable --out path
+**Duration:** ~25 min · **Branch:** `session/2026-07-14-0526-issue-84` · **PR:** #85
+
+Both benchmark scripts document an exit-2 operator-input contract (`bench_1000_doc.amain` translates a bad `Workload(...)` input to exit 2; `bench_backpressure.main_async` guards `--n`/`--consumer-ms`), but the **output-write seam** was unguarded. A bad `--out`/`--out-md`/`--out-json` (a read-only filesystem, a permission-denied dir, or a path component that is a file) made `atomic_write_text` raise `OSError`, which escaped as a raw traceback at exit 1 — the "success" range — *after* the benchmark already ran. Fixed by wrapping each write block in `try/except OSError` → clean stderr + `return 2`, the write-seam sibling of llm-eval-harness #158/#159. Verified firsthand in the venv (pre-fix `--out /nonexistent-readonly/x.md` raised `OSError: Read-only file system`, exit 1). Two new lock tests (one per script) plus two existing `test_io_utils_atomic_write` routing tests updated from the old "OSError propagates" pin to the new exit-2 contract. Full suite (264) green, ruff clean.
+
+**Why this work, this session:** Third hit of the night run — a firsthand sibling hunt on pyasync's own bad-input exit-2 vein (#76/#77, #78/#79), finding the write seam that the input-read seam fixes never covered. (The wave-2 agents covered lco/mcp; pyasync was uncovered.)
+
+**Open questions / blockers:** none — PR #85 ready for review.
+
+**Next session:** Phase A merge PR for #84.

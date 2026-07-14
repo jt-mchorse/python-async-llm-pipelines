@@ -567,6 +567,28 @@ def test_bench_script_bad_input_exits_2_not_traceback(
     assert "invalid workload:" in err
     assert needle in err
     assert "Traceback" not in err
+
+
+def test_bench_script_unwritable_out_exits_2_not_traceback(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    # The output path is operator input too: an unwritable `--out` must land as a
+    # clean exit 2, not a raw OSError traceback after the benchmark ran (write-seam
+    # sibling of llm-eval-harness #158/#159). Use a path whose parent component is
+    # a FILE so atomic_write_text's mkdir raises NotADirectoryError (an OSError) —
+    # a deterministic, portable unwritable target.
+    from bench_1000_doc import main
+
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x")
+    out_md = blocker / "sub" / "bench.md"
+    rc = main(["--n", "4", "--concurrency", "2", "--batch-size", "2", "--out", str(out_md)])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "could not write report:" in err
+    assert "Traceback" not in err
     # A rejected workload must not write any artifact.
     assert not out_md.exists()
     assert not out_md.with_suffix(".json").exists()

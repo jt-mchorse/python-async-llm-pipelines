@@ -145,3 +145,30 @@ def test_consumer_ms_negative_still_exits_two(
     rc = asyncio.run(main_async(args))
     assert rc == 2
     assert "consumer-ms must be a finite number" in capsys.readouterr().err
+
+
+def test_unwritable_out_exits_two_no_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The output paths are operator input too: an unwritable `--out-md` must land
+    # as a clean exit 2, not a raw OSError traceback after the benchmark ran
+    # (write-seam sibling of llm-eval-harness #158/#159). A path whose parent is a
+    # FILE makes atomic_write_text's mkdir raise NotADirectoryError (an OSError) —
+    # a deterministic, portable unwritable target.
+    blocker = tmp_path / "blocker"
+    blocker.write_text("x")
+    args = _build_parser().parse_args(
+        [
+            "--n",
+            "3",
+            "--out-md",
+            str(blocker / "sub" / "bp.md"),
+            "--out-json",
+            str(tmp_path / "bp.json"),
+        ]
+    )
+    rc = asyncio.run(main_async(args))
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "could not write report:" in err
+    assert "Traceback" not in err
