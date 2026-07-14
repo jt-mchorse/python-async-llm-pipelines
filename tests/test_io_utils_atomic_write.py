@@ -165,25 +165,29 @@ def test_bench_1000_doc_routes_through_atomic_helper(
     # must remain absent. The script runs serial → async → batched, so we
     # know `out_md` is the first write target. Use `--n 1 --latency 0.0`
     # so the bench finishes near-instantly regardless of pipeline shape.
+    # Monkeypatching os.replace (which atomic_write_text uses internally) both
+    # proves the write routes through the atomic helper AND exercises the
+    # write-seam exit-2 contract (#84): the OSError is translated to a clean
+    # exit 2, not propagated as a raw traceback.
     def boom(*_args, **_kwargs):
         raise OSError("simulated rename failure")
 
     monkeypatch.setattr(io_utils_mod.os, "replace", boom)
-    with pytest.raises(OSError, match="simulated rename failure"):
-        bench.main(
-            [
-                "--n",
-                "1",
-                "--concurrency",
-                "1",
-                "--batch-size",
-                "1",
-                "--latency",
-                "0.0",
-                "--out",
-                str(out_md),
-            ]
-        )
+    rc = bench.main(
+        [
+            "--n",
+            "1",
+            "--concurrency",
+            "1",
+            "--batch-size",
+            "1",
+            "--latency",
+            "0.0",
+            "--out",
+            str(out_md),
+        ]
+    )
+    assert rc == 2, "a write failure must land as the clean exit-2 contract (#84)"
     assert not out_md.exists(), "bench --out md must not write destination on replace failure"
 
 
@@ -258,8 +262,11 @@ def test_bench_backpressure_routes_through_atomic_helper(
             str(out_md),
         ]
     )
-    with pytest.raises(OSError, match="simulated rename failure"):
-        asyncio.run(bench.main_async(args))
+    # os.replace (used by atomic_write_text) raising both proves the write routes
+    # through the atomic helper AND exercises the write-seam exit-2 contract (#84):
+    # a clean exit 2, not a propagated raw traceback.
+    rc = asyncio.run(bench.main_async(args))
+    assert rc == 2, "a write failure must land as the clean exit-2 contract (#84)"
     assert not out_md.exists(), (
         "bench_backpressure --out-md must not write destination on replace failure"
     )

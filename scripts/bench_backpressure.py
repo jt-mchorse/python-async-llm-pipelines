@@ -181,17 +181,27 @@ async def main_async(args: argparse.Namespace) -> int:
             f"max_depth={r.metrics['max_queue_depth']}"
         )
 
-    if args.out_md:
-        atomic_write_text(args.out_md, _render_markdown(results))
-        print(f"wrote {args.out_md}")
-    if args.out_json:
-        payload = {
-            "results": [r.to_dict() for r in results],
-            "host": sys.platform,
-            "python": sys.version.split()[0],
-        }
-        atomic_write_text(args.out_json, json.dumps(payload, indent=2))
-        print(f"wrote {args.out_json}")
+    # The output paths are operator input too: an unwritable `--out-md`/`--out-json`
+    # (a read-only filesystem, a permission-denied dir, or a path component that is
+    # a file) makes `atomic_write_text` raise OSError, which without this guard
+    # escaped `main_async` as a raw traceback at exit 1 — after the benchmark ran —
+    # breaking the same exit-2 operator-input contract the `--n`/`--consumer-ms`
+    # guards above honor (write-seam sibling of llm-eval-harness #158/#159).
+    try:
+        if args.out_md:
+            atomic_write_text(args.out_md, _render_markdown(results))
+            print(f"wrote {args.out_md}")
+        if args.out_json:
+            payload = {
+                "results": [r.to_dict() for r in results],
+                "host": sys.platform,
+                "python": sys.version.split()[0],
+            }
+            atomic_write_text(args.out_json, json.dumps(payload, indent=2))
+            print(f"wrote {args.out_json}")
+    except OSError as e:
+        print(f"could not write report: {e}", file=sys.stderr)
+        return 2
 
     return 0
 

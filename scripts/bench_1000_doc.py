@@ -146,18 +146,29 @@ async def amain(args: argparse.Namespace) -> int:
     results = await _run_all(workload)
     md = render_markdown(workload, results)
     out_path = Path(args.out)
-    atomic_write_text(out_path, md)
-    print(md)
-    print(f"\nbenchmarks wrote {out_path}")
-    # Stash raw results next to the markdown for further analysis.
-    json_path = out_path.with_suffix(".json")
-    if json_path == out_path:
-        # `--out foo.json`: with_suffix(".json") is a no-op when the suffix is
-        # already .json, so the JSON dump would clobber the markdown report we
-        # just wrote. Append instead of replace so both artifacts survive.
-        json_path = out_path.with_name(out_path.name + ".json")
-    dump_benchmark_json(json_path, workload=workload, results=results)
-    print(f"raw results wrote {json_path}")
+    # The output path is operator input too: an unwritable `--out` (a read-only
+    # filesystem, a permission-denied dir, or a path component that is a file)
+    # makes `atomic_write_text` raise OSError. Without this guard it escaped
+    # `amain` as a raw traceback at exit 1 — the "success" range — *after* the
+    # benchmark already ran, breaking the same exit-2 operator-input contract the
+    # `Workload(...)` guard above honors. Translate it to a clean stderr line +
+    # exit 2 (write-seam sibling of llm-eval-harness #158/#159).
+    try:
+        atomic_write_text(out_path, md)
+        print(md)
+        print(f"\nbenchmarks wrote {out_path}")
+        # Stash raw results next to the markdown for further analysis.
+        json_path = out_path.with_suffix(".json")
+        if json_path == out_path:
+            # `--out foo.json`: with_suffix(".json") is a no-op when the suffix is
+            # already .json, so the JSON dump would clobber the markdown report we
+            # just wrote. Append instead of replace so both artifacts survive.
+            json_path = out_path.with_name(out_path.name + ".json")
+        dump_benchmark_json(json_path, workload=workload, results=results)
+        print(f"raw results wrote {json_path}")
+    except OSError as e:
+        print(f"could not write report: {e}", file=sys.stderr)
+        return 2
     return 0
 
 
