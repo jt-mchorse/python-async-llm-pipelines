@@ -599,3 +599,59 @@ just formatter scope.
 Pinning a ruff range in `.[dev]` is the deeper fix, but that is a dependency
 policy call across six repos rather than a bug fix, so it is flagged for JT
 rather than made unilaterally.
+
+## 2026-08-04 — Issue #90: a comment that named the goal while the code did the opposite
+
+`async_pipelines` has three public entry points, and on a fail-fast failure they
+raise three different things. `process` and `stream` let `TaskGroup`'s
+`ExceptionGroup` through with the original exception inside, so `except*
+ValueError` catches a failing `fn`. `dispatch_tool_calls` unwraps and re-raises
+`PipelineError`, so the same `except*` catches nothing and the type survives only
+as `__cause__`. And an unregistered tool name raises `ToolNotFoundError` bare,
+because that check sits in the pre-resolve loop outside the TaskGroup.
+
+Every doc that touched the subject said they were the same. The one that gave it
+away was a comment above the dispatcher's re-raise: *"via PipelineError (parity
+with `async_pipelines.process()`)"*. `process` does not raise `PipelineError`.
+The comment named the goal while the code achieved the opposite of it — which is
+precisely why it went unnoticed for so long, and which is a lens worth keeping: a
+comment asserting parity with a named sibling is a claim you can go and *run*.
+
+The dispatcher's docstring was wrong too ("the first exception propagates wrapped
+in `PipelineError`" — not for an unregistered name), `process`'s said the
+exception "propagates" (which reads as a bare `except ValueError` and matches
+nothing), `stream`'s said "see `process`", and architecture.md's D-006 called it
+"one mental model". The README was the only doc that had it right; its timeout
+example uses `except*`.
+
+The part I want to record is what happened next. I built the obvious fix for the
+third shape — wrap the unregistered-name raise like the branch nine lines below
+it — and it worked. Then it turned `test_dispatch_unknown_tool_fail_fast_raises_
+immediately` red. That test names and pins the bare raise on purpose. So the code
+was right and the docstring was wrong, and I reverted rather than overwrite a
+decision that already has a test behind it.
+
+The generalisable rule: before calling a contract asymmetry a bug, grep the suite
+for a test that names it. An explicitly named test means deliberate, which makes
+it a decision-revisit rather than a fix. Same conclusion the nextjs partial-json
+work reached, arrived at from the other direction.
+
+So this shipped as documentation plus tests, no behaviour change, and #90 is
+reclassified as a decision-revisit with three options written out. I lean toward
+wrapping only the unregistered-name path — the within-function inconsistency is
+the part that actually bites a caller, and the cross-function difference is
+defensible once it's documented — but it flips a deliberate test, so it's JT's
+call.
+
+The doc lock is the piece I'd reuse. Rather than banning the word "parity", it
+requires anything describing the dispatcher's failure mode to name all three
+shapes. A future editor restating the claim has to confront what differs, instead
+of being caught out by a keyword filter.
+
+Also swept and clean while I was in here: `process` and `stream` guard
+`concurrency`, `queue_size` and `timeout` thoroughly (int, not-bool, finite), and
+both acquire the semaphore *before* starting the timeout, so queue wait doesn't
+count against a per-item deadline. That ordering is easy to get wrong and both
+sites have it right.
+
+275 passed. Shipped as PR #91.

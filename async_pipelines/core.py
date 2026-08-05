@@ -118,9 +118,17 @@ async def process(
         concurrency: maximum number of concurrent ``fn`` calls. Enforced
             by an ``asyncio.Semaphore`` shared across the batch.
         return_exceptions: when False (default), the first exception
-            cancels every other in-flight task and propagates. When
-            True, exceptions land in the output list at the matching
-            index — useful when one bad document shouldn't lose 999.
+            cancels every other in-flight task and surfaces inside the
+            ``ExceptionGroup`` ``asyncio.TaskGroup`` raises — so catch it
+            with ``except* ValueError`` (or whatever ``fn`` raises), not a
+            bare ``except ValueError``, which matches nothing. The README's
+            timeout example shows the shape. When True, exceptions land in
+            the output list at the matching index — useful when one bad
+            document shouldn't lose 999.
+
+            ``dispatch_tool_calls`` deliberately differs: it unwraps and
+            re-raises ``PipelineError`` instead, so the original type is
+            reachable only via ``__cause__`` there (#90).
         timeout: optional per-item deadline in seconds. When set, each
             ``fn(item)`` call is wrapped in ``asyncio.timeout``; if it
             exceeds the deadline, a ``PipelineTimeoutError`` is raised
@@ -219,7 +227,9 @@ async def stream(
         fn: async callable taking one item, returning one result.
         concurrency: max consumer fan-out.
         queue_size: bounded queue size; controls backpressure.
-        return_exceptions: see ``process``.
+        return_exceptions: see ``process`` — including that a fail-fast
+            failure arrives inside a ``TaskGroup`` ``ExceptionGroup``, so
+            ``except*`` is the shape callers need.
         metrics: optional ``StreamMetrics`` instance written to
             in-place. When provided, ``producer_pauses``,
             ``producer_pause_seconds``, ``max_queue_depth``,

@@ -9,8 +9,14 @@ caller can hand them straight back to the model.
 
 Two failure modes:
 
-- Default fail-fast: the first tool that raises propagates, wrapped in
-  `PipelineError`. Same semantics as `async_pipelines.process()` (D-003 from #1).
+- Default fail-fast: the first tool that raises propagates wrapped in
+  `PipelineError`, with the original exception as `__cause__`. An
+  unregistered `ToolCall.name` is the exception to that: it raises
+  `ToolNotFoundError` bare, before any tool runs.
+  The *policy* mirrors `async_pipelines.process()` (D-003 from #1); the
+  *exception shape* does not — `process` lets TaskGroup's `ExceptionGroup`
+  through with the original exception inside, so `except* ValueError`
+  works there and not here (#90).
 - `return_exceptions=True`: each tool's exception is captured on the
   corresponding `ToolResult` and the batch completes. This is the
   "partial failures don't poison the batch" mode the issue calls for.
@@ -127,8 +133,18 @@ async def dispatch_tool_calls(
       tool_calls: the model's requested tool invocations.
       registry: name → async-callable lookup.
       return_exceptions: if True, capture each tool's exception on the
-        corresponding ToolResult and continue. If False (default), the first
-        exception propagates wrapped in PipelineError.
+        corresponding ToolResult and continue — including an unregistered
+        `ToolCall.name`, which lands as a failed `ToolResult` carrying a
+        `ToolNotFoundError` repr. If False (default), a *tool* that raises
+        propagates wrapped in `PipelineError`, with the original exception
+        as `__cause__` — but an *unregistered* `ToolCall.name` raises
+        `ToolNotFoundError` bare, before any tool runs, because that check
+        happens outside the TaskGroup that does the wrapping. Catch both,
+        or catch `Exception` (#90).
+
+        Note both differ from `process`/`stream`, which let TaskGroup's
+        `ExceptionGroup` through with the original exception inside — so
+        `except* ValueError` catches a failing `fn` there but not here.
       concurrency: optional upper bound on simultaneous in-flight calls.
         None (default) means unbounded — each tool runs as soon as it's
         scheduled.
@@ -161,6 +177,16 @@ async def dispatch_tool_calls(
             fn = registry.get(call.name)
         except ToolNotFoundError:
             if not return_exceptions:
+                # Raises bare, NOT wrapped in PipelineError like the TaskGroup
+                # handler below — this branch is outside the TaskGroup, so
+                # nothing wraps it. That is deliberate and pinned by
+                # `test_dispatch_unknown_tool_fail_fast_raises_immediately`;
+                # the docstring above used to claim otherwise, which is the
+                # part that was wrong. A caller following that claim and
+                # writing `except PipelineError` misses this path, and since
+                # `ToolNotFoundError` subclasses `KeyError`, an unrelated
+                # `except KeyError` upstack can swallow it. Whether that is
+                # the right trade is a maintainer call, filed as #90.
                 raise
             resolved.append((call, _make_missing_tool_stub(call.name)))
             continue
@@ -186,7 +212,17 @@ async def dispatch_tool_calls(
                 tg.create_task(_run_one(idx, call, fn))
     except* Exception as eg:
         # Default fail-fast: surface the first non-exception-recorded failure
-        # via PipelineError (parity with async_pipelines.process()).
+        # via PipelineError.
+        #
+        # This is deliberately NOT the shape `process`/`stream` raise, despite
+        # what this comment used to claim. They let TaskGroup's `ExceptionGroup`
+        # through with the original exception inside, so `except* ValueError`
+        # catches a failing `fn` there; here the type survives only as
+        # `__cause__`, and `except* ValueError` catches nothing. Whether the
+        # dispatcher should stop wrapping and match them is a public-API
+        # behaviour question left to the maintainer (#90) — the current shape is
+        # pinned by tests either way, and both are documented in the docstring
+        # above rather than asserted to be the same.
         first = eg.exceptions[0]
         if isinstance(first, PipelineError):
             raise first from eg

@@ -105,8 +105,17 @@ posture as `process` (D-006).
   back to the Anthropic API works without the caller threading
   per-call ids by hand.
 - **D-006 (mirrored).** Same fail-fast default + opt-in
-  `return_exceptions=True` as the rest of the package. One mental
-  model.
+  `return_exceptions=True` as the rest of the package. The *policy* is
+  one mental model; the *exception shape* is not, and the difference is
+  worth knowing before you write the `except`. `process` and `stream`
+  let `asyncio.TaskGroup`'s `ExceptionGroup` through with the original
+  exception inside, so `except* ValueError` catches a failing `fn`.
+  `dispatch_tool_calls` unwraps and re-raises `PipelineError`, so the
+  original type is reachable only via `__cause__` — catch
+  `PipelineError` there. And an unregistered `ToolCall.name` is a third
+  shape again: `ToolNotFoundError`, raised bare before any tool runs,
+  because that check sits outside the TaskGroup doing the wrapping.
+  Whether those three should be unified is open (#90).
 
 ---
 
