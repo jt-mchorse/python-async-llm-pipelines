@@ -655,3 +655,15 @@ count against a per-item deadline. That ordering is easy to get wrong and both
 sites have it right.
 
 275 passed. Shipped as PR #91.
+
+## 2026-08-13 — Escaping the one free-form cell in the benchmark table (#92)
+
+**Duration:** ~30 min · **Issue:** #92 · **PR:** #93
+
+`render_markdown` writes the 1000-doc benchmark table into `docs/benchmarks.md`, which is committed. `pipeline_name` is its one free-form cell — everything else is a formatted number — and it reached the table unescaped, so a pipe in the name added a column the header and separator didn't have. GitHub then draws a mangled grid rather than a value anyone would question.
+
+It's reachable rather than theoretical: `run_pipeline(pipeline: Any, docs)` reads `.name` off a caller-supplied object.
+
+The interesting part is how it was found. An hour earlier, closing the equivalent issue in vector-search-at-scale, I wrote that a sweep showed the portfolio's other markdown row builders already escape. That was overstated — I'd checked four repos and not this one. Re-reading my own claim turned up the eighth issue of the run, and I posted a correction on the earlier issue. The lesson is to enumerate what was actually checked before writing "the rest are clean".
+
+Two omissions are deliberate and both are pinned by tests rather than left implicit. Backticks aren't handled, because this cell isn't a code span and a backtick is inert here. And the sibling `bench_backpressure.py` gets no equivalent fix, because all nine of its cells are numbers — asserted in a test, so if someone later adds a free-form cell there, the test fails instead of the omission going quiet.

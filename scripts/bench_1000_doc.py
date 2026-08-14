@@ -98,9 +98,26 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     lines.append("| -------- | -----------: | -----: | ----------------: |")
     for r in results:
         speedup = "—" if r.speedup_vs_serial is None else f"{r.speedup_vs_serial:.2f}×"
+        # `pipeline_name` is the one free-form cell here — every other is a
+        # formatted number. It arrives via `run_pipeline(pipeline: Any, docs)`
+        # → `pipeline.name`, so any caller-supplied object with `.name` and
+        # `.run` reaches it. GFM splits table cells on unescaped pipes, so a
+        # `|` in the name added a column the header and separator lacked (data
+        # row 5 vs header 4) and GitHub drew a mangled grid — in
+        # `docs/benchmarks.md`, which is committed (#92). Escape `|` -> `\|`,
+        # which GitHub renders as a literal pipe contributing zero delimiters,
+        # so a genuinely pipe-bearing name still displays. Same fix as
+        # `load._escape_cell` (vector-search-at-scale #125),
+        # `aggregate_markdown` (embedding-model-shootout #79) and
+        # `comment._row_to_md` (rag-production-kit #130).
+        #
+        # Backticks are deliberately not neutralized: this cell is not an
+        # inline-code span, so a backtick is inert (verified — the table stays
+        # aligned). That variant is real only where the cell *is* a code span,
+        # which is what rag-production-kit #130 handles.
+        pipeline_name = r.pipeline_name.replace("|", "\\|")
         lines.append(
-            f"| {r.pipeline_name} | {r.duration_seconds:.3f} | "
-            f"{r.docs_per_second:.1f} | {speedup} |"
+            f"| {pipeline_name} | {r.duration_seconds:.3f} | {r.docs_per_second:.1f} | {speedup} |"
         )
     lines.append("")
     lines.append("## Reproduce")
