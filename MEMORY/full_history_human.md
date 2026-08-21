@@ -667,3 +667,64 @@ It's reachable rather than theoretical: `run_pipeline(pipeline: Any, docs)` read
 The interesting part is how it was found. An hour earlier, closing the equivalent issue in vector-search-at-scale, I wrote that a sweep showed the portfolio's other markdown row builders already escape. That was overstated — I'd checked four repos and not this one. Re-reading my own claim turned up the eighth issue of the run, and I posted a correction on the earlier issue. The lesson is to enumerate what was actually checked before writing "the rest are clean".
 
 Two omissions are deliberate and both are pinned by tests rather than left implicit. Backticks aren't handled, because this cell isn't a code span and a backtick is inert here. And the sibling `bench_backpressure.py` gets no equivalent fix, because all nine of its cells are numbers — asserted in a test, so if someone later adds a free-form cell there, the test fails instead of the omission going quiet.
+
+---
+
+## 2026-08-21 — two fields, one clock, opposite answers (#94)
+
+`RunResult` has two numbers worked out from the same `duration_seconds`:
+`speedup_vs_serial` and `docs_per_second`. When the duration was zero they
+disagreed about what that meant.
+
+`attach_speedup` returns `None`, and its comment explains the reasoning
+carefully: a run that took no measurable time is *infinitely fast*, so the ratio
+is undefined, and reporting `0.0` "reads as the slowest-possible result and would
+mis-rank it on a dashboard/plot". Twenty lines earlier, `run_pipeline` computed
+`docs_per_second` and fell back to exactly that `0.0` — on the `docs/s` column,
+which is the one a reader scans first to see whether async actually helped.
+
+The fix was already written in the same file. It just hadn't been applied to the
+second field.
+
+The interesting part was the deciding-whether-to-do-it part. Grepping for
+`docs_per_second` turned up this repo's own MEMORY: a session back in July had
+already found it, deferred it as "not churn worthy alone", and left a note saying
+to file it separately if pursued. So the question wasn't whether it was a bug —
+that was settled — but whether anything had changed.
+
+Something had. The deferral rested on reachability, so I measured it:
+`time.perf_counter()` returned identical consecutive values on 240 out of 2000
+back-to-back reads on this machine. A zero delta isn't a theoretical worry about
+clock resolution; it's simply what this clock does when the work between two
+reads is short enough, which a handful of documents against the fake LLM
+certainly is. That measurement is the whole argument for doing it now, and it's
+the one the earlier session didn't have.
+
+The earlier note also estimated the blast radius as `to_dict`, the markdown
+renderer, and the README doc-locks. In practice `to_dict` needed no change at all
+— `None` already serialized to `null` there for the sibling field — and the
+renderer needed one line, because the em-dash convention was already sitting
+directly above it. Worth remembering that a deferred estimate is a guess until
+someone reads the code.
+
+I did make one change beyond the minimum. The snapshot doc-lock formatted the
+cell with an unconditional `:.1f`. Once an artifact can legitimately contain
+`null`, that would crash the very lock meant to check it — so the cell now goes
+through a `None`-safe helper, matching the pair of helpers already there for the
+speedup column.
+
+And I nearly shipped a bad test. My first version of the invariant test
+constructed a `RunResult` with `docs_per_second=None` and asserted it was `None`
+— which is handing in the answer, and passed perfectly well against the unfixed
+source. Only two of eight tests were red. The helper now produces the result
+*from* `run_pipeline` with a frozen clock, and four are red. A test that
+constructs the value under test isn't evidence of anything.
+
+One case is deliberately left alone: an empty document list with a real elapsed
+time still reports `0.0 docs/s`. That zero is truthful — zero documents really
+were processed. Only a zero *duration* is undefined. It has its own test, because
+it's exactly the sort of thing a later reader would helpfully fold into the same
+branch.
+
+Nothing was regenerated. The committed benchmark JSON still carries its three
+real throughput numbers, and the doc-locks pass against it untouched.
