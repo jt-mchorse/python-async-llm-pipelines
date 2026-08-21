@@ -62,6 +62,17 @@ def bench_results() -> dict[str, dict]:
     return {r["pipeline_name"]: r for r in payload["results"]}
 
 
+def _dps_cell(value: float | None) -> str:
+    """Mirror the renderer's `docs/s` cell, including the undefined case.
+
+    `docs_per_second` became `float | None` in #94, so a committed artifact can
+    legitimately carry `null` for a zero-duration run. Formatting it with
+    `:.1f` unconditionally would crash this doc-lock on the very artifact it
+    exists to check. Same em-dash convention the renderer uses.
+    """
+    return "—" if value is None else f"{value:.1f}"
+
+
 def _readme_speedup(ratio: float) -> str:
     """Mirror the README's conditional speedup format: :.2f below 100, :.0f at/above."""
     if ratio < 100.0:
@@ -87,7 +98,7 @@ def test_readme_row_matches_bench_json(pipeline: str, bench_results: dict[str, d
     """The README's table row for `pipeline` must quote the JSON cells exactly."""
     r = bench_results[pipeline]
     duration_cell = f"{r['duration_seconds']:.3f}"
-    dps_cell = f"{r['docs_per_second']:.1f}"
+    dps_cell = _dps_cell(r["docs_per_second"])
     speedup_cell = _readme_speedup(r["speedup_vs_serial"])
 
     readme = README.read_text(encoding="utf-8")
@@ -124,7 +135,7 @@ def test_benchmarks_md_row_matches_bench_json(
     """The docs/benchmarks.md table row must quote the JSON cells exactly."""
     r = bench_results[pipeline]
     duration_cell = f"{r['duration_seconds']:.3f}"
-    dps_cell = f"{r['docs_per_second']:.1f}"
+    dps_cell = _dps_cell(r["docs_per_second"])
     speedup_cell = _bench_md_speedup(r["speedup_vs_serial"])
 
     text = BENCH_MD.read_text(encoding="utf-8")

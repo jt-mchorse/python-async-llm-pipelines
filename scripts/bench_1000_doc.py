@@ -115,10 +115,12 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
         # inline-code span, so a backtick is inert (verified — the table stays
         # aligned). That variant is real only where the cell *is* a code span,
         # which is what rag-production-kit #130 handles.
+        # Same em-dash convention as `speedup` above: a zero-duration run has an
+        # undefined rate, and printing `0.0` would rank the fastest row last in
+        # the column a reader scans first (#94).
+        dps = "—" if r.docs_per_second is None else f"{r.docs_per_second:.1f}"
         pipeline_name = r.pipeline_name.replace("|", "\\|")
-        lines.append(
-            f"| {pipeline_name} | {r.duration_seconds:.3f} | {r.docs_per_second:.1f} | {speedup} |"
-        )
+        lines.append(f"| {pipeline_name} | {r.duration_seconds:.3f} | {dps} | {speedup} |")
     lines.append("")
     lines.append("## Reproduce")
     lines.append("")
