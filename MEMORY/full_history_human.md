@@ -728,3 +728,32 @@ branch.
 
 Nothing was regenerated. The committed benchmark JSON still carries its three
 real throughput numbers, and the doc-locks pass against it untouched.
+
+### Postscript — two mistakes this issue cost me, both caught before merge
+
+**I committed regenerated benchmark artifacts.** A `git add -A` in a follow-up
+commit swept up `docs/benchmarks.json` and `docs/benchmarks.md`, which a local
+run had rewritten with fresh timings. Those timings disagreed with the README's
+quoted cells, and `test_bench_table_snapshot.py` — the lock that exists for
+precisely this — went red on CI. Both files are reverted to `main` in their own
+commit; the source fix is untouched.
+
+What made it slow to see is worth remembering. After the bad commit,
+`git status` read clean and `git diff HEAD` showed nothing, because the change
+was now *committed* rather than pending. The tell was that running the snapshot
+test on its own failed while an earlier full-suite run had passed. When asking
+what a branch actually changes, compare against `main`, not against the working
+tree.
+
+The rule: never `git add -A` in a repo that generates artifacts. Stage the paths
+you meant to change.
+
+**And I wrote a test that asserted a property of the host's clock.** It checked
+that `time.perf_counter()` can return two identical consecutive readings — true
+on this Mac, 240 times in 2000 — and it failed on the Linux CI runner, where
+20,000 back-to-back reads produced none at all. I had even written in its
+docstring that the deliberately weak threshold would stop it going flaky on a
+finer clock. That was the wrong diagnosis: the threshold isn't the problem, the
+subject is. Lowering it would have bought flakiness instead of an honest failure.
+The measurement belongs in the issue and in the code comment as the argument for
+fixing the bug; the behaviour belongs in a test with a frozen clock.
