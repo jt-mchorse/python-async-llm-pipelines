@@ -2,13 +2,13 @@
 
 - **Workload.** 1000 docs · 2 LLM calls per doc · 20 ms simulated per call · concurrency 32 · batch size 8
 - **Synthetic LLM disclosure.** Each call is a deterministic `await asyncio.sleep(0.02)`. The speedup ratios are load-bearing under this model; the absolute latency is per the simulated cost. Real-API numbers are a `FakeLLM` → `AnthropicLLM` swap; the `LLMClient` Protocol is the seam.
-- **Host.** CPython 3.14.0 on Darwin arm64, run on 2026-05-21.
+- **Host.** CPython 3.14.0 on Darwin arm64, run on 2026-05-15.
 
 | pipeline | duration (s) | docs/s | speedup vs serial |
 | -------- | -----------: | -----: | ----------------: |
-| serial | 43.333 | 23.1 | 1.00× |
-| async | 1.421 | 703.8 | 30.50× |
-| async+batched | 0.174 | 5749.9 | 249.16× |
+| serial | 43.311 | 23.1 | 1.00× |
+| async | 1.427 | 700.5 | 30.34× |
+| async+batched | 0.172 | 5800.1 | 251.21× |
 
 ## Reproduce
 
