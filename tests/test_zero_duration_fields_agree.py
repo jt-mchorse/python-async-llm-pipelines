@@ -56,25 +56,22 @@ def _zero_duration_result(monkeypatch, name: str = "instant") -> RunResult:
 
 
 # ----------------------------------------------------------------------
-# The premise: a zero delta is what this clock actually does
-# ----------------------------------------------------------------------
-
-
-def test_perf_counter_can_return_identical_consecutive_values() -> None:
-    """Reachability, measured rather than assumed.
-
-    240 of 2000 back-to-back reads were identical when this was written. The
-    assertion is deliberately weak (at least one in a large sample) so it does
-    not become flaky on a machine with a finer clock — the point is that this is
-    a property of the clock, not a hypothetical.
-    """
-    identical = sum(1 for _ in range(20_000) if time.perf_counter() - time.perf_counter() == 0.0)
-    assert identical > 0, "expected at least one zero delta in 20k back-to-back reads"
-
-
-# ----------------------------------------------------------------------
 # The invariant
 # ----------------------------------------------------------------------
+#
+# On reachability: `time.perf_counter()` returned identical consecutive values on
+# 240 of 2000 back-to-back reads on the macOS machine where this was written, so
+# a delta of exactly 0.0 is what that clock does when the bracketed work is short
+# enough. That measurement is the argument for fixing this at all, and it is
+# recorded in the issue and in `run_pipeline`'s comment.
+#
+# It is deliberately NOT asserted here. A first draft did assert it — weakly, at
+# "one zero delta in 20,000 reads" — and it still went red on the Linux CI
+# runner, whose clock is fine-grained enough to produce none at all. A test that
+# asserts a property of the host's clock is not a test of this repository, and
+# weakening the threshold would only have made it flaky rather than wrong. The
+# behaviour under test — a zero duration yielding `None` on both derived fields —
+# is exercised below with a frozen clock, which is portable and exact.
 
 
 def test_zero_duration_makes_both_derived_fields_none(monkeypatch) -> None:
