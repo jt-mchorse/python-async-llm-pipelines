@@ -757,3 +757,72 @@ finer clock. That was the wrong diagnosis: the threshold isn't the problem, the
 subject is. Lowering it would have bought flakiness instead of an honest failure.
 The measurement belongs in the issue and in the code comment as the argument for
 fixing the bug; the behaviour belongs in a test with a frozen clock.
+
+---
+
+## 2026-08-24 — Issue #96: three of four fields rejected `bool`; the fourth defines the benchmark
+
+**What got done.** `Workload.__post_init__` validates four fields. `n_docs`,
+`concurrency` and `batch_size` all reject `bool` explicitly. `llm_call_seconds`
+— the simulated per-call latency every published throughput number is built on
+— did not.
+
+The comment directly above those guards states the missing rule *and* names the
+harm for the very field it skipped:
+
+> bool subclasses int and flattens operator intent. NaN `llm_call_seconds`
+> skews the published throughput numbers because the simulated-latency sleep
+> becomes platform-dependent.
+
+Measured:
+
+```
+n_docs=True             ValueError     concurrency=True   ValueError
+batch_size=True         ValueError     llm_call_seconds=True   ACCEPTED
+llm_call_seconds='0.02' TypeError (raw, outside the class's ValueError contract)
+```
+
+**Why `bool` matters more on a latency field.** The value flows into
+`asyncio.sleep`, and `True` is one second. Measured: `asyncio.sleep(True)` slept
+**1.002 s** against a `0.020 s` default — a 50× inflation of the thing the whole
+benchmark measures. Magnitude comes from what the field feeds, not from the type
+alone.
+
+**A second harm worth always checking on a bool acceptance: the JSON egress.**
+`to_dict` is documented as pinning the contract for "downstream JSON consumers
+(notebook, CI parser, dashboard)", and it emitted:
+
+```json
+{"n_docs": 4, "llm_call_seconds": true, "concurrency": 32, "batch_size": 8}
+```
+
+A JSON **boolean** in a numeric field — rejected outright by a typed consumer,
+silently propagated into arithmetic by a loose one.
+
+**The sibling site had inherited the gap by design.** `make_batch_caller`'s
+`batch_seconds` guard (from #62) says it "mirrors `llm_call_seconds`" — and it
+did, including the missing `bool` check. `batch_seconds=True` made
+`asyncio.sleep` wait a full second per batch, inflating `speedup_vs_serial` with
+exactly the "plausible-but-wrong number" its own comment warns about. Fixing one
+and not the other would have repeated how the gap arrived. A comment saying
+"this mirrors X" is both a pointer to the next instance and a warning that X's
+gaps were copied too.
+
+**Scope discipline.** `int` and `0.0` stay accepted. A whole number of seconds
+is a legitimate duration, the annotation is `float`, and `0.0` (no simulated
+latency) is deliberately allowed by the existing `>= 0.0`. Tightening to "must
+be a `float` instance" would have been a different, wrong change.
+
+**On testing the 50× claim without asserting a host property.** The test asserts
+the *ratio* `float(True) / 0.020 == 50`, which is a statement about `True == 1`
+rather than about how fast this machine is, plus one cheap sleep to show the
+ratio is not a bookkeeping identity.
+
+**A negative result worth recording.** Before this, I swept all eight Python
+repos for `os.environ.get` / `os.getenv` looking for the Python analogue of the
+`??`-doesn't-default-an-empty-string class that produced four issues in the
+TypeScript repos today. Every site uses `or`, which treats `""` as falsy
+correctly. The Python half of the portfolio is clean on that class.
+
+**Tests.** 29 new; 12 fail against a one-line narrowed revert. Suite 291 → 320
+green, ruff clean.
