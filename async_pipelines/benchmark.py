@@ -33,6 +33,45 @@ from .core import process
 from .io_utils import atomic_write_text
 
 
+def _require_duration_seconds(value: object, field: str) -> float:
+    """Return `value` as a duration in seconds, or raise `ValueError`.
+
+    The rule the three integer fields of `Workload` already apply, extended to
+    the two *latency* seams that were checked with `math.isfinite` alone (#96).
+
+    `bool` is rejected for the reason `Workload.__post_init__`'s own comment
+    gives for the integer fields -- "bool subclasses int and flattens operator
+    intent" -- and the consequence here is larger than for an integer field.
+    Measured: `asyncio.sleep(True)` sleeps **1.002 s** where the default
+    `llm_call_seconds` is `0.020`, so `llm_call_seconds=True` silently rewrites
+    every published throughput figure by a factor of 50. That is the exact harm
+    the same comment names for `NaN`.
+
+    It also corrupted the JSON contract. `Workload.to_dict` is documented as
+    pinning the shape for "downstream JSON consumers (notebook, CI parser,
+    dashboard)", and `True` emitted::
+
+        {"n_docs": 4, "llm_call_seconds": true, "concurrency": 32, "batch_size": 8}
+
+    a JSON *boolean* in a numeric field -- rejected by a typed consumer,
+    silently propagated into arithmetic by a loose one.
+
+    Non-numeric types raise `ValueError` here rather than reaching
+    `math.isfinite` and coming back as a raw `TypeError`, so this class keeps
+    one exception contract.
+
+    Deliberately still accepted: a plain `int` (a whole number of seconds is a
+    legitimate duration, and the annotation is `float`) and `0.0` (no simulated
+    latency, which the existing `>= 0.0` allows on purpose). This is a guard on
+    type and sign, not a requirement that the value be a `float` instance.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a finite number >= 0.0; got {value!r}")
+    if not math.isfinite(value) or value < 0.0:
+        raise ValueError(f"{field} must be a finite number >= 0.0; got {value!r}")
+    return float(value)
+
+
 @dataclass(frozen=True)
 class Workload:
     """The task definition.
@@ -69,10 +108,10 @@ class Workload:
             raise ValueError(f"n_docs must be an int; got {self.n_docs!r}")
         if self.n_docs < 1:
             raise ValueError(f"n_docs must be >= 1; got {self.n_docs}")
-        if not math.isfinite(self.llm_call_seconds) or self.llm_call_seconds < 0.0:
-            raise ValueError(
-                f"llm_call_seconds must be a finite number >= 0.0; got {self.llm_call_seconds!r}"
-            )
+        # `bool` was the one hazard this field's own comment names and its own
+        # guard missed, while the three integer fields around it all reject it
+        # (#96). See `_require_duration_seconds`.
+        _require_duration_seconds(self.llm_call_seconds, "llm_call_seconds")
         if not isinstance(self.concurrency, int) or isinstance(self.concurrency, bool):
             raise ValueError(f"concurrency must be an int; got {self.concurrency!r}")
         if self.concurrency < 1:
@@ -322,10 +361,15 @@ def make_batch_caller(
     # in `asyncio.sleep` at first `call_batch`. `>= 0.0` mirrors
     # `llm_call_seconds`: 0.0 (no simulated latency) is legitimate. `None`
     # falls through to the validated llm-latency fallback and is fine.
-    if batch_seconds is not None and (not math.isfinite(batch_seconds) or batch_seconds < 0.0):
-        raise ValueError(
-            f"batch_seconds must be a finite number >= 0.0 when set, got {batch_seconds!r}"
-        )
+    #
+    # #96: this guard said it "mirrors `llm_call_seconds`" and it did -- including
+    # the gap. `batch_seconds=True` was accepted and made `asyncio.sleep(True)`
+    # wait a full second per batch instead of one call's latency, inflating
+    # `speedup_vs_serial` with exactly the "plausible-but-wrong number" this
+    # comment warns about. Fixing one site and not the other would have repeated
+    # how the gap got here.
+    if batch_seconds is not None:
+        _require_duration_seconds(batch_seconds, "batch_seconds")
 
     async def call_batch(items: list[str]) -> list[str]:
         # One simulated "round trip" for the batch, regardless of size.
