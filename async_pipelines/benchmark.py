@@ -105,7 +105,12 @@ class RunResult:
     pipeline_name: str
     n_docs: int
     duration_seconds: float
-    docs_per_second: float
+    #: Throughput, or ``None`` when ``duration_seconds`` is zero and the rate is
+    #: therefore undefined. ``float | None`` for the same reason
+    #: ``speedup_vs_serial`` is: a run that took no measurable time is
+    #: *infinitely fast*, and ``0.0`` reads as the slowest-possible result on
+    #: the one column a reader scans to see whether async helped (#94).
+    docs_per_second: float | None
     speedup_vs_serial: float | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -349,7 +354,24 @@ async def run_pipeline(pipeline: Any, docs: list[str]) -> RunResult:
         pipeline_name=pipeline.name,
         n_docs=len(docs),
         duration_seconds=elapsed,
-        docs_per_second=(len(docs) / elapsed) if elapsed > 0 else 0.0,
+        # `None`, not `0.0`, when the run took no measurable time. This is the
+        # rule `attach_speedup` already applies to the other field derived from
+        # this same `elapsed` -- and its comment spells out why: 0.0 "reads as
+        # the slowest-possible result and would mis-rank it on a dashboard/plot"
+        # (#60). The two fields disagreed until #94; measured on one RunResult
+        # with duration_seconds=0.0 and three documents processed,
+        # `speedup_vs_serial` was `None` and `docs_per_second` was `0.0`.
+        #
+        # Not a theoretical clock-resolution worry: `time.perf_counter()`
+        # returned identical consecutive values on 240 of 2000 back-to-back
+        # reads here, so a delta of exactly 0.0 is simply what this clock does
+        # when the bracketed work is short enough -- which a small doc count
+        # against `FakeLLM` is.
+        #
+        # An empty `docs` list with a non-zero elapsed is deliberately NOT this
+        # case: `0.0` docs/s is truthful there, because zero documents really
+        # were processed.
+        docs_per_second=(len(docs) / elapsed) if elapsed > 0 else None,
     )
 
 
