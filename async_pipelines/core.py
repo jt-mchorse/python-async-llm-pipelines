@@ -101,6 +101,63 @@ class StreamMetrics:
         }
 
 
+def _require_timeout_seconds(timeout: object) -> float | None:
+    """Return `timeout` as a positive finite number of seconds, `None`, or raise.
+
+    One definition, imported by every seam that takes a `timeout` -- `process`
+    and `stream` here, `dispatch_tool_calls` in `tool_dispatch`. It lived
+    inlined at all three, and diverged from the shape `#96` established for the
+    two latency seams in `benchmark.py`. That fix's docstring states both the
+    rule and the goal:
+
+        Non-numeric types raise `ValueError` here rather than reaching
+        `math.isfinite` and coming back as a raw `TypeError`, so this class
+        keeps one exception contract.
+
+    The class did not keep one exception contract, because the three `timeout`
+    seams -- the package's public API -- were never enumerated. Measured across
+    all three, with `stream`'s `queue_size` as the control (it already had the
+    safe spelling, three lines away, in the same function):
+
+        value       timeout=            queue_size= (control)
+        '5'         TypeError           ValueError
+        [1]         TypeError           ValueError
+        {'a': 1}    TypeError           ValueError
+        True        ACCEPTED            ValueError
+        False       ValueError          ValueError
+        nan / inf   ValueError          ValueError
+        -1 / 0      ValueError          ValueError
+
+    `TypeError: must be real number, not str` is not what a caller catching the
+    documented contract catches.
+
+    And `True` was accepted, which is `#96`'s own measured harm reached through
+    the other parameter. `asyncio.timeout(True)` is a one-second deadline::
+
+        timeout=True -> ExceptionGroup after 1.003s
+
+    against a 2.0 s task. An operator wiring `timeout` from a config table that
+    yields `True` gets a silent one-second deadline on every item and
+    `PipelineTimeoutError`s that look like real timeouts.
+
+    Deliberately still accepted: `None` (no deadline) and a plain `int` (a whole
+    number of seconds is a legitimate deadline, and the annotation is `float`) --
+    the same two exceptions `#96` argued for.
+
+    Deliberately NOT merged with `benchmark._require_duration_seconds`, which
+    allows `0.0` because "no simulated latency" is meaningful there. A zero
+    timeout is not a deadline, and the existing `<= 0` rule already said so.
+    Two rules with one shape, rather than one rule with a flag.
+    """
+    if timeout is None:
+        return None
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
+    return float(timeout)
+
+
 async def process(
     items: Iterable[T],
     fn: Callable[[T], Awaitable[R]],
@@ -150,8 +207,7 @@ async def process(
     # timeout behavior implementation-defined; +Infinity silently disables.
     if not isinstance(concurrency, int) or isinstance(concurrency, bool) or concurrency <= 0:
         raise ValueError(f"concurrency must be a positive int, got {concurrency!r}")
-    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
-        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
+    timeout = _require_timeout_seconds(timeout)
 
     items_list: list[T] = list(items)
     n = len(items_list)
@@ -244,8 +300,7 @@ async def stream(
         raise ValueError(f"concurrency must be a positive int, got {concurrency!r}")
     if not isinstance(queue_size, int) or isinstance(queue_size, bool) or queue_size <= 0:
         raise ValueError(f"queue_size must be a positive int, got {queue_size!r}")
-    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
-        raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
+    timeout = _require_timeout_seconds(timeout)
 
     queue: asyncio.Queue[T | _Sentinel] = asyncio.Queue(maxsize=queue_size)
     sentinel = _Sentinel()

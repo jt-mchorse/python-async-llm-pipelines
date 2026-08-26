@@ -826,3 +826,47 @@ correctly. The Python half of the portfolio is clean on that class.
 
 **Tests.** 29 new; 12 fail against a one-line narrowed revert. Suite 291 → 320
 green, ruff clean.
+
+## 2026-08-25 — #96 said it kept "one exception contract"; three seams disagreed (#98)
+
+**What got done.** `#96` fixed a class at the two latency seams in `benchmark.py`,
+and its docstring states the goal plainly: *"Non-numeric types raise `ValueError`
+here rather than reaching `math.isfinite` and coming back as a raw `TypeError`, so
+this class keeps one exception contract."* The three `timeout` seams — `process`,
+`stream`, `dispatch_tool_calls`, which is the package's whole public API — were
+never enumerated. `timeout="5"` raised a raw `TypeError: must be real number, not
+str`, and `timeout=True` was accepted outright. There is now one
+`_require_timeout_seconds` in `core`, imported by `tool_dispatch`.
+
+**How it was found.** One grep for `isfinite` across the package: six hits, two
+with the safe spelling and four without. The ratio was the finding before any
+guard was read.
+
+**The tightest piece of evidence.** `stream` validates three arguments.
+`concurrency` and `queue_size` both check `isinstance` first; `timeout`, three
+lines later, does not — under a comment reading "Integer + finite guards (#32) —
+see `process` for harm rationale". The defect was the minority spelling, and the
+majority was in the same function.
+
+**The harm, not just the wrong exception type.** `asyncio.timeout(True)` arms a
+one-second deadline. A 2.0 s task with `timeout=True` raised an `ExceptionGroup`
+after 1.003 s — indistinguishable from a real timeout, which is how an operator
+wiring `timeout` from a config table would experience it. That is `#96`'s own
+measured `asyncio.sleep(True) → 1.002 s`, reached through the other parameter.
+
+**A merge I decided against.** `benchmark._require_duration_seconds` is the same
+shape but allows `0.0` on purpose ("no simulated latency"), where a timeout must
+be strictly positive. Sharing one function with an `allow_zero` flag would make
+both call sites read worse. Two rules with one shape.
+
+**Open questions.** None. Probed `benchmark.py`'s two rate fields on the way past
+— `docs_per_second` and `speedup_vs_serial` both return `None` on a zero
+denominator, and the speedup guard covers both operands.
+
+**Tests.** 49 new (`tests/test_timeout_type_domain.py`) — the full matrix across
+all three seams, an accepted half so a reject-everything guard could not pass, and
+`queue_size` as the already-correct control so the file demonstrates the
+divergence rather than merely that a guard exists. Plus a lock that greps both
+modules for a re-inlined check. Neutering only the `isinstance` line turns 13 of
+49 red while every accepted row and the control stay green. Suite 320 → 369 green,
+ruff clean.
