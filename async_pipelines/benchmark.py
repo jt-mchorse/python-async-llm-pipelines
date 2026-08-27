@@ -21,6 +21,7 @@ swap: anything matching the `LLMClient` Protocol works (D-008).
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import math
 import time
@@ -153,11 +154,47 @@ class RunResult:
     speedup_vs_serial: float | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        # Ingress copy (#100). `frozen=True` says this object cannot change, and
+        # `extra` is its one mutable field -- so a caller who keeps a reference
+        # to the dict they passed in can change a "frozen" result afterwards.
+        # Measured before this:
+        #
+        #     src = {"nested": {"k": "original"}}
+        #     r = RunResult(..., extra=src)
+        #     src["nested"]["k"] = "MUTATED"; src["added"] = "AFTER"
+        #     -> r.extra == {'nested': {'k': 'MUTATED'}, 'added': 'AFTER'}
+        #
+        # A *new top-level key* appeared on a frozen result after construction.
+        #
+        # Deep, not shallow: `to_dict`'s copy was shallow and that is exactly
+        # the half that failed. And placing it here rather than at each call
+        # site is what fixes `attach_speedup`, which passes `extra=r.extra`
+        # straight through -- its outputs shared one dict with its inputs while
+        # its docstring said "Returns a new list".
+        #
+        # `object.__setattr__` because the dataclass is frozen; this is the
+        # documented way to normalize a field in a frozen `__post_init__`.
+        object.__setattr__(self, "extra", copy.deepcopy(self.extra))
+
     def to_dict(self) -> dict[str, Any]:
         """JSON-stable dict of the six fields; same rationale as
-        `Workload.to_dict`. `extra` is shallow-copied so callers cannot
-        accidentally mutate the frozen `RunResult`'s default through the
-        returned dict.
+        `Workload.to_dict`. `extra` is **deep**-copied, on the way in
+        (`__post_init__`) and on the way out, so neither the caller's original
+        dict nor the returned one aliases this frozen `RunResult` (#100).
+
+        It used to be shallow-copied here and not copied at all on the way in,
+        and the docstring claimed that made callers unable to mutate the result.
+        True at depth 1, false at depth 2::
+
+            d = r.to_dict()
+            d["extra"]["top"] = "X"          -> r.extra unchanged
+            d["extra"]["nested"]["k"] = "X"  -> r.extra["nested"]["k"] == "X"
+            d["extra"]["items"].append("X")  -> r.extra["items"] grew
+
+        The end of that chain is the published artifact: a caller mutating a
+        nested value in the dict this method hands back changed the number
+        `dump_benchmark_json` wrote to `docs/benchmarks.json`.
 
         `speedup_vs_serial` is preserved as `None` when **unattached** —
         i.e. no serial baseline has been computed: the `run_pipeline`
@@ -175,7 +212,7 @@ class RunResult:
             "duration_seconds": self.duration_seconds,
             "docs_per_second": self.docs_per_second,
             "speedup_vs_serial": self.speedup_vs_serial,
-            "extra": dict(self.extra),
+            "extra": copy.deepcopy(self.extra),
         }
 
 

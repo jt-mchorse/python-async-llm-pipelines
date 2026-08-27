@@ -870,3 +870,53 @@ divergence rather than merely that a guard exists. Plus a lock that greps both
 modules for a re-inlined check. Neutering only the `isinstance` line turns 13 of
 49 red while every accepted row and the control stay green. Suite 320 → 369 green,
 ruff clean.
+
+## 2026-08-26 — a frozen dataclass with a mutable field (#100)
+
+**What got done.** `RunResult.extra` was stored by reference on construction and
+shallow-copied by `to_dict`. Both seams now deep-copy, with the ingress copy in
+`__post_init__`.
+
+**This repo had two thorough empty hunts earlier in the same run** — parameter
+type-domain across the three public entry points (all five columns uniform) and
+the JSON write seam (already `ensure_ascii`-safe and range-guarded). A third axis
+paid. The 2026-08-25 rewrite of the two-empty-hunt rule held again: two empty
+hunts mean those two *axes* are exhausted, not the repo.
+
+**And the third axis was the prose-assertion lens applied as a grep.** I grepped
+the package for *guarantee / always / never / exactly / cannot / is preserved /
+by construction / identical* and read the hits. The second one was "`extra` is
+shallow-copied **so callers cannot** accidentally mutate". A claim with its own
+mechanism in it is the best kind, because you can check whether the mechanism
+achieves the claim — and here "shallow" isolates depth 1 and nothing below it.
+The word *shallow* was right there, next to the word *cannot*.
+
+**`frozen=True` is a tell.** A frozen dataclass with a `dict` or `list` field
+advertises an immutability it cannot deliver.
+
+**The ingress side was worse and nobody had looked.** The docstring discussed only
+the *returned* dict, so the constructor was never examined — mutating the source
+dict after construction changed the frozen result, including *adding a new
+top-level key*. A documented guarantee on one direction draws attention away from
+the other.
+
+**Putting the copy in `__post_init__` rather than at the call sites fixed
+`attach_speedup` for free**, since its `extra=r.extra` lands in the same
+constructor. When a field needs normalising, do it where the object is built.
+
+**The pre-existing test was named after the mechanism** —
+`test_run_result_to_dict_shallow_copies_extra` — and the mechanism was the bug.
+It mutates at depth 1, the one depth that worked, so it passed throughout. A test
+named after *how* instead of *what* keeps passing when the how is wrong. Renamed,
+and kept as the depth-1 regression it always was.
+
+**What made it `priority:high`:** the chain ends at `docs/benchmarks.json`.
+Mutating a nested value in the dict `to_dict()` handed back changed the
+`batch_size` written to that file from 8 to 1 — and that file is exactly what
+handoff §10's "do not invent benchmark numbers" is about. Trace an aliasing bug
+to the artifact it can change before deciding it is cosmetic.
+
+**Tests.** 19 new. Neutering the ingress deep-copy turns 6 red; reverting the
+egress one to `dict(self.extra)` turns 4 — exactly the depth-2, shared-state and
+artifact rows. Suite 369 → 388 green, ruff clean, `docs/benchmarks.json`
+byte-identical.

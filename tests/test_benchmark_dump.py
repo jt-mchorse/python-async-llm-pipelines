@@ -127,9 +127,17 @@ def test_attach_speedup_serial_row_serializes_as_one_not_none() -> None:
     assert by_name["async"]["speedup_vs_serial"] == pytest.approx(20.0)
 
 
-def test_run_result_to_dict_shallow_copies_extra() -> None:
+def test_run_result_to_dict_copies_extra() -> None:
     """Mutating the returned dict's ``extra`` must not touch the frozen
     `RunResult.extra` default.
+
+    Renamed from ``..._shallow_copies_extra`` (#100). The old name asserted the
+    *mechanism*, and the mechanism was the bug: a shallow copy isolates depth 1
+    and nothing below it, so this test passed while
+    ``d["extra"]["nested"]["k"] = ...`` reached the result. The property is what
+    matters and the name now says so. The depth-2 and ingress cases live in
+    ``test_run_result_extra_aliasing.py``; this one is kept as the depth-1
+    regression it always was.
     """
     original_extra: dict[str, Any] = {"k": 1}
     r = RunResult(
