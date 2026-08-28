@@ -25,6 +25,7 @@ Two failure modes:
 from __future__ import annotations
 
 import asyncio
+import copy
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -44,11 +45,35 @@ ToolFn = Callable[[dict[str, Any]], Awaitable[Any]]
 
 @dataclass(frozen=True)
 class ToolCall:
-    """One tool invocation request from the model."""
+    """One tool invocation request from the model.
+
+    **The record of a request, and it stays that.** `frozen=True` says this
+    object cannot change, and `arguments` is its one mutable field -- the same
+    shape `#100` fixed on `RunResult.extra`, which is this package's only other
+    frozen dataclass with a mutable field. Measured before this (#102)::
+
+        src = {"nested": {"k": "original"}}
+        call = ToolCall(id="t1", name="search", arguments=src)
+        src["nested"]["k"] = "MUTATED"; src["added"] = "AFTER"
+        -> call.arguments == {'nested': {'k': 'MUTATED'}, 'added': 'AFTER'}
+
+    A *new top-level key* on a frozen object after construction.
+
+    Deep, not shallow: `#100` measured that shallow was "exactly the half that
+    failed". `object.__setattr__` because the dataclass is frozen; this is the
+    documented way to normalize a field in a frozen `__post_init__`.
+
+    The matching egress copy lives in `_run_with_telemetry`, which hands `fn` a
+    per-invocation copy rather than this dict -- see there for why that one is
+    the half that makes results independent of `concurrency`.
+    """
 
     id: str
     name: str
     arguments: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "arguments", copy.deepcopy(self.arguments))
 
 
 @dataclass(frozen=True)
@@ -265,9 +290,35 @@ async def _run_with_telemetry(
     timeout: float | None,
 ) -> ToolResult:
     start = time.perf_counter()
+    # A per-invocation copy, not `call.arguments` itself (#102). `fn` is
+    # caller-supplied, and a tool that writes to its argument dict is an
+    # ordinary thing -- `args.setdefault("limit", 10)`, normalizing a field in
+    # place, accumulating. Handed the live dict, such a tool mutated the
+    # `ToolCall`, and because the calls run concurrently the *interleaving*
+    # decided what each one saw. Six calls sharing one dict, a tool doing
+    # `args["n"] += 1`:
+    #
+    #     concurrency=1 -> results=[1, 2, 3, 4, 5, 6]
+    #     concurrency=2 -> results=[2, 2, 4, 4, 6, 6]
+    #     concurrency=6 -> results=[6, 6, 6, 6, 6, 6]
+    #
+    # `concurrency` is documented as "optional upper bound on simultaneous
+    # in-flight calls" -- a throughput knob. It was deciding the answers, in a
+    # library whose whole subject is running things concurrently without
+    # changing what they mean.
+    #
+    # It does not need a shared dict to bite. With each `ToolCall` built from
+    # its own literal, `calls[0].arguments` still came back mutated, so the
+    # record of the request no longer described the request. `ToolResult`
+    # carries `elapsed_ms` and `error_repr` so a run is reconstructable
+    # afterwards; a `ToolCall` that silently records post-mutation state
+    # defeats that.
+    #
+    # Copied per invocation rather than once outside the try, so the retry-shaped
+    # second `await fn(...)` below starts from the same arguments as the first.
     try:
         if timeout is None:
-            value = await fn(call.arguments)
+            value = await fn(copy.deepcopy(call.arguments))
         else:
             # Attribute only the deadline's own firing to PipelineTimeoutError;
             # preserve fn's own TimeoutError (a downstream tool/socket timeout),
@@ -275,7 +326,7 @@ async def _run_with_telemetry(
             # apart from the deadline firing (#66).
             try:
                 async with asyncio.timeout(timeout) as cm:
-                    value = await fn(call.arguments)
+                    value = await fn(copy.deepcopy(call.arguments))
             except TimeoutError as exc:
                 if cm.expired():
                     raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc

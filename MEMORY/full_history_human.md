@@ -920,3 +920,48 @@ to the artifact it can change before deciding it is cosmetic.
 egress one to `dict(self.extra)` turns 4 — exactly the depth-2, shared-state and
 artifact rows. Suite 369 → 388 green, ruff clean, `docs/benchmarks.json`
 byte-identical.
+
+
+## 2026-08-27 - #102: "its one mutable field"
+
+`#100`, which I merged this morning, fixed `RunResult.extra` - a frozen dataclass
+whose one mutable field aliased the caller's dict. Its PR said `extra` was "its
+one mutable field", which is true of `RunResult` and reads like a statement about
+the package. A twenty-line script that lists every frozen dataclass with a
+`dict`/`list` field found two. One was fixed.
+
+`ToolCall.arguments` had the identical ingress defect - mutate the source after
+construction and a new top-level key appears on a frozen object - and a worse
+egress one, because `_run_with_telemetry` handed the live dict to a
+caller-supplied tool function. A tool that writes to its arguments is entirely
+ordinary. Six calls sharing one dict, with a tool doing `args["n"] += 1`,
+returned `[1,2,3,4,5,6]` at concurrency 1, `[2,2,4,4,6,6]` at 2 and `[6,6,6,6,6,6]`
+at 6. `concurrency` is documented as an upper bound on in-flight calls: a
+throughput knob that was deciding the answers, in a library whose subject is
+running things concurrently without changing what they mean. Worth asking of any
+performance dial whether it can change a result.
+
+The quieter harm is the one I would have missed without separate-dict cases:
+`ToolCall` is the record of a request, and after dispatch it no longer described
+the request. `ToolResult` carries `elapsed_ms` and `error_repr` so a run can be
+reconstructed afterwards; a telemetry pair with one mutable half is not a record.
+
+Three times this run a prior fix's own wording pointed at the site it missed -
+`#146`'s "the shape the bridge now uses", `#150`'s "which this catches", and now
+`#100`'s "its one mutable field". A scoped, true statement about one object reads
+as a survey, and nobody re-checks a survey. Worth grepping my own PRs for "its
+one" and "the only".
+
+Two things about how the tests are written. The concurrency assertion compares
+results *across* levels rather than to a hardcoded list, because the property is
+that the knob stops mattering - a fixed expectation would pass just as well if
+the knob started mattering differently - and a separate test pins the right
+answer so "consistently wrong" cannot slip through. And the structural walk
+asserts it found at least two classes, because a walk over a discovered
+population that finds nothing passes vacuously. That is the second time today I
+needed that arm.
+
+I also said in the plan I would measure the deepcopy cost rather than assert it
+was negligible. It is 2.6 microseconds, which is 26% of a no-op dispatch and
+under 0.3% of one that awaits a single millisecond. Both numbers went in the PR,
+including the unflattering one.
