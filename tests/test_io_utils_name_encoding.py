@@ -180,7 +180,7 @@ def test_atomic_write_text_long_unencodable_target_name_is_capped_not_refused(
         assert list(tmp_path.iterdir()) == []
 
 
-def _run(*args: str) -> subprocess.CompletedProcess[str]:
+def _run(*args: str) -> tuple[int, str]:
     """Drive a bench script in a real subprocess.
 
     Subprocess rather than in-process for two reasons: it exercises the actual
@@ -188,14 +188,22 @@ def _run(*args: str) -> subprocess.CompletedProcess[str]:
     back with `surrogateescape`, which is what a shell `$'bench\\xff.md'` does —
     and it gets the real `sys.stderr`, whose `backslashreplace` handler differs
     from the strict-encoding buffer a capture fixture substitutes.
+
+    Returns `(returncode, stderr)` with the streams captured as **bytes** and
+    decoded with `errors="replace"`, not via `text=True`. On a filesystem that
+    accepts the name (ext4, i.e. CI) the write succeeds, the child prints the
+    path, and `sys.stdout`'s `surrogateescape` handler puts the original raw
+    byte on the stream. `text=True` decodes that strictly *in the parent* and
+    raises `UnicodeDecodeError` inside `subprocess` — a failure of the harness,
+    not of the code under test.
     """
-    return subprocess.run(
+    proc = subprocess.run(
         [sys.executable, *args],
         cwd=str(_REPO_ROOT),
         capture_output=True,
-        text=True,
         check=False,
     )
+    return proc.returncode, proc.stderr.decode("utf-8", errors="replace")
 
 
 def test_bench_1000_doc_unencodable_out_has_no_traceback(tmp_path: Path) -> None:
@@ -211,13 +219,13 @@ def test_bench_1000_doc_unencodable_out_has_no_traceback(tmp_path: Path) -> None
     """
     out = tmp_path / ("bench" + SURROGATE + ".md")
 
-    proc = _run("scripts/bench_1000_doc.py", "--n", "20", "--out", str(out))
+    rc, stderr = _run("scripts/bench_1000_doc.py", "--n", "20", "--out", str(out))
 
-    assert "Traceback" not in proc.stderr, proc.stderr
-    assert "UnicodeEncodeError" not in proc.stderr, proc.stderr
+    assert "Traceback" not in stderr, stderr
+    assert "UnicodeEncodeError" not in stderr, stderr
     if not out.exists():
-        assert proc.returncode == 2
-        assert "could not write report" in proc.stderr
+        assert rc == 2
+        assert "could not write report" in stderr
 
 
 def test_bench_backpressure_unencodable_out_md_has_no_traceback(tmp_path: Path) -> None:
@@ -228,9 +236,9 @@ def test_bench_backpressure_unencodable_out_md_has_no_traceback(tmp_path: Path) 
     """
     out = tmp_path / ("bp" + SURROGATE + ".md")
 
-    proc = _run("scripts/bench_backpressure.py", "--out-md", str(out))
+    rc, stderr = _run("scripts/bench_backpressure.py", "--out-md", str(out))
 
-    assert "Traceback" not in proc.stderr, proc.stderr
-    assert "UnicodeEncodeError" not in proc.stderr, proc.stderr
+    assert "Traceback" not in stderr, stderr
+    assert "UnicodeEncodeError" not in stderr, stderr
     if not out.exists():
-        assert proc.returncode == 2
+        assert rc == 2
