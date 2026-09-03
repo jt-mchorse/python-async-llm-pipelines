@@ -1109,3 +1109,28 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-02T07:51Z
+issue: 104
+focus: the_temp_name_byte_budget_was_measured_in_strict_utf8_so_both_bench_scripts_reproduced_their_own_guards_stated_failure
+phase: night_session_multi_issue_loop_issue_8
+delta:
+  files_changed: 2
+  tests_added: 16
+  suite: 403_to_419_green
+measured:
+  pre_fix: "python scripts/bench_1000_doc.py --n 20 --out <tmp>/bench<U+DCFF>.md -> rc 1 with UnicodeEncodeError traceback; python scripts/bench_backpressure.py --out-md <tmp>/bp<U+DCFF>.md -> rc 1 same. BOTH after the benchmark had already run"
+  post_fix: "rc 2 with 'could not write report: [Errno 92] Illegal byte sequence' on APFS; on ext4 the write succeeds and it is rc 0"
+  equivalence: "os.fsencode and str.encode('utf-8') give the same count for every valid-utf8 NAME_VARIANTS row"
+  anti_vacuous: "reverting the single measurement line turns 10 of 16 red and leaves the 6 encodable-name controls green"
+context_for_next_session:
+  - PORTFOLIO_CLASS_EIGHTH_OF_NINE_leh_226_lco_205_rag_199_csl_178_prs_159_ems_135_vsas_137_and_this_ONLY_mcp_server_cookbook_filesystem_sandbox_py_LEFT
+  - THE_GUARD_STATED_ITS_OWN_FAILURE_MODE_AND_I_RAN_IT_AGAINST_A_NEIGHBOURING_INPUT_CLASS_bench_1000_doc_says_WITHOUT_THIS_GUARD_IT_ESCAPED_amain_AS_A_RAW_TRACEBACK_AT_EXIT_1_THE_SUCCESS_RANGE_AFTER_THE_BENCHMARK_ALREADY_RAN_and_an_unencodable_out_REPRODUCES_THAT_SENTENCE_WORD_FOR_WORD_because_UnicodeEncodeError_IS_A_ValueError_THIS_IS_THE_THIRD_REPO_THIS_RUN_WHERE_THE_GUARDS_OWN_PROSE_WAS_THE_TEST_CASE
+  - I_CHECKED_BOTH_SCRIPTS_NOT_JUST_THE_ONE_a_guard_is_PER_SCRIPT_and_the_shared_helper_feeds_a_POPULATION_of_them_bench_backpressure_has_the_MIRRORED_comment_and_the_MIRRORED_gap_ENUMERATE_THE_CALLERS_OF_THE_SHARED_HELPER_not_the_one_you_found_first
+  - THE_SUBPROCESS_IS_LOAD_BEARING_TWICE_real_argv_decoding_subprocess_fsencodes_the_arg_and_the_child_decodes_it_back_with_surrogateescape_AND_the_real_sys_stderr_backslashreplace_instead_of_a_capture_fixtures_STRICT_buffer_see_prs_159_where_that_manufactured_a_convincing_fake_second_bug
+  - HOST_SKEW_ext4_ACCEPTS_ANY_NON_NUL_BYTE_IN_A_NAME_so_ON_CI_THE_WRITE_SUCCEEDS_while_APFS_RETURNS_EILSEQ_assert_NO_TRACEBACK_plus_IF_NOTHING_WAS_WRITTEN_THE_CODE_IS_2
+  - NOTE_THIS_REPOS_VENV_HAS_NO_MYPY_INSTALLED_ruff_check_and_ruff_format_check_are_the_local_gates
+decisions_made: []
+followups: []
+---

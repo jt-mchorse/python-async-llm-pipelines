@@ -965,3 +965,67 @@ I also said in the plan I would measure the deepcopy cost rather than assert it
 was negligible. It is 2.6 microseconds, which is 26% of a no-op dispatch and
 under 0.3% of one that awaits a single millisecond. Both numbers went in the PR,
 including the unflattering one.
+
+## 2026-09-02 — #104: both bench scripts reproduced their own guards' stated failure
+
+`io_utils._cap_base_for_temp` shortens a destination's basename before it goes
+into the temp filename `.<base>.<random>.tmp`. Its comment says "Budget is in
+BYTES (NAME_MAX is a byte limit)", and that is true. The code under it counted
+`base.encode("utf-8")` with the strict error handler, which is a *different*
+set of bytes from the ones NAME_MAX limits.
+
+The two counts agree for every name that is valid UTF-8 and disagree for the
+rest by raising. POSIX path bytes — and `sys.argv` — decode through
+`surrogateescape`, so a byte that isn't valid UTF-8 arrives as a lone surrogate
+in U+DC80–U+DCFF, and strict encoding refuses it. `--out $'bench\xff.md'` was
+enough: the cap raised `UnicodeEncodeError` before it ever got as far as
+measuring anything.
+
+**The guard already wrote the sentence.** `bench_1000_doc.py` wraps its write
+and explains what the arm is for: "Without this guard it escaped `amain` as a
+raw traceback at exit 1 — the 'success' range — *after* the benchmark already
+ran." `UnicodeEncodeError` is a `ValueError`, not an `OSError`, so an
+unencodable `--out` walks past the arm and reproduces that sentence word for
+word. Measured: rc 1 with a traceback, after the full benchmark.
+
+And I checked *both* scripts, not just the one I found first.
+`bench_backpressure.py` carries the mirrored comment on `--out-md` /
+`--out-json` and the mirrored gap — measured, also rc 1. A guard is per-script,
+and a shared helper feeds a population of them; enumerate the callers rather
+than fixing the first one. `benchmark.dump_benchmark_json` is library-public and
+calls `atomic_write_text` bare, so an embedding caller written against the
+`OSError` a plain `Path.write_text` of that target raises was exposed too.
+
+The fix is one line: measure with `os.fsencode`, the filesystem encoding plus
+its own error handler, which is exactly what the kernel receives.
+
+**On testing.** Both CLI assertions run in real subprocesses, and that is
+load-bearing twice: it exercises the actual argv road (`subprocess` fsencodes
+the argument and the child decodes it back with `surrogateescape`, which is what
+a shell `$'bench\xff.md'` does), and it gets the real `sys.stderr` with its
+`backslashreplace` handler rather than the strict-encoding buffer a capture
+fixture substitutes — which in the sibling `prompt-regression-suite` work
+manufactured a very convincing second "bug" that does not exist.
+
+The host must not decide the verdict either: ext4 accepts any non-NUL byte in a
+filename so on CI the write succeeds, while APFS returns `EILSEQ`. What is
+asserted is "no traceback, and if nothing was written the code is 2". The
+pure-function half is a variant table over short/long crossed with ASCII,
+multibyte, surrogate-bearing and mixed, asserting the capped name is a
+character-boundary prefix, within budget, and **maximal** — that last one
+because a cap returning `""` for everything satisfies the first two.
+
+Reverting the single measurement line turns 10 of the 16 new assertions red and
+leaves the 6 encodable-name controls green.
+
+**Why this work, this session:** found by grepping the portfolio for
+`_MAX_TEMP_BASE_BYTES` after hitting the same defect in `llm-eval-harness#226`.
+This repo's only other open issue is a JT-gated decision-revisit (#90), so this
+class was the actionable work here.
+
+**Open questions / blockers:** none. Note for future sessions: this repo's
+`.venv` has no `mypy` installed, so `ruff check` and `ruff format --check` are
+the local gates.
+
+**Next session:** one copy of the helper is left in the portfolio —
+`mcp-server-cookbook`'s `filesystem-sandbox-py`.

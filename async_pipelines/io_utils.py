@@ -39,11 +39,46 @@ from pathlib import Path
 _MAX_TEMP_BASE_BYTES = 200
 
 
+def _name_bytes(base: str) -> int:
+    """Length of *base* in the bytes the filesystem actually sees.
+
+    `os.fsencode`, not `base.encode("utf-8")` (#104). Both halves of the
+    comment above are true and the old implementation still counted the wrong
+    bytes: NAME_MAX limits the bytes handed to the kernel, which is
+    `os.fsencode` — `sys.getfilesystemencoding()` together with
+    `sys.getfilesystemencodeerrors()`, i.e. `surrogateescape` on POSIX.
+
+    That handler is why the distinction bites rather than being pedantry. A
+    path byte that is not valid UTF-8 arrives in Python as a lone surrogate in
+    `U+DC80..U+DCFF`, and strict `str.encode("utf-8")` refuses to encode it —
+    so `_cap_base_for_temp` used to raise `UnicodeEncodeError` on a destination
+    the OS can name, *before* reaching the length question. `sys.argv` decodes
+    with the same handler, so `--out $'bench\\xff.md'` is enough.
+
+    `UnicodeEncodeError` is a `ValueError`, so neither bench script's
+    `except OSError` guard caught it — and both guards exist to prevent exactly
+    what it produced. `bench_1000_doc.py`: "Without this guard it escaped
+    `amain` as a raw traceback at exit 1 — the 'success' range — *after* the
+    benchmark already ran". `bench_backpressure.py` carries the mirrored
+    comment for `--out-md` / `--out-json`. Measured, both exited 1 with a
+    traceback on a name carrying one non-UTF-8 byte.
+    `benchmark.dump_benchmark_json` is library-public and calls
+    `atomic_write_text` bare, so an embedding caller written against the
+    `OSError` a plain `Path.write_text` of that target raises was exposed too.
+
+    `os.fsencode` never raises: `surrogateescape` on POSIX, `surrogatepass` on
+    Windows, so every `str` a `Path` can hold round-trips. For a name that is
+    valid UTF-8 it returns exactly the old number, so the budget is unchanged
+    for every name that worked before.
+    """
+    return len(os.fsencode(base))
+
+
 def _cap_base_for_temp(base: str) -> str:
-    if len(base.encode("utf-8")) <= _MAX_TEMP_BASE_BYTES:
+    if _name_bytes(base) <= _MAX_TEMP_BASE_BYTES:
         return base
     out = base
-    while out and len(out.encode("utf-8")) > _MAX_TEMP_BASE_BYTES:
+    while out and _name_bytes(out) > _MAX_TEMP_BASE_BYTES:
         out = out[:-1]
     return out
 
