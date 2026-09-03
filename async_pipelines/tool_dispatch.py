@@ -49,8 +49,7 @@ class ToolCall:
 
     **The record of a request, and it stays that.** `frozen=True` says this
     object cannot change, and `arguments` is its one mutable field -- the same
-    shape `#100` fixed on `RunResult.extra`, which is this package's only other
-    frozen dataclass with a mutable field. Measured before this (#102)::
+    shape `#100` fixed on `RunResult.extra`. Measured before this (#102)::
 
         src = {"nested": {"k": "original"}}
         call = ToolCall(id="t1", name="search", arguments=src)
@@ -66,6 +65,12 @@ class ToolCall:
     The matching egress copy lives in `_run_with_telemetry`, which hands `fn` a
     per-invocation copy rather than this dict -- see there for why that one is
     the half that makes results independent of `concurrency`.
+
+    This docstring used to end the sentence above with "which is this package's
+    only other frozen dataclass with a mutable field". There are **three**, and
+    the third is `ToolResult` immediately below (#106). A scoped, true-sounding
+    count reads as a completed enumeration, so nobody re-counts -- which is how
+    a class in the same file stayed invisible.
     """
 
     id: str
@@ -82,6 +87,29 @@ class ToolResult:
 
     `ok=True` → `value` is the tool's return.
     `ok=False` → `error_repr` is `repr(exception)`; `value` is None.
+
+    **`value` is the tool's own object, not a snapshot of it, and that is
+    currently unresolved rather than decided (#106).** This is the third frozen
+    dataclass in the package with a mutable field, and the only one that does
+    not deep-copy it -- `RunResult.extra` (#100) and `ToolCall.arguments`
+    (#102) both do. Measured consequences::
+
+        a tool returning state it retains -> the frozen record gains a new
+            top-level key after construction, verbatim the shape #102 fixed
+        ToolResult(..., value=src)        -> aliases the caller's object
+        three calls to one tool returning
+            one object                    -> rs[0].value is rs[1].value
+
+    It is stated here rather than fixed because the two obvious answers pull
+    opposite ways and both cost something real. `arguments` is model-supplied
+    JSON: small and always copyable. `value` is `Any`, so a `deepcopy` can
+    *fail* on a connection or a file handle -- turning a successful call into a
+    crash at the record boundary -- and costs a full copy per result on the hot
+    path of a benchmark harness, in the repo whose spine is performance.
+
+    `tests/test_frozen_mutable_field_policy.py` pins the current behaviour and
+    requires every frozen dataclass with a mutable field to be classified, so
+    whichever way #106 goes it lands as a diff to an assertion.
     """
 
     tool_call_id: str
