@@ -1029,3 +1029,53 @@ the local gates.
 
 **Next session:** one copy of the helper is left in the portfolio —
 `mcp-server-cookbook`'s `filesystem-sandbox-py`.
+
+## 2026-09-03 — #106: "this package's only other" was counting two of three
+
+`ToolCall`'s docstring, added by #102, said `arguments` was the same shape #100
+fixed on `RunResult.extra`, "which is this package's only other frozen
+dataclass with a mutable field". `ToolResult` is a frozen dataclass with a
+mutable field, declared three lines below that sentence.
+
+An AST sweep finds exactly three: `RunResult.extra` (copies, #100),
+`ToolCall.arguments` (copies, #102), `ToolResult.value` (does not). The claim
+counted two of three, and the missing one was in the same file.
+
+Measured, and it is not theoretical. A tool that returns state it retains — an
+accumulator, a cache entry — makes the frozen `ToolResult` gain a **new
+top-level key after construction**, which is verbatim the sentence #102 wrote
+about its own sibling. The constructor aliases a caller's object. And three
+results from three calls to one tool are the *same object*, so mutating any one
+record's `value` mutates the others.
+
+**I did not ship the obvious fix, and I think that is right.** `deepcopy`
+matches the two siblings, but the siblings' field is `dict[str, Any]` from a
+model — small and always copyable. `ToolResult.value` is `Any` and holds
+whatever the tool returned. A blanket copy can *fail* on a connection or a file
+handle, turning a successful call into a crash at the record boundary; and it
+costs a full copy per result on the hot path of a benchmark harness, in the
+repo whose spine is performance. The sibling field's *type* is what decides
+whether the sibling's fix transfers, and here it does not transfer cleanly.
+Three options with their costs are written up in the issue for JT.
+
+What ships is the guard that would have caught it. Every frozen dataclass in
+the package with a mutable field must be classified: it deep-copies, or it is
+on an explicit documented-alias list naming the issue that owns the question.
+The population is discovered by AST rather than hand-listed, because
+hand-listing is the defect. `Any` is in the annotation set on purpose —
+dropping it is exactly what hid `ToolResult`, and the variant that drops it
+turns three tests red.
+
+`ToolResult`'s behaviour is characterized, not approved, with the two fixed
+siblings beside it as controls so the assertion reads as an asymmetry rather
+than as normal. The most useful test is the one for the fix I *didn't* ship:
+`test_a_non_deepcopyable_return_survives_today` goes red the moment someone
+lands a blanket copy, so the tradeoff is enforced rather than merely written
+down.
+
+One process note: `ruff format` collapsed a multi-line call I had just written,
+and my follow-up string replacement — which targeted the multi-line form —
+matched nothing and reported success. After a format run, re-read the line
+being patched or assert the replacement actually happened.
+
+**Next session:** #90 and #106 are both open decision-revisits for JT.
