@@ -1134,3 +1134,27 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-03T08:20Z
+issue: 106
+focus: 102s_docstring_said_two_frozen_dataclasses_with_mutable_fields_and_ToolResult_is_the_third_three_lines_below
+phase: night_session_multi_issue_loop_issue_6
+delta:
+  files_changed: 2
+  tests_added: 11
+  suite: 419_to_430_green
+measured:
+  reproduction: "a tool returning state it retains -> frozen ToolResult gains a NEW TOP-LEVEL KEY after construction, verbatim #102's own sentence. ToolResult(value=src) aliases src. THREE results from three calls to one tool are the SAME object, so mutating one record's value mutates all three"
+  control: "ToolCall.arguments and RunResult.extra both isolate correctly (#100/#102) - the asymmetry is what is asserted, not the raw behaviour"
+  anti_vacuous: "FOUR variants - un-classify ToolResult 1 red; drop 'Any' from the annotation scan 3 red; ToolCall stops copying 2 red; THE DECISION LANDING AS A BLANKET COPY turns 4 red INCLUDING the non-deepcopyable-return case"
+context_for_next_session:
+  - A_FIXS_OWN_WORDING_POINTS_AT_THE_SITE_IT_MISSED_PAID_AGAIN_this_packages_ONLY_OTHER_frozen_dataclass_with_a_mutable_field_is_a_SCOPED_TRUE_SOUNDING_COUNT_and_the_third_class_is_THREE_LINES_BELOW_THE_SENTENCE_grep_your_merged_PRs_for_only_other_and_its_one_and_the_only_remaining
+  - I_DID_NOT_SHIP_THE_OBVIOUS_FIX_AND_THAT_WAS_THE_RIGHT_CALL_deepcopy_matches_the_two_siblings_BUT_value_is_Any_so_it_can_FAIL_on_a_connection_turning_a_SUCCESSFUL_call_into_a_crash_AT_THE_RECORD_BOUNDARY_and_costs_a_full_copy_per_result_ON_THE_HOT_PATH_OF_THE_PERFORMANCE_REPO_THE_SIBLING_FIELDS_TYPE_DECIDES_WHETHER_THE_SIBLINGS_FIX_TRANSFERS
+  - THE_SHAPE_TO_SHIP_WHEN_THE_FIX_IS_A_DECISION_correct_the_false_claim_CHARACTERIZE_the_behaviour_and_add_a_CLASSIFICATION_LOCK_every_member_of_the_discovered_population_must_be_on_COPIES_or_on_DOCUMENTED_ALIASES_naming_the_issue_that_owns_it_SO_A_FOURTH_CLASS_CANNOT_ARRIVE_UNCLASSIFIED_and_the_decision_cannot_land_silently
+  - PUT_Any_IN_THE_MUTABLE_ANNOTATION_SET_dropping_it_is_EXACTLY_what_hid_ToolResult_value_Any_and_the_R2_variant_proves_it_3_red_A_SCAN_THAT_LOOKS_FOR_dict_list_set_IS_TECHNICALLY_CORRECT_AND_MISSES_THE_CASE_IT_EXISTS_FOR
+  - AND_TEST_THE_CRASH_RISK_OF_THE_FIX_YOU_DIDNT_SHIP_test_a_non_deepcopyable_return_survives_today_goes_RED_the_moment_someone_lands_a_blanket_copy_so_the_tradeoff_is_enforced_not_just_documented
+  - GOTCHA_ruff_format_COLLAPSED_MY_MULTI_LINE_CALL_and_my_follow_up_string_replace_targeting_the_multi_line_form_SILENTLY_MATCHED_NOTHING_after_a_format_run_ALWAYS_re_read_the_line_you_are_patching_or_assert_the_replacement_happened
+decisions_made: []
+followups: []
+---
