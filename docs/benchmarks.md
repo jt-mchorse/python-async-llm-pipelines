@@ -18,4 +18,4 @@ python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
 
 ## Real-API mode (operator action)
 
-Swap `FakeLLM` for an Anthropic adapter that conforms to the `LLMClient` Protocol (`async __call__(prompt: str) -> str`) and re-run. The same script writes the same table; the speedup ratios will widen because real API I/O has more headroom for fan-out than the synthetic 20 ms sleep does.
+Swap `FakeLLM` for an Anthropic adapter that conforms to the `LLMClient` Protocol (`async __call__(prompt: str) -> str`) and re-run. The same script writes the same table. Expect the speedup ratios to be **lower** than the synthetic ones above, not higher: `FakeLLM`'s pure-wait `asyncio.sleep` has no per-request CPU, socket, TLS or JSON cost, so it fans out perfectly and the ratios here are the theoretical upper bound. Real API I/O adds that overhead and is additionally bounded by rate limits and connection-pool limits, so real-API speedups land in the 5-20x spec range. Batch API workloads are the documented exception and can exceed it.

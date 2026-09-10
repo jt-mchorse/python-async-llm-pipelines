@@ -133,12 +133,28 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     lines.append("")
     lines.append("## Real-API mode (operator action)")
     lines.append("")
+    # The direction of this claim is load-bearing and it used to be backwards
+    # (#108). It said the ratios "will widen because real API I/O has more
+    # headroom for fan-out than the synthetic 20 ms sleep does", which inverts
+    # the README's own honest-framing paragraph: a pure `await
+    # asyncio.sleep(0.02)` has zero per-request CPU, socket, TLS and JSON cost,
+    # which is exactly why it fans out perfectly, so the synthetic ratio is the
+    # CEILING. Real I/O adds all of that plus rate limits and connection-pool
+    # limits, and fans out worse. `scripts/capture_demo.sh` carried the same
+    # inverted sentence and is corrected with it;
+    # `tests/test_real_api_claim_direction.py` locks the direction of both,
+    # rather than either phrasing.
     lines.append(
         "Swap `FakeLLM` for an Anthropic adapter that conforms to the "
         "`LLMClient` Protocol (`async __call__(prompt: str) -> str`) and "
-        "re-run. The same script writes the same table; the speedup "
-        "ratios will widen because real API I/O has more headroom for "
-        "fan-out than the synthetic 20 ms sleep does."
+        "re-run. The same script writes the same table. Expect the speedup "
+        "ratios to be **lower** than the synthetic ones above, not higher: "
+        "`FakeLLM`'s pure-wait `asyncio.sleep` has no per-request CPU, socket, "
+        "TLS or JSON cost, so it fans out perfectly and the ratios here are "
+        "the theoretical upper bound. Real API I/O adds that overhead and is "
+        "additionally bounded by rate limits and connection-pool limits, so "
+        "real-API speedups land in the 5-20x spec range. Batch API workloads "
+        "are the documented exception and can exceed it."
     )
     lines.append("")
     return "\n".join(lines)
