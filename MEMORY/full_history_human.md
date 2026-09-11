@@ -1143,3 +1143,54 @@ that the doc names a host and a date, and wrote up the two coherent fixes for JT
 **Open questions / blockers:** #109 is a new JT decision about the shape of a
 committed artifact that external parsers read. #106 and #90 remain JT-gated and
 untouched.
+
+## 2026-09-11 — the OOM-safety invariant was claimed over every `n` and shown at one (#111)
+
+**What got done.** `stream`'s headline safety property is that peak in-memory items are
+O(`queue_size`), not O(producer_rate × time). That claim was stated as quantified over
+`n` in three places and demonstrated at a single point in all of them.
+
+`docs/backpressure.md` said the bound holds "in every row above regardless of `n`", and
+every row had `n=5000`. It could not have been otherwise: the benchmark had no `n` axis
+at all — `--n` is a scalar, and the only row multiplier was `--compare`, whose own
+comment says it adds "a **same-n** / 4x-queue cell". The generator knew `n` was fixed
+and the generated document claimed independence from it. The unit test said "No matter
+how many items flow through" and ran one `n` at one `queue_size`, which a bound
+accidentally hardcoded to 8 passes exactly as written.
+
+The third surface was live drift. The README publishes its own table and links to
+`docs/backpressure.md` as the "full report", and the table was from a different run —
+3.051 seconds against 3.371, 2707 pauses against 2523. `max_queue_depth` agreed in
+both, which is the useful part: when two runs of one command disagree, the columns that
+*match* are the host-independent ones, and those are the columns worth locking.
+
+So the claim now lives where it can be proved without a particular machine: a
+parametrised table across `n < queue_size`, `n == queue_size` and `n >> queue_size` at
+four queue sizes, with a companion test that runs the two wrong bounds over the same
+rows and fails if neither is violated. The trivially-satisfied row is included and
+labelled as proving nothing on its own, so nine rows are not misread as nine
+independent pieces of evidence. The benchmark gained a `--compare-n` axis, and the
+renderer now computes its claim sentence from the rows it actually has — run it without
+the flag and it says so, instead of repeating the over-claim.
+
+**My first version did not survive its own falsification.** Reverting the invariant test
+to its original single point while leaving the case table in place turned *nothing* red:
+the companion test iterates the table directly, so it kept passing while the evidence
+quietly shrank from nine rows to one. A case table with no assertion that it is wired
+into the test it was written for is one the next edit can orphan — the same lesson the
+call-site arm in `mcp-server-cookbook#172` taught me earlier in this same session. That
+neighbour is red now.
+
+**The pinning is split on purpose, and the split is asserted.** `n`, `queue_size` and
+`max_queue_depth` describe the algorithm and are pinned across all three surfaces. The
+timing columns describe a machine; they are pinned for the `.md`-against-`.json` pair,
+which comes from one run and so is deterministic, and deliberately not against the
+README. Locking a wall-clock number across runs is an assertion about this laptop, and
+that is how a lock becomes flaky and then gets deleted.
+
+**Why this was prioritized.** All three of this repo's open issues are decision-revisits
+waiting on JT, so the work came from hunting, and "does the artifact demonstrate the
+claim it is cited for" is the method that has paid in four repos tonight.
+
+**Open questions / blockers:** none for #111. Regenerating the artifact re-stamps the
+rendering host and date, which is exactly #109's point — left alone deliberately.
