@@ -1079,3 +1079,67 @@ matched nothing and reported success. After a format run, re-read the line
 being patched or assert the replacement actually happened.
 
 **Next session:** #90 and #106 are both open decision-revisits for JT.
+
+---
+
+## 2026-09-10 — the performance repo's headline claim was inverted (#108)
+
+**Focus:** `docs/benchmarks.md`, `scripts/bench_1000_doc.py`, and the
+60-second demo's narration.
+
+**Why the docs.** This repo's code axes have been swept to an empty result four
+times, and both open issues are genuinely JT-gated — #106 asks JT to choose
+between three API options for `ToolResult.value` and its unambiguous half
+already shipped in #107; #90 is a "unify or document?" on exception types. So
+the only unswept surface was the published artifacts. That turned out to be
+where the problem was.
+
+**What got done.** The README has a paragraph literally titled "Honest framing
+on the numbers", and it gets the physics right: a pure `await
+asyncio.sleep(0.02)` has zero per-request CPU, socket, TLS and JSON cost, which
+is exactly why it fans out perfectly, so the synthetic 30× is the *theoretical
+upper bound* and real-API speedups land below it in the 5–20× spec range.
+`README.md:41` says the same thing a second time.
+
+`docs/benchmarks.md` said the opposite: the ratios "will widen because real API
+I/O has more headroom for fan-out than the synthetic 20 ms sleep does". Real
+having *more* headroom than a pure sleep is backwards, and it puts real-API
+numbers above 30× — outside the range the README quotes as the answer. The same
+sentence is narrated in the 60-second demo, which is one of the six items in the
+portfolio quality bar, so a viewer was being told real numbers would beat what
+they had just watched. Nothing in `tests/` mentioned either.
+
+**The numbers were never the problem, and that is now a test rather than a
+claim.** Re-derived from the workload the artifact declares: serial's floor is
+40.0s against 43.311s measured, async's 1.25s against 1.427s, batched's 0.156s
+against 0.172s. Each sits just above its theoretical floor and the JSON agrees
+with the markdown to the digit.
+
+**Two process choices worth keeping.** The locks assert the claim's *direction*,
+never a phrasing — a substring match on one wording would go red on any rewrite
+and would not have caught this, because the inverted sentence was perfectly
+well-formed prose. And they assert the *positive* as well: the neighbour that
+simply deletes the paragraph satisfies a "does not contain the wrong claim" test
+completely, and leaves a reader swapping in a real client told nothing at all.
+That neighbour is one red on the positive arm alone.
+
+The generator is checked as well as its output, because regenerating is an
+ordinary operator action here and a corrected artifact with an uncorrected
+generator is one command from regressing. Reverting the doc alone leaves the
+generator arm green, which is what proves those are two locks rather than one
+wearing two hats.
+
+**And the fix exposed a second defect, filed as #109 rather than fixed here.**
+Regenerating the doc had to preserve the measured figures, so I rendered from
+the committed JSON through the pure `render_markdown` instead of re-running.
+That rewrote the host line from `CPython 3.14.0 ... 2026-05-15` to
+`CPython 3.14.7 ... 2026-09-10` — `render_markdown` stamps the process doing the
+*rendering*, not the run that *measured*, and `benchmarks.json` carries no
+provenance for it to read instead. So a prose-only edit silently re-attributed a
+four-month-old measurement to my interpreter. I restored the line by hand, pinned
+that the doc names a host and a date, and wrote up the two coherent fixes for JT
+— persisting provenance into the JSON, or refusing to render without it.
+
+**Open questions / blockers:** #109 is a new JT decision about the shape of a
+committed artifact that external parsers read. #106 and #90 remain JT-gated and
+untouched.

@@ -114,5 +114,9 @@ printf 'next stop for real-API numbers:\n'
 printf '  swap FakeLLM for an AnthropicLLM adapter implementing LLMClient.\n'
 printf '  ANTHROPIC_API_KEY=... python scripts/bench_1000_doc.py --n 200 --concurrency 16 \\\n'
 printf '    --batch-size 4 --out /tmp/real.md\n'
-printf '  ratios will widen because real network I/O has more fan-out headroom\n'
-printf '  than the synthetic 20 ms sleep.\n'
+# Direction corrected in #108 -- this said the ratios "will widen", which
+# inverts the README's honest-framing paragraph. A pure-wait asyncio.sleep has
+# no per-request overhead, so the synthetic ratio is the ceiling.
+printf '  expect LOWER ratios than the synthetic run above, not higher: a pure\n'
+printf '  asyncio.sleep has no TLS/JSON/socket cost, so it fans out perfectly\n'
+printf '  and 30x is the upper bound. real-API lands in the 5-20x spec range.\n'
