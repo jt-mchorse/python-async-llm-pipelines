@@ -138,12 +138,41 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         )
     lines.append("")
     lines.append("## OOM-safety claim\n")
+    # The claim names the evidence it actually has (#111). It used to say the bound
+    # holds "regardless of `n`" while every row shared one `n` -- there was no `n`
+    # axis in this script to vary -- so the document asserted something its own
+    # table could not show. `n_values` below is computed from the rows rather than
+    # assumed, so the sentence degrades honestly when the script is run without
+    # `--compare-n` instead of over-claiming again.
+    n_values = sorted({r.n for r in results})
+    queue_values = sorted({r.queue_size for r in results})
+    spans_n = len(n_values) > 1
     lines.append(
-        "`max_queue_depth` is bounded by `queue_size` in every row above "
-        "regardless of `n`. That's the invariant that makes `stream` safe "
-        "to point at an unbounded source: peak in-memory items are O("
-        "queue_size), not O(producer_rate × time)."
+        f"`max_queue_depth` is bounded by `queue_size` in every row above "
+        f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That's "
+        f"the invariant that makes `stream` safe to point at an unbounded source: "
+        f"peak in-memory items are O(queue_size), not O(producer_rate × time)."
     )
+    lines.append("")
+    if spans_n:
+        lines.append(
+            f"The rows span more than one `n` ({n_values}) at a fixed `queue_size`, "
+            f"which is what makes this table evidence for the `n`-independence of "
+            f"the bound rather than only for its value at one workload size. The "
+            f"general claim is proved where it belongs, over a parameterised table "
+            f"in `tests/test_stream.py` -- "
+            f"`test_stream_metrics_max_depth_bounded_by_queue_size` -- which is "
+            f"host-independent; this table is the measured illustration."
+        )
+    else:
+        lines.append(
+            f"These rows share one `n` ({n_values[0]}), so they show the bound at a "
+            f"single workload size and not its independence from `n`. Re-run with "
+            f"`--compare-n` for a varied-`n` row. The `n`-independent claim is "
+            f"proved over a parameterised table in `tests/test_stream.py` -- "
+            f"`test_stream_metrics_max_depth_bounded_by_queue_size` -- which is "
+            f"host-independent."
+        )
     lines.append("")
     return "\n".join(lines)
 
@@ -169,6 +198,26 @@ async def main_async(args: argparse.Namespace) -> int:
     # Add a same-n / 4x-queue cell to make the bound visible in the table.
     if args.compare:
         cells.append((args.n, args.queue_size * 4, args.consumer_ms, args.concurrency))
+    # And a same-queue / smaller-n cell, so the table can exhibit the claim
+    # `docs/backpressure.md` makes about it (#111). That claim is
+    # "`max_queue_depth` is bounded by `queue_size` in every row above REGARDLESS
+    # OF `n`" -- and before this there was no `n` axis at all, so every row shared
+    # one `n` and the document asserted something its own table could not show.
+    # The comment on `--compare` above even said so: "same-n".
+    #
+    # A fraction of `args.n` rather than a second flag, because the point is that
+    # the operator gets the varied-`n` evidence from the documented command rather
+    # than from remembering to ask for it. `max(1, ...)` so a small `--n` still
+    # produces a legal second row instead of a zero-item run.
+    if args.compare_n:
+        cells.append(
+            (
+                max(1, args.n // _COMPARE_N_DIVISOR),
+                args.queue_size,
+                args.consumer_ms,
+                args.concurrency,
+            )
+        )
 
     results: list[BackpressureResult] = []
     for n, qs, cms, c in cells:
@@ -206,6 +255,12 @@ async def main_async(args: argparse.Namespace) -> int:
     return 0
 
 
+#: `--compare-n` runs a second cell at `n // this`, same `queue_size`. Ten is
+#: enough to make the row visibly a different `n` while keeping the extra runtime
+#: proportional to a tenth of the main cell (#111).
+_COMPARE_N_DIVISOR = 10
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Bounded-queue backpressure demo (#3).")
     p.add_argument("--n", type=int, default=5000, help="items to push through the pipeline")
@@ -216,6 +271,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--compare",
         action="store_true",
         help="also run with 4x queue_size to show the heap bound moves",
+    )
+    p.add_argument(
+        "--compare-n",
+        action="store_true",
+        help=(
+            f"also run with n//{_COMPARE_N_DIVISOR} at the same queue_size, so the "
+            "table exhibits the bound across n rather than only across queue_size"
+        ),
     )
     p.add_argument("--out-md", default="docs/backpressure.md", help="markdown report")
     p.add_argument("--out-json", default="docs/backpressure.json", help="json report")

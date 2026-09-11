@@ -174,9 +174,44 @@ async def test_stream_metrics_no_pauses_when_consumer_fast():
     assert m.producer_pause_seconds == 0.0
 
 
-async def test_stream_metrics_max_depth_bounded_by_queue_size():
+#: `(n, queue_size)` pairs for the OOM-safety invariant, chosen so the table can
+#: separate a real bound from a wrong one (#111).
+#:
+#: The claim is quantified over `n` -- "no matter how many items flow through" in
+#: this test's own docstring, and "regardless of `n`" in `docs/backpressure.md`.
+#: Both used to demonstrate it at a SINGLE point: `n=1000, queue_size=8`. A bound
+#: accidentally hardcoded to `8` passes that, and so does one keyed to
+#: `concurrency` when `concurrency` happens to be below 8.
+#:
+#: So the rows span the three classes that behave differently:
+#:   * `n < queue_size` -- the queue never fills, and the bound is satisfied
+#:     TRIVIALLY. Included deliberately: it is the row that proves the others are
+#:     doing work, because a broken bound cannot show here.
+#:   * `n == queue_size` -- the boundary.
+#:   * `n >> queue_size`, at more than one `queue_size` -- the only region where a
+#:     bound keyed to the wrong variable is visible at all.
+_DEPTH_CASES = [
+    pytest.param(1, 8, id="n-far-below-queue"),
+    pytest.param(7, 8, id="n-just-below-queue"),
+    pytest.param(8, 8, id="n-equals-queue"),
+    pytest.param(9, 8, id="n-just-above-queue"),
+    pytest.param(200, 8, id="n-well-above-queue-8"),
+    pytest.param(200, 1, id="queue-1-the-tightest-bound"),
+    pytest.param(200, 2, id="queue-2"),
+    pytest.param(200, 64, id="queue-64-above-concurrency"),
+    pytest.param(1000, 8, id="the-original-single-point"),
+]
+
+
+@pytest.mark.parametrize(("n", "queue_size"), _DEPTH_CASES)
+async def test_stream_metrics_max_depth_bounded_by_queue_size(n: int, queue_size: int):
     """No matter how many items flow through, max_queue_depth must
     never exceed queue_size — this is the OOM-safety invariant.
+
+    Parametrised in #111. The docstring above made a claim about every `n` and the
+    body ran one, which is the same gap `docs/backpressure.md` had: it says the
+    bound holds "regardless of `n`" and every row of its table has `n=5000`,
+    because `scripts/bench_backpressure.py` had no `n` axis to vary.
     """
     m = StreamMetrics()
 
@@ -184,11 +219,111 @@ async def test_stream_metrics_max_depth_bounded_by_queue_size():
         await asyncio.sleep(0.001)
         return x
 
-    # 1000 items, queue size 8, consumer slower than producer.
-    out = await stream(_producer(1000), slow, concurrency=2, queue_size=8, metrics=m)
-    assert len(out) == 1000
-    assert m.max_queue_depth <= 8, (
-        f"max_queue_depth {m.max_queue_depth} exceeded queue_size 8 — backpressure invariant broken"
+    out = await stream(_producer(n), slow, concurrency=2, queue_size=queue_size, metrics=m)
+    assert len(out) == n
+    assert m.max_queue_depth <= queue_size, (
+        f"max_queue_depth {m.max_queue_depth} exceeded queue_size {queue_size} at "
+        f"n={n} — backpressure invariant broken"
+    )
+    # The bound is on the queue, not on the work: every item must still come out.
+    assert m.produced == n
+    assert m.consumed == n
+
+
+async def test_the_depth_table_separates_a_real_bound_from_a_wrong_one():
+    """The parametrize must prove its parameters do different things (#111).
+
+    A table whose every row passes against a wrong bound is not evidence. This
+    runs the two wrong bounds a reader would plausibly write — a hardcoded
+    `queue_size` and one keyed to `concurrency` — over the same rows, and asserts
+    each is violated by at least one of them. If this ever goes green, the table
+    has stopped separating anything and the rows need widening, not the claim.
+    """
+    hardcoded_8_violations = 0
+    concurrency_violations = 0
+    for case in _DEPTH_CASES:
+        n, queue_size = case.values
+        m = StreamMetrics()
+
+        async def slow(x: int) -> int:
+            await asyncio.sleep(0.001)
+            return x
+
+        await stream(_producer(n), slow, concurrency=2, queue_size=queue_size, metrics=m)
+        if m.max_queue_depth > 8:
+            hardcoded_8_violations += 1
+        if m.max_queue_depth > 2:  # `concurrency=2`
+            concurrency_violations += 1
+
+    assert hardcoded_8_violations > 0, (
+        "no row reaches a depth above 8, so a bound hardcoded to 8 would pass every "
+        "row — the table does not separate it from the real bound"
+    )
+    assert concurrency_violations > 0, (
+        "no row reaches a depth above `concurrency`, so a bound keyed to concurrency "
+        "would pass every row"
+    )
+
+
+def test_the_invariant_test_is_actually_parametrised_over_the_case_table():
+    """`_DEPTH_CASES` must be USED, not merely present (#111).
+
+    Measured: reverting the invariant test to its original single point
+    (`n=1000, queue_size=8`) while leaving `_DEPTH_CASES` in place turns **nothing**
+    red. `test_the_depth_table_separates_a_real_bound_from_a_wrong_one` iterates the
+    table directly, so it keeps passing, and the evidence silently shrinks from nine
+    rows to one — which is the defect #111 is about, reappearing by deletion.
+
+    A case table with no assertion that it is wired into the test it was written for
+    is one the next edit can orphan. Same lesson as the call-site arm in
+    mcp-server-cookbook#172.
+    """
+    import inspect
+
+    src = inspect.getsource(test_stream_metrics_max_depth_bounded_by_queue_size)
+    for param in ("n: int", "queue_size: int"):
+        assert param in src, (
+            f"the invariant test no longer takes `{param.split(':')[0]}` as a "
+            "parameter, so it is running a single hardcoded point again"
+        )
+    module_src = inspect.getsource(inspect.getmodule(_producer))
+    assert '@pytest.mark.parametrize(("n", "queue_size"), _DEPTH_CASES)' in module_src, (
+        "the invariant test is not parametrised over `_DEPTH_CASES`; the table is "
+        "orphaned and the evidence is a single point"
+    )
+    assert len(_DEPTH_CASES) >= 6, (
+        f"_DEPTH_CASES shrank to {len(_DEPTH_CASES)} rows; the three classes "
+        "(n < queue_size, n == queue_size, n >> queue_size at several queue_size) "
+        "need more than that"
+    )
+    # The classes must all be present, discovered from the table rather than trusted.
+    pairs = [c.values for c in _DEPTH_CASES]
+    assert any(n < q for n, q in pairs), "no `n < queue_size` row"
+    assert any(n == q for n, q in pairs), "no `n == queue_size` row"
+    assert len({q for n, q in pairs if n > q}) >= 3, (
+        "the `n >> queue_size` rows span fewer than three queue_size values, so a "
+        "bound hardcoded to one of them is not separated"
+    )
+
+
+async def test_a_queue_that_never_fills_is_in_the_table_on_purpose():
+    """The trivially-satisfied row earns its place by being named.
+
+    `n < queue_size` cannot catch a broken bound — the queue never fills. It is in
+    `_DEPTH_CASES` so the suite records that the invariant is also claimed there,
+    and this test states why it proves nothing on its own, so nobody later reads
+    the row count as nine independent pieces of evidence.
+    """
+    m = StreamMetrics()
+
+    async def slow(x: int) -> int:
+        await asyncio.sleep(0.001)
+        return x
+
+    await stream(_producer(1), slow, concurrency=2, queue_size=8, metrics=m)
+    assert m.max_queue_depth <= 1, (
+        "with a single item the depth cannot exceed 1; if this fails the producer is "
+        "enqueueing more than it was given"
     )
 
 

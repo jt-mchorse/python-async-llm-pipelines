@@ -5,14 +5,14 @@
       "queue_size": 8,
       "consumer_ms": 1.0,
       "concurrency": 2,
-      "duration_s": 3.371063042024616,
-      "peak_heap_kb": 201.9609375,
+      "duration_s": 3.3666584999882616,
+      "peak_heap_kb": 202.69140625,
       "metrics": {
         "produced": 5000,
         "consumed": 5000,
-        "producer_pauses": 2523,
+        "producer_pauses": 2558,
         "max_queue_depth": 8,
-        "producer_pause_seconds": 3.3110575845930725
+        "producer_pause_seconds": 3.311722299142275
       }
     },
     {
@@ -20,17 +20,32 @@
       "queue_size": 32,
       "consumer_ms": 1.0,
       "concurrency": 2,
-      "duration_s": 3.362009250035044,
-      "peak_heap_kb": 198.828125,
+      "duration_s": 3.425509583001258,
+      "peak_heap_kb": 198.99609375,
       "metrics": {
         "produced": 5000,
         "consumed": 5000,
-        "producer_pauses": 2510,
+        "producer_pauses": 2559,
         "max_queue_depth": 32,
-        "producer_pause_seconds": 3.290490268205758
+        "producer_pause_seconds": 3.343367785215378
+      }
+    },
+    {
+      "n": 500,
+      "queue_size": 8,
+      "consumer_ms": 1.0,
+      "concurrency": 2,
+      "duration_s": 0.3298301659815479,
+      "peak_heap_kb": 21.41796875,
+      "metrics": {
+        "produced": 500,
+        "consumed": 500,
+        "producer_pauses": 248,
+        "max_queue_depth": 8,
+        "producer_pause_seconds": 0.3203460469376296
       }
     }
   ],
   "host": "darwin",
-  "python": "3.14.0"
+  "python": "3.14.7"
 }
