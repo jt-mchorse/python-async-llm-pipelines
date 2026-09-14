@@ -256,3 +256,61 @@ never see a half-written file from a `KeyboardInterrupt` mid-write.
   `docs/benchmarks.md`.
 - **Design decisions** — `MEMORY/core_decisions_human.md` for prose,
   `MEMORY/core_decisions_ai.md` for the structured log.
+
+## Where the OOM-safety invariant is actually proved (#111)
+
+`stream`'s headline safety property — peak in-memory items are
+O(`queue_size`), not O(producer_rate × time) — was stated as quantified
+over `n` in three places and demonstrated at a single point in all of
+them.
+
+`docs/backpressure.md` said the bound holds "in every row above
+regardless of `n`", and every row had `n=5000`. It could not have been
+otherwise: `scripts/bench_backpressure.py` had no `n` axis, and
+`--compare`'s own comment said what it added — "a **same-n** / 4x-queue
+cell". The generator knew `n` was fixed and the generated document
+claimed independence from it.
+
+`tests/test_stream.py`'s `test_stream_metrics_max_depth_bounded_by_queue_size`
+said "No matter how many items flow through" and ran one `n` (1000) at
+one `queue_size` (8). A bound accidentally hardcoded to `8`, or keyed to
+`concurrency`, passes that test as written.
+
+The claim now lives where it can be proved without a particular machine:
+a parameterised table spanning `n < queue_size`, `n == queue_size` and
+`n >> queue_size` across several `queue_size` values, with a companion
+test that runs the two wrong bounds over the same rows and fails if
+neither is violated — a table whose every row passes against a wrong
+bound is not evidence. The `n < queue_size` row is included and
+explicitly labelled as proving nothing on its own, so the row count is
+not misread as nine independent pieces of evidence. And a structural arm
+asserts the case table is *wired into* the test: reverting the test to
+its original single point while leaving the table in place turned nothing
+red, because the companion test iterates the table directly.
+
+`scripts/bench_backpressure.py` gained a `--compare-n` axis so the
+published table can exhibit the bound across `n`, and the renderer now
+computes its claim sentence from the rows it actually has — so running
+without that flag produces an honestly weaker sentence instead of the
+same over-claim.
+
+### Three surfaces, and which columns are pinned across them
+
+The same run is published as `docs/backpressure.json`,
+`docs/backpressure.md`, and a table in `README.md`. Nothing pinned any
+pair, and the README's table was from a **different run** than the report
+it links to as "full report" — `duration_s` 3.051 against 3.371,
+`producer_pauses` 2707 against 2523. `max_queue_depth` agreed, which is
+the point: the invariant column is the stable one.
+
+`tests/test_backpressure_doc_surfaces.py` pins the split rather than the
+whole:
+
+- `n`, `queue_size`, `max_queue_depth` are properties of the algorithm
+  and are pinned across **all three** surfaces.
+- `duration_s`, `peak_heap_kb`, `producer_pauses` are measurements of a
+  machine. They are pinned for the `.md`-against-`.json` pair, which is
+  rendered from one run and therefore deterministic, and deliberately
+  **not** against the README. Pinning a wall-clock number across runs is
+  an assertion about the host, which is how a lock becomes flaky and then
+  gets deleted.

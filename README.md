@@ -154,22 +154,36 @@ non-zero pause count is the operator's signal that fan-out has more
 headroom than the consumer can use — either grow `concurrency` or
 accept the queue as the rate limiter.
 
-Real numbers from `scripts/bench_backpressure.py` (Apple Silicon,
-CPython 3.14, 5000 items × 1 ms consumer sleep, concurrency 2):
+Real numbers from `scripts/bench_backpressure.py`, read from the committed
+`docs/backpressure.json` so this table and the linked report are the same
+run (#111 — they were previously two different runs):
 
-| queue_size | duration_s | peak_heap_kb | producer_pauses | max_queue_depth |
-| ---------: | ---------: | -----------: | --------------: | --------------: |
-| 8 | 3.051 | 201.7 | 2707 | **8** |
-| 32 | 3.080 | 198.2 | 2672 | **32** |
+| n | queue_size | duration_s | peak_heap_kb | producer_pauses | max_queue_depth |
+| ---: | ---------: | ---------: | -----------: | --------------: | --------------: |
+| 5000 | 8 | 3.367 | 202.7 | 2558 | **8** |
+| 5000 | 32 | 3.426 | 199.0 | 2559 | **32** |
+| 500 | 8 | 0.330 | 21.4 | 248 | **8** |
 
-`max_queue_depth` matches `queue_size` exactly in both rows — the
+`max_queue_depth` matches `queue_size` exactly in every row — the
 producer fills the queue and waits for the consumer, never queueing
-ahead. Full report in [`docs/backpressure.md`](docs/backpressure.md);
-raw JSON alongside in `docs/backpressure.json`.
+ahead — and the third row holds `queue_size` while dropping `n` by 10×,
+so the table shows the bound is independent of `n` rather than only
+asserting it. The `n`-independent claim itself is proved over a
+parameterised table in
+`tests/test_stream.py`'s `test_stream_metrics_max_depth_bounded_by_queue_size`,
+which needs no particular machine. Full report in
+[`docs/backpressure.md`](docs/backpressure.md); raw JSON alongside in
+`docs/backpressure.json`.
+
+The `n`, `queue_size` and `max_queue_depth` columns are pinned to that JSON
+by `tests/test_backpressure_doc_surfaces.py`. The timing columns
+(`duration_s`, `peak_heap_kb`, `producer_pauses`) are measurements of a
+machine and are deliberately **not** pinned across surfaces — only the
+`.md`-against-`.json` pair, which comes from one run.
 
 ```bash
 python scripts/bench_backpressure.py --n 5000 --queue-size 8 \
-    --consumer-ms 1 --concurrency 2 --compare
+    --consumer-ms 1 --concurrency 2 --compare --compare-n
 ```
 
 ## Timeouts & cancellation (#5)
