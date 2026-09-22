@@ -1194,3 +1194,61 @@ claim it is cited for" is the method that has paid in four repos tonight.
 
 **Open questions / blockers:** none for #111. Regenerating the artifact re-stamps the
 rendering host and date, which is exactly #109's point — left alone deliberately.
+
+## 2026-09-22 — Issue #113: the lock that parses instead of matching
+**Duration:** see the issue's plan/close comment timestamps · **Branch:** `session/2026-09-22-0751-issue-113`
+
+The 1000-doc benchmark got half of #111's pair — the rendering locks — and not
+the provenance one, which left the algorithm axis (`n_docs`, `concurrency`,
+`batch_size`, `llm_call_seconds`) pinned nowhere. The README could have
+documented `--n 200` while the committed JSON came from `--n 1000` and every
+existing lock would have stayed green, because they all compare renderings of
+whatever JSON is committed.
+
+The design decision that made this worth more than a string comparison: the
+lock **parses**. Each documented command is resolved through the script's own
+parser and flag-to-workload mapping, which meant factoring `build_arg_parser()`
+out of `main` and `workload_from_args()` out of `amain` — the whole production
+change. It matters because no documented spelling passes `--latency` at all, so
+the committed `llm_call_seconds: 0.02` arrives from an argparse *default*. A
+string-matching lock is structurally blind to that: moving the default to 0.050
+reddens six arms here and would not move a single documented command by a byte.
+Ask of any doc-command lock which inputs reach the artifact without appearing
+in the command.
+
+The issue named three documented spellings; there are four.
+`test_bench_table_snapshot.py` states the command twice — in its module
+docstring and again in the `REGEN_HINT` constant that failures actually print.
+Treating "the regen hint" as one surface would have reproduced the drift the
+lock exists to catch, one string over. So the surfaces are discovered by
+scanning and the count is asserted, which took folding two different
+continuations: shell backslash-continuation, and Python adjacent-string-literal
+concatenation. The second one then joined *all five* of `REGEN_HINT`'s literals,
+so the command ran on into "Then update the README table cells…" and argparse
+rejected the prose — fixed by also cutting at a literal two-character `\n`
+escape. A regex over source text has to model the source language's own joining
+rules.
+
+Two honest notes. First, I tried to write a dropped-flag perturbation and it
+passed against correct code: every documented flag passes exactly the parser's
+own default, so a bare invocation resolves to the same workload as the fully
+flagged one, and dropping a flag is a no-op today. Rather than quietly swapping
+in a perturbation that worked, I gave that bound its own arm — if the documented
+values ever stop being redundant with the defaults, it reddens and the
+perturbation set should grow. Second, the gap is *latent*: the README is honest
+today, as the issue measured, so grafting the two helpers onto the pre-change
+script leaves all thirteen arms green. That is the correct result and saying so
+beats manufacturing a red. The falsification is against the corpus — a real
+`--n 200` edit to the README reddens exactly one arm.
+
+I also nearly shipped a test that read its own source and asserted `"amain" not
+in source`, which failed because the word appears in its own explanatory
+comment. That is the "a lock that scans the repo scans itself" trap in
+miniature; deleted, and the intent lives in the module docstring where it
+belongs.
+
+Suite 460 → 473. No artifact regenerated, no published number moved, no
+decision recorded — this applies #111's established algorithm-vs-machine split
+rather than making a new call.
+
+**Open questions:** none.
