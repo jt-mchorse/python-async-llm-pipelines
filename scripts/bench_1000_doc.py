@@ -160,6 +160,22 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     return "\n".join(lines)
 
 
+def workload_from_args(args: argparse.Namespace) -> Workload:
+    """The flag-to-workload mapping, in one place.
+
+    Named and separated so the provenance lock (#113) resolves a documented
+    command through *this* mapping rather than re-deriving it. A lock that
+    re-implements the mapping can agree with a stale copy of it; this one
+    cannot drift from the script by construction.
+    """
+    return Workload(
+        n_docs=args.n,
+        llm_call_seconds=args.latency,
+        concurrency=args.concurrency,
+        batch_size=args.batch_size,
+    )
+
+
 async def amain(args: argparse.Namespace) -> int:
     # Translate a bad operator input (n_docs/concurrency/batch_size < 1,
     # non-finite/negative latency) to a clean stderr line + exit 2 instead of
@@ -169,12 +185,7 @@ async def amain(args: argparse.Namespace) -> int:
     # message from `__post_init__` is preserved so the operator still learns
     # which flag was wrong.
     try:
-        workload = Workload(
-            n_docs=args.n,
-            llm_call_seconds=args.latency,
-            concurrency=args.concurrency,
-            batch_size=args.batch_size,
-        )
+        workload = workload_from_args(args)
     except ValueError as e:
         print(f"invalid workload: {e}", file=sys.stderr)
         return 2
@@ -207,7 +218,16 @@ async def amain(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
+    """The CLI surface, separated from running it.
+
+    Factored out of `main` so the provenance lock can resolve a *documented*
+    command against this parser without executing a ~45s benchmark (#113).
+    Comparing the resolved namespace rather than the command string is what
+    catches a flag nobody writes: no documented spelling passes `--latency`, so
+    the committed `llm_call_seconds` comes from the default below, and a
+    string-matching lock would stay green if this default moved.
+    """
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--n", type=int, default=1000, help="Number of docs in the workload.")
     p.add_argument(
@@ -223,7 +243,11 @@ def main(argv: list[str] | None = None) -> int:
         default="docs/benchmarks.md",
         help="Where to write the markdown report (and `.json` raw beside it).",
     )
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_arg_parser().parse_args(argv)
     return asyncio.run(amain(args))
 
 
