@@ -1283,3 +1283,21 @@ context_for_next_session:
   - CONFTEST_SESSION_GUARD_snapshots_git_tracked_docs_and_fails_the_session_on_any_change_VERIFIED_with_a_throwaway_writer_PORTABLE_TO_EVERY_REPO_WITH_COMMITTED_ARTIFACTS_consider_porting
 followups: []
 ---
+
+---
+session: 2026-09-30T08:11Z
+issue: 118
+focus: TWO_DOTTED_out_RUNS_SHARED_ONE_RAW_JSON_THE_SELF_COLLISION_GUARD_HAD_THE_RIGHT_REMEDY_FOR_ONE_CASE
+phase: shipped
+duration_min: 2   # 08:09 hunt start -> 08:11 close, from date -u and the issue timestamps
+delta:
+  files_changed: 2
+  tests_added: 8
+  suite: "473 -> 481 green"
+decisions_made: []
+measured: "probes: old with_suffix+self-guard logic 3 red, always-append neighbour 3 red (breaks the documented benchmarks.md -> benchmarks.json)"
+context_for_next_session:
+  - SIBLING_OF_lco_231_found_by_running_the_documented_out_with_a_DOTTED_argument_the_guards_comment_APPEND_INSTEAD_OF_REPLACE_SO_BOTH_ARTIFACTS_SURVIVE_was_the_right_remedy_scoped_to_ONE_collision
+  - BRANCH_NOTE_117_IS_ALSO_OPEN_IN_THIS_REPO_merge_117_first_then_rebase_this_one_MEMORY_append_conflict_only_no_code_overlap
+followups: []
+---
