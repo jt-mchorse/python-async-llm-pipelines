@@ -236,7 +236,20 @@ def test_bench_backpressure_unencodable_out_md_has_no_traceback(tmp_path: Path) 
     """
     out = tmp_path / ("bp" + SURROGATE + ".md")
 
-    rc, stderr = _run("scripts/bench_backpressure.py", "--out-md", str(out))
+    # `--out-json` into tmp too (#115). Without it the JSON half defaulted to the
+    # COMMITTED `docs/backpressure.json`: on ext4, which accepts the surrogate
+    # byte, the `.md` write succeeded, the run completed, and every CI run of
+    # this test overwrote the committed artifact with a fresh one-row
+    # measurement. APFS refuses the name, so on macOS the script exited before
+    # the JSON write and it never reproduced locally. A test must not write
+    # outside `tmp_path`.
+    rc, stderr = _run(
+        "scripts/bench_backpressure.py",
+        "--out-md",
+        str(out),
+        "--out-json",
+        str(tmp_path / "bp.json"),
+    )
 
     assert "Traceback" not in stderr, stderr
     assert "UnicodeEncodeError" not in stderr, stderr
