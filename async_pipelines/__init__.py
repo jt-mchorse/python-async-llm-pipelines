@@ -12,8 +12,9 @@ Shipped layers:
 - #1: ``process(items, fn, *, concurrency, return_exceptions=False)`` —
       bounded fan-out over a finite input list; returns results in input order.
 - #1: ``stream(producer, fn, *, concurrency, queue_size)`` — bounded
-      fan-out over an unbounded source, with `asyncio.Queue`-based
-      backpressure on the producer.
+      fan-out over an async source, with `asyncio.Queue`-based
+      backpressure on the producer. The queue bounds the input waiting to be
+      processed; results come back as one list and are O(n) (#115).
 - #2: ``dispatch_tool_calls(tool_calls, *, registry, return_exceptions, concurrency, timeout)`` —
       runs the model's parallel tool_use blocks concurrently inside an
       `asyncio.TaskGroup`, with optional bounded concurrency, optional

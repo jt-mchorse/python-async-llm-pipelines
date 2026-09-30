@@ -1,10 +1,16 @@
 """Backpressure demo (#3): fast producer, slow consumer, bounded queue.
 
-Proves the OOM-safety claim: when the producer emits items faster than
-the consumer can drain them, ``stream``'s bounded queue holds peak heap
-to ``queue_size`` items regardless of how many items the producer
-would emit. Without backpressure, a naive `asyncio.Queue` with no
-``maxsize`` (or a plain list) grows linearly with producer rate.
+Shows the backpressure bound: when the producer emits items faster than
+the consumer can drain them, ``stream``'s bounded queue holds the number
+of items *waiting to be processed* to ``queue_size`` regardless of how
+many items the producer would emit. Without backpressure, a naive
+`asyncio.Queue` with no ``maxsize`` (or a plain list) grows linearly
+with producer rate.
+
+It does not bound peak heap, and this docstring used to say it did
+(#115). ``stream`` returns every result in one list, so the
+``peak_heap_kb`` column grows with ``n`` -- the table this script writes
+shows it, and the claim sentence it renders now says so from the rows.
 
 Numbers are real and reproducible:
 
@@ -113,6 +119,34 @@ async def run_one(
     )
 
 
+def _results_are_o_n_sentence(results: list[BackpressureResult]) -> str:
+    """The half of the claim the queue bound does not cover (#115).
+
+    Quotes the heap growth from the rows when they span `n` at one
+    `queue_size`; otherwise states the fact without a number rather than
+    inventing one.
+    """
+    head = (
+        "That is a bound on the input side, not on the process: `stream` returns "
+        "every result in one list, so results are O(n) and `stream` is not safe "
+        "on a source that never ends -- it never returns"
+    )
+    by_queue: dict[int, list[BackpressureResult]] = {}
+    for r in results:
+        by_queue.setdefault(r.queue_size, []).append(r)
+    for queue_size in sorted(by_queue):
+        rows = sorted(by_queue[queue_size], key=lambda r: r.n)
+        lo, hi = rows[0], rows[-1]
+        if lo.n != hi.n and lo.peak_heap_kb > 0:
+            return (
+                f"{head}. In this table, at `queue_size` {queue_size}, "
+                f"`peak_heap_kb` goes {lo.peak_heap_kb:.1f} → {hi.peak_heap_kb:.1f} "
+                f"({hi.peak_heap_kb / lo.peak_heap_kb:.1f}×) as `n` goes "
+                f"{lo.n} → {hi.n} ({hi.n / lo.n:.1f}×)."
+            )
+    return f"{head}."
+
+
 def _render_markdown(results: list[BackpressureResult]) -> str:
     lines: list[str] = []
     lines.append("# Backpressure demo (#3)\n")
@@ -149,10 +183,17 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     spans_n = len(n_values) > 1
     lines.append(
         f"`max_queue_depth` is bounded by `queue_size` in every row above "
-        f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That's "
-        f"the invariant that makes `stream` safe to point at an unbounded source: "
-        f"peak in-memory items are O(queue_size), not O(producer_rate × time)."
+        f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That "
+        f"bounds the input *waiting to be processed*: a fast producer cannot pile "
+        f"items up ahead of a slow consumer, at any `n`."
     )
+    lines.append("")
+    # And what it does not bound (#115). This sentence used to end "peak
+    # in-memory items are O(queue_size)", printed under a `peak_heap_kb` column
+    # that grew ~10x with `n` in the same table. `stream` returns every result in
+    # one list, so results are O(n). The heap figures are quoted from the rows
+    # themselves, so the sentence cannot contradict the column beside it.
+    lines.append(_results_are_o_n_sentence(results))
     lines.append("")
     if spans_n:
         lines.append(
