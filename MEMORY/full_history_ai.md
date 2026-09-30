@@ -1264,3 +1264,22 @@ context_for_next_session:
   - FILED_116_decision_revisit_result_sink_or_async_iterator_JT_GATED_touches_D_003_and_D_009
 followups: ["#116"]
 ---
+
+---
+session: 2026-09-30T08:27Z
+issue: 115
+focus: CI_FOLLOW_UP_A_PRE_EXISTING_TEST_OVERWROTE_THE_COMMITTED_JSON_ON_EXT4_ONLY
+phase: shipped
+duration_min: 12   # 08:22 red CI noticed -> 2026-09-30T08:27Z, from date -u
+delta:
+  files_changed: 2
+  tests_added: 1
+  suite: "485 green locally on 3.14 and 3.11 and a fresh 3.12 clone; CI was red on 3.11 and 3.12"
+decisions_made: []
+context_for_next_session:
+  - THE_CI_FAILURE_WAS_NOT_IN_THE_CHANGE_test_bench_backpressure_unencodable_out_md_ran_the_bench_with_out_md_in_tmp_and_NO_out_json_so_on_EXT4_the_run_completed_and_OVERWROTE_THE_COMMITTED_docs_backpressure_json_EVERY_CI_RUN_apfs_refuses_the_surrogate_name_so_it_never_reproduced_locally
+  - THE_TELL_WAS_IN_THE_FULL_DIFF_not_the_truncated_repr_the_rendered_side_had_ONE_ROW_2_878s_that_exists_nowhere_in_the_repo_A_NUMBER_NO_COMMITTED_FILE_CONTAINS_MEANS_SOMETHING_WROTE_A_FILE_DURING_THE_RUN
+  - A_NEW_ARM_THAT_READS_A_COMMITTED_ARTIFACT_IS_A_PROBE_OF_EVERY_TEST_THAT_RUNS_BEFORE_IT_alphabetical_order_put_mine_after_the_writer_and_the_existing_surface_arms_before_it
+  - CONFTEST_SESSION_GUARD_snapshots_git_tracked_docs_and_fails_the_session_on_any_change_VERIFIED_with_a_throwaway_writer_PORTABLE_TO_EVERY_REPO_WITH_COMMITTED_ARTIFACTS_consider_porting
+followups: []
+---
