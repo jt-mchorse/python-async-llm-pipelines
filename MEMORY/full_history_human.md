@@ -1252,3 +1252,15 @@ decision recorded — this applies #111's established algorithm-vs-machine split
 rather than making a new call.
 
 **Open questions:** none.
+
+## 2026-09-30 — Issue #115: the queue bound is not a memory bound
+**Duration:** ~8 min · **Branch:** session/2026-09-30-0753-issue-115
+
+- Four surfaces (README, the generated `docs/backpressure.md`, the bench docstring, architecture.md) described #111's true queue-depth bound as "peak in-memory items are O(queue_size)" and "safe to point at an unbounded source". `stream` returns every result in one list, so results are O(n), and the committed table's own heap column grew 9.5× as `n` grew 10×. All surfaces now say what is bounded and what isn't; the report was re-rendered from the committed JSON, with no re-measurement.
+- New arms count live objects: peak live input is exactly 11 at every `n` (8 queued + 2 in flight + 1), and live results equal `n`.
+
+**Why this work, this session:** pyasync was the stalest repo (7 days), and this was found by reading the numbers beside the claim.
+
+**Open questions / blockers:** #116 (decision-revisit, JT) — whether to add a result sink or an async-iterator form so a truly unbounded source is safe.
+
+**Next session:** nothing non-gated remains in pyasync (#90, #106, #109, #116 are all decision-revisits).

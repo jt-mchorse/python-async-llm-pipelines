@@ -1242,3 +1242,25 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-30T07:59Z
+issue: 115
+focus: THE_QUEUE_BOUND_WAS_PUBLISHED_AS_A_MEMORY_BOUND_UNDER_A_HEAP_COLUMN_THAT_GREW_10X_WITH_n
+phase: shipped
+duration_min: 8   # 07:51 hunt start -> 07:59 close, from date -u and the issue timestamps
+delta:
+  files_changed: 7
+  tests_added: 12
+  suite: "473 -> 485 green"
+decisions_made: []
+measured: "stream at queue_size=8 concurrency=2: peak heap 17.5/52.8/445.6 KB at n=500/5000/50000 returning None, 106/1082/10967 KB returning a small dict; peak LIVE INPUT 11 (8+2+1) at every n, live results == n. Probes: old README 1 red + 2 capture_demo errors, renderer drops sentence same, stream drops results 8 red, old bench script 4 red."
+context_for_next_session:
+  - 111_PROVED_A_TRUE_BOUND_AND_FOUR_SURFACES_NAMED_IT_AS_A_DIFFERENT_ONE_max_queue_depth_IS_NOT_PEAK_IN_MEMORY_ITEMS_because_stream_RETURNS_EVERY_RESULT_IN_ONE_LIST_ask_of_every_bound_WHAT_QUANTITY_it_is_a_bound_ON
+  - THE_REFUTATION_WAS_IN_THE_SAME_TABLE_peak_heap_kb_21_4_TO_202_7_as_n_went_500_TO_5000_under_the_sentence_saying_O_queue_size_READ_THE_NUMBERS_BESIDE_A_CLAIM
+  - THE_READMES_OWN_EXAMPLE_WAS_while_True_so_stream_COULD_NEVER_RETURN_on_it
+  - LIVE_OBJECT_COUNTING_via___init___and___del___IS_A_HOST_INDEPENDENT_MEMORY_ARM_peak_live_input_exactly_11_equals_queue_size_plus_concurrency_plus_1
+  - capture_demo_sh_TESTS_RUN_PYTEST_IN_A_SUBPROCESS_so_every_revert_probe_shows_2_EXTRA_ERRORS_they_are_real_consequences_not_noise_CONTROL_THROUGH_THE_SAME_HARNESS_WAS_485_CLEAN
+  - FILED_116_decision_revisit_result_sink_or_async_iterator_JT_GATED_touches_D_003_and_D_009
+followups: ["#116"]
+---
