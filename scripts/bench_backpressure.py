@@ -311,7 +311,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--compare",
         action="store_true",
-        help="also run with 4x queue_size to show the heap bound moves",
+        # Not "the heap bound" (#122): #115 measured that peak heap does not move
+        # with queue_size -- 4x the queue gave 83.1 kb vs 80.0 kb -- and the
+        # module docstring retracted the claim; this help string kept it.
+        help="also run with 4x queue_size to show max_queue_depth moves with it",
     )
     p.add_argument(
         "--compare-n",
