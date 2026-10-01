@@ -330,7 +330,9 @@ adapter (anything matching the `LLMClient` Protocol) and re-runs to
 get their workload's real numbers — same table shape, same reproducer.
 
 ```bash
-python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
+# --out keeps the run from overwriting the committed docs/benchmarks.md that
+# test_bench_table_snapshot.py locks (#120); omit it only to refresh that snapshot.
+python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8 --out /tmp/bench.md
 ```
 
 ## Demo

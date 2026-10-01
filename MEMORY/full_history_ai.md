@@ -1301,3 +1301,21 @@ context_for_next_session:
   - BRANCH_NOTE_117_IS_ALSO_OPEN_IN_THIS_REPO_merge_117_first_then_rebase_this_one_MEMORY_append_conflict_only_no_code_overlap
 followups: []
 ---
+
+---
+session: 2026-09-30T09:26Z
+issue: 120
+focus: ONE_OF_TWO_COPIES_OF_A_DOCUMENTED_COMMAND_LACKED_THE_FLAG_THAT_KEEPS_IT_OFF_COMMITTED_FILES
+phase: shipped
+duration_min: 0   # computed from the plan comment timestamp and date -u
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "473 -> 475 green"
+decisions_made: []
+measured: "old README 1 red"
+context_for_next_session:
+  - THE_BACKPRESSURE_COMMAND_ALSO_WRITES_COMMITTED_FILES_BUT_IS_THE_PINNED_PROVENANCE_COMMAND_left_on_purpose
+  - BRANCH_NOTE_117_119_ALSO_OPEN_MEMORY_conflicts_only
+followups: []
+---

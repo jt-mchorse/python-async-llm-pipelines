@@ -1275,3 +1275,14 @@ rather than making a new call.
 **Open questions / blockers:** merge #117 first; this branch only conflicts on MEMORY.
 
 **Next session:** none.
+
+## 2026-09-30 — Issue #120: the README benchmark command writes outside docs/
+**Duration:** ~0 min · **Branch:** session/2026-09-30-0925-issue-120
+
+- The "1000-doc benchmark (#4)" command had no `--out`, so running it overwrote the committed `docs/benchmarks.*` and turned the snapshot tests red. It now writes to `/tmp/bench.md` like the Demo copy, and a lock covers every README invocation.
+
+**Why this work, this session:** found by the fresh-clone Quickstart audit.
+
+**Open questions / blockers:** #117 and #119 are open here too (MEMORY conflicts only).
+
+**Next session:** none.
