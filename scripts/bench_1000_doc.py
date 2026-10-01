@@ -204,18 +204,31 @@ async def amain(args: argparse.Namespace) -> int:
         print(md)
         print(f"\nbenchmarks wrote {out_path}")
         # Stash raw results next to the markdown for further analysis.
-        json_path = out_path.with_suffix(".json")
-        if json_path == out_path:
-            # `--out foo.json`: with_suffix(".json") is a no-op when the suffix is
-            # already .json, so the JSON dump would clobber the markdown report we
-            # just wrote. Append instead of replace so both artifacts survive.
-            json_path = out_path.with_name(out_path.name + ".json")
+        json_path = _json_path_for(out_path)
         dump_benchmark_json(json_path, workload=workload, results=results)
         print(f"raw results wrote {json_path}")
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2
     return 0
+
+
+def _json_path_for(out_path: Path) -> Path:
+    """The raw-results path that belongs to the report at `out_path` (#118).
+
+    Replace a `.md` suffix, append `.json` to anything else. This used to be
+    `with_suffix(".json")` plus one guard for `--out foo.json`, whose comment
+    gave the remedy -- "Append instead of replace so both artifacts survive" --
+    for the one collision it considered, the JSON landing on its own report.
+    `with_suffix` replaces whatever follows the last dot, so `--out run.a` and
+    `--out run.b` both wrote `run.json`, and the second run silently overwrote
+    the first run's raw results. Applying the guard's remedy to every non-`.md`
+    suffix covers both: `foo.json` still gets `foo.json.json`,
+    `docs/benchmarks.md` still gets `docs/benchmarks.json`.
+    """
+    if out_path.suffix == ".md":
+        return out_path.with_suffix(".json")
+    return out_path.with_name(out_path.name + ".json")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

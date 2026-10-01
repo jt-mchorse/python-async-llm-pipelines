@@ -1264,3 +1264,14 @@ rather than making a new call.
 **Open questions / blockers:** #116 (decision-revisit, JT) — whether to add a result sink or an async-iterator form so a truly unbounded source is safe.
 
 **Next session:** nothing non-gated remains in pyasync (#90, #106, #109, #116 are all decision-revisits).
+
+## 2026-09-30 — Issue #118: each bench run's raw JSON is its own
+**Duration:** ~2 min · **Branch:** session/2026-09-30-0809-issue-118
+
+- `--out run.a` and `--out run.b` both wrote `run.json`, so the second run overwrote the first run's raw results (and `--out docs/benchmarks.draft` would write over the committed `docs/benchmarks.json`). The JSON path now replaces only a `.md` suffix and appends otherwise; the documented names are unchanged.
+
+**Why this work, this session:** the sibling of llm-cost-optimizer#231, found by the same method.
+
+**Open questions / blockers:** merge #117 first; this branch only conflicts on MEMORY.
+
+**Next session:** none.
