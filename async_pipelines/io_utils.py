@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import contextlib
 import os
-import tempfile
+import secrets
+import stat
 from pathlib import Path
 
 # Cap the target basename's contribution to the temp filename. The temp name is
@@ -32,7 +33,7 @@ from pathlib import Path
 # and the write fails with `OSError: [Errno 63] File name too long` — even though
 # a plain `Path.write_text` of that same target succeeds (sibling of
 # rag-production-kit#128 and mcp-server-cookbook#96). The base in the temp name
-# is cosmetic (`ls`-ability); uniqueness comes from `NamedTemporaryFile`'s random
+# is cosmetic (`ls`-ability); uniqueness comes from `_create_temp`'s random
 # component, so truncating it is safe. Budget is in BYTES (NAME_MAX is a byte
 # limit) and we trim on a char boundary so multibyte names are never split
 # mid-codepoint.
@@ -98,21 +99,57 @@ def atomic_write_text(path: str | Path, text: str, encoding: str = "utf-8") -> N
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding=encoding,
-            dir=target.parent,
-            prefix=f".{_cap_base_for_temp(target.name)}.",
-            suffix=".tmp",
-            delete=False,
-        ) as tmp:
-            tmp_path = Path(tmp.name)
+        fd, tmp_path = _create_temp(target)
+        # `os.fdopen` owns *fd* from here: if it raises (unknown codec), `io.open`
+        # has already closed it, and the `finally` below removes the temp file.
+        with os.fdopen(fd, "w", encoding=encoding) as tmp:
             tmp.write(text)
             tmp.flush()
             os.fsync(tmp.fileno())
+        _copy_existing_mode(target, tmp_path)
         os.replace(tmp_path, target)
         tmp_path = None
     finally:
         if tmp_path is not None:
             with contextlib.suppress(FileNotFoundError):
                 tmp_path.unlink()
+
+
+# File mode (#124, portfolio-ops#81). This helper used to create its temp file
+# with `tempfile.NamedTemporaryFile`, which always opens 0600 regardless of the
+# umask, and `os.replace` carries the temp file's mode onto the target. So every
+# file it wrote was owner-only, and an overwrite of an existing 0644 file
+# demoted it to 0600 — neither of which the `Path.write_text` it replaced did.
+# The temp file is now opened with mode 0o666 so the KERNEL applies the umask
+# (reading the umask via `os.umask(0); os.umask(old)` would briefly set a
+# process-wide umask of 0 for every other thread), and an existing target's
+# mode is copied onto the temp file before the rename.
+_TEMP_ATTEMPTS = 100
+
+
+def _create_temp(target: Path) -> tuple[int, Path]:
+    """Exclusively create `.<capped-base>.<random>.tmp` beside *target*.
+
+    Same name shape and random-component length (8 chars) as the
+    `NamedTemporaryFile` it replaces, so `_MAX_TEMP_BASE_BYTES` budgets it
+    unchanged. `O_EXCL` gives the same no-clobber guarantee; a collision just
+    draws another name.
+    """
+    prefix = f".{_cap_base_for_temp(target.name)}."
+    for _ in range(_TEMP_ATTEMPTS):
+        candidate = target.parent / f"{prefix}{secrets.token_hex(4)}.tmp"
+        try:
+            fd = os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        except FileExistsError:
+            continue
+        return fd, candidate
+    raise FileExistsError(f"could not create a unique temp file beside {target}")
+
+
+def _copy_existing_mode(target: Path, tmp_path: Path) -> None:
+    """Give *tmp_path* the permission bits of *target*, if *target* exists."""
+    try:
+        mode = stat.S_IMODE(os.stat(target).st_mode)
+    except FileNotFoundError:
+        return
+    os.chmod(tmp_path, mode)
