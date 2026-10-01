@@ -1286,3 +1286,15 @@ rather than making a new call.
 **Open questions / blockers:** #117 and #119 are open here too (MEMORY conflicts only).
 
 **Next session:** none.
+
+## 2026-10-01 — Issue #122: the rendered Reproduce block reproduces the report, outside docs/
+**Duration:** ~3 min · **Branch:** session/2026-10-01-0845-issue-122
+
+- The "## Reproduce" block that `render_markdown` writes into every report dropped `--latency` and `--out`. Following it measured a different workload, and with the default `--out` it overwrote the committed artifacts. That's #120's harm, on the one spelling #121 missed. It now includes both flags. The committed `docs/benchmarks.md` carries the new block, and the provenance lock counts it as a fifth surface.
+- `bench_backpressure --compare` help no longer promises a heap bound that #115 measured doesn't exist. 7 new tests; five revert probes all red.
+
+**Why this work, this session:** found by this run's hunt.
+
+**Open questions / blockers:** none.
+
+**Next session:** none queued.
