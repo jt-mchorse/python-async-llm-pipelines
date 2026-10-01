@@ -1319,3 +1319,23 @@ context_for_next_session:
   - BRANCH_NOTE_117_119_ALSO_OPEN_MEMORY_conflicts_only
 followups: []
 ---
+
+---
+session: 2026-10-01T08:55Z
+issue: 124
+focus: ATOMIC_WRITE_TEXT_CREATED_EVERY_FILE_0600_AND_AN_OVERWRITE_DEMOTED_0644_TO_0600_NamedTemporaryFile_mode_carried_by_os_replace
+phase: shipped
+duration_min: 7   # 08:48 plan comment -> 08:55 code commit, from date -u
+delta:
+  files_changed: 2
+  tests_added: 16
+  suite: "495 -> 511 green"
+decisions_made: []
+measured: "main with umask 022: new 0o600, overwrite of 0o644 -> 0o600. Revert probes: main's io_utils.py 12 failed + 2 errors of 511; 0o600 open with the mode copy kept 4 failed + 2 errors; 0o666 open with the mode copy dropped 4 failed + 2 errors (the 2 errors are test_capture_demo_smoke running the suite in a subprocess)"
+context_for_next_session:
+  - TEMP_FILE_NOW_os_open_O_EXCL_0o666_WITH_secrets_token_hex_4_SAME_8_CHAR_RANDOM_COMPONENT_SO_THE_200_BYTE_BASE_CAP_IS_UNCHANGED
+  - os_fdopen_OWNS_THE_FD_io_open_ALREADY_CLOSES_IT_ON_FAILURE_an_extra_os_close_was_EBADF_in_the_bad_encoding_test
+  - MYPY_IS_NOT_IN_CI_and_benchmark_py_has_2_preexisting_errors_on_main_lines_310_364
+  - BRANCH_NOTE_123_IS_ALSO_OPEN_MEMORY_conflict_only
+followups: ["portfolio-ops#81"]
+---
