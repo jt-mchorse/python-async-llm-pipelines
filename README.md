@@ -24,8 +24,10 @@ parentheses:
   **in the input order**. The fail-fast path uses TaskGroup's
   structured cancellation; the `return_exceptions=True` path keeps the
   batch alive when one bad document shouldn't lose 999 others.
-- **`async_pipelines.stream(...)`** (#1, sibling) — unbounded-source
-  variant with an `asyncio.Queue`-bounded backpressure path.
+- **`async_pipelines.stream(...)`** (#1, sibling) — async-producer
+  variant with an `asyncio.Queue`-bounded backpressure path: the producer
+  never runs more than `queue_size` items ahead of the consumers. Results
+  come back as one list, so they are O(n) (#115).
 - **`async_pipelines.tool_dispatch.dispatch_tool_calls(...)`** (#2) —
   concurrent tool-call dispatcher with a `ToolRegistry` Protocol so the
   same wrapper handles parallel tool execution without reimplementing
@@ -110,22 +112,35 @@ The bounded-stream variant:
 ```python
 from async_pipelines import stream
 
-async def items_from_kafka():
-    while True:
-        # Bounded queue applies backpressure to this producer.
+async def items_from_kafka(max_messages: int):
+    for _ in range(max_messages):
+        # Bounded queue applies backpressure to this producer: it pauses
+        # while `queue_size` items are waiting to be processed.
         yield await consumer.next()
 
-results = await stream(items_from_kafka(), call_llm, concurrency=10, queue_size=50)
+# `stream` returns when the producer is exhausted, with every result in one
+# list -- so the source has to end, and the results are held in memory (#115).
+results = await stream(items_from_kafka(10_000), call_llm, concurrency=10, queue_size=50)
 ```
 
 ## Backpressure (#3)
 
 `stream`'s bounded `asyncio.Queue` is the backpressure mechanism: when
 the consumer pool can't drain as fast as the producer emits, the
-producer's `queue.put` *blocks* until a consumer pulls. Peak items in
-memory are bounded by `queue_size` regardless of how many items the
-producer would emit — that's the OOM-safety invariant for pointing this
-at an unbounded source.
+producer's `queue.put` *blocks* until a consumer pulls. The number of
+**input items waiting to be processed** is bounded by `queue_size`
+(plus at most `concurrency` in flight) regardless of how many items the
+producer would emit — a fast producer cannot run ahead of a slow
+consumer and pile its output up in memory.
+
+That is a bound on the *input side*, not on the process. `stream`
+returns every result in one list (D-003), so the results are O(n): the
+committed table below shows `peak_heap_kb` going 21.4 → 202.7 KB
+(9.5×) as `n` goes 500 → 5000 (10×) at `queue_size=8`, while
+`max_queue_depth` stays at 8.
+This section used to call the queue bound "the OOM-safety invariant for
+pointing this at an unbounded source"; on a source that never ends,
+`stream` never returns and the result list grows without bound (#115).
 
 Pass an optional `StreamMetrics` to observe the backpressure signal:
 

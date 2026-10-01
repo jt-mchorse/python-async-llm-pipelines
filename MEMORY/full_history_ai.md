@@ -1242,3 +1242,44 @@ context_for_next_session:
 decisions_made: []
 followups: []
 ---
+
+---
+session: 2026-09-30T07:59Z
+issue: 115
+focus: THE_QUEUE_BOUND_WAS_PUBLISHED_AS_A_MEMORY_BOUND_UNDER_A_HEAP_COLUMN_THAT_GREW_10X_WITH_n
+phase: shipped
+duration_min: 8   # 07:51 hunt start -> 07:59 close, from date -u and the issue timestamps
+delta:
+  files_changed: 7
+  tests_added: 12
+  suite: "473 -> 485 green"
+decisions_made: []
+measured: "stream at queue_size=8 concurrency=2: peak heap 17.5/52.8/445.6 KB at n=500/5000/50000 returning None, 106/1082/10967 KB returning a small dict; peak LIVE INPUT 11 (8+2+1) at every n, live results == n. Probes: old README 1 red + 2 capture_demo errors, renderer drops sentence same, stream drops results 8 red, old bench script 4 red."
+context_for_next_session:
+  - 111_PROVED_A_TRUE_BOUND_AND_FOUR_SURFACES_NAMED_IT_AS_A_DIFFERENT_ONE_max_queue_depth_IS_NOT_PEAK_IN_MEMORY_ITEMS_because_stream_RETURNS_EVERY_RESULT_IN_ONE_LIST_ask_of_every_bound_WHAT_QUANTITY_it_is_a_bound_ON
+  - THE_REFUTATION_WAS_IN_THE_SAME_TABLE_peak_heap_kb_21_4_TO_202_7_as_n_went_500_TO_5000_under_the_sentence_saying_O_queue_size_READ_THE_NUMBERS_BESIDE_A_CLAIM
+  - THE_READMES_OWN_EXAMPLE_WAS_while_True_so_stream_COULD_NEVER_RETURN_on_it
+  - LIVE_OBJECT_COUNTING_via___init___and___del___IS_A_HOST_INDEPENDENT_MEMORY_ARM_peak_live_input_exactly_11_equals_queue_size_plus_concurrency_plus_1
+  - capture_demo_sh_TESTS_RUN_PYTEST_IN_A_SUBPROCESS_so_every_revert_probe_shows_2_EXTRA_ERRORS_they_are_real_consequences_not_noise_CONTROL_THROUGH_THE_SAME_HARNESS_WAS_485_CLEAN
+  - FILED_116_decision_revisit_result_sink_or_async_iterator_JT_GATED_touches_D_003_and_D_009
+followups: ["#116"]
+---
+
+---
+session: 2026-09-30T08:27Z
+issue: 115
+focus: CI_FOLLOW_UP_A_PRE_EXISTING_TEST_OVERWROTE_THE_COMMITTED_JSON_ON_EXT4_ONLY
+phase: shipped
+duration_min: 12   # 08:22 red CI noticed -> 2026-09-30T08:27Z, from date -u
+delta:
+  files_changed: 2
+  tests_added: 1
+  suite: "485 green locally on 3.14 and 3.11 and a fresh 3.12 clone; CI was red on 3.11 and 3.12"
+decisions_made: []
+context_for_next_session:
+  - THE_CI_FAILURE_WAS_NOT_IN_THE_CHANGE_test_bench_backpressure_unencodable_out_md_ran_the_bench_with_out_md_in_tmp_and_NO_out_json_so_on_EXT4_the_run_completed_and_OVERWROTE_THE_COMMITTED_docs_backpressure_json_EVERY_CI_RUN_apfs_refuses_the_surrogate_name_so_it_never_reproduced_locally
+  - THE_TELL_WAS_IN_THE_FULL_DIFF_not_the_truncated_repr_the_rendered_side_had_ONE_ROW_2_878s_that_exists_nowhere_in_the_repo_A_NUMBER_NO_COMMITTED_FILE_CONTAINS_MEANS_SOMETHING_WROTE_A_FILE_DURING_THE_RUN
+  - A_NEW_ARM_THAT_READS_A_COMMITTED_ARTIFACT_IS_A_PROBE_OF_EVERY_TEST_THAT_RUNS_BEFORE_IT_alphabetical_order_put_mine_after_the_writer_and_the_existing_surface_arms_before_it
+  - CONFTEST_SESSION_GUARD_snapshots_git_tracked_docs_and_fails_the_session_on_any_change_VERIFIED_with_a_throwaway_writer_PORTABLE_TO_EVERY_REPO_WITH_COMMITTED_ARTIFACTS_consider_porting
+followups: []
+---

@@ -15,7 +15,7 @@ flowchart LR
     Items["items: list[T]"]:::shipped --> Process["process()<br/>· Semaphore(concurrency)<br/>· TaskGroup fan-out<br/>· input-order results"]:::shipped
     Process --> Out["list[R | BaseException]"]:::shipped
 
-    Source["async producer<br/>(unbounded)"]:::shipped --> Stream["stream()<br/>· bounded asyncio.Queue<br/>· N consumer tasks<br/>· producer blocks when full"]:::shipped
+    Source["async producer<br/>(any length; must end)"]:::shipped --> Stream["stream()<br/>· bounded asyncio.Queue<br/>· N consumer tasks<br/>· producer blocks when full"]:::shipped
     Stream --> Out2["list[R | BaseException]<br/>(completion order)"]:::shipped
 
     TC["model tool_use blocks"]:::shipped --> Disp["dispatch_tool_calls()<br/>· ToolRegistry lookup<br/>· concurrent TaskGroup"]:::shipped
@@ -48,15 +48,16 @@ flowchart LR
 ## 1. `process` and `stream`
 
 **What they do.** Two primitives for the two fan-out shapes. `process`
-is for a *materialized* input list; `stream` is for an unbounded
-producer.
+is for a *materialized* input list; `stream` is for an async
+producer that must not run ahead of its consumers. Both return every
+result in one list, so neither bounds the *results* (#115).
 
 ```mermaid
 flowchart LR
     L["items: list[T]"] --> P["process(items, fn, *, concurrency)"]
     P --> R["list[R | BaseException]<br/>(input order)"]
 
-    PR["async def producer():<br/>  yield from unbounded source"] --> S["stream(producer, fn, *, concurrency, queue_size)"]
+    PR["async def producer():<br/>  yield from a large source"] --> S["stream(producer, fn, *, concurrency, queue_size)"]
     S --> R2["list[R | BaseException]<br/>(completion order)"]
 ```
 
@@ -259,8 +260,20 @@ never see a half-written file from a `KeyboardInterrupt` mid-write.
 
 ## Where the OOM-safety invariant is actually proved (#111)
 
-`stream`'s headline safety property — peak in-memory items are
-O(`queue_size`), not O(producer_rate × time) — was stated as quantified
+> **Scope correction (#115).** What #111 proves is that the number of
+> input items *waiting in the queue* is O(`queue_size`) at every `n`.
+> The sentence below used to call that "peak in-memory items", and it is
+> not: `stream` returns every result in one list (D-003), so the results
+> are O(n). The committed table's own `peak_heap_kb` column goes
+> 21.4 → 202.7 KB (9.5×) as `n` goes 500 → 5000 at `queue_size=8`. The
+> queue bound is real and is what keeps a fast producer from piling its
+> output up ahead of a slow consumer; it does not make `stream` safe on a
+> source that never ends, where it never returns.
+> `tests/test_stream_result_retention.py` pins both halves by object
+> count, which is host-independent.
+
+`stream`'s headline safety property — the number of items waiting in the
+queue is O(`queue_size`), not O(producer_rate × time) — was stated as quantified
 over `n` in three places and demonstrated at a single point in all of
 them.
 

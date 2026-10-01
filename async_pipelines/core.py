@@ -10,8 +10,11 @@ batch (TaskGroup semantics); pass ``return_exceptions=True`` to keep
 going and collect exceptions in-line.
 
 ``stream(producer, fn, *, concurrency, queue_size)`` — same fan-out
-shape but driven off an unbounded async source, with the queue size
-providing backpressure to the producer.
+shape but driven off an async source, with the queue size providing
+backpressure to the producer. What that bounds is the input *waiting to
+be processed* (``queue_size`` queued, at most ``concurrency`` in
+flight); the results are returned as one list and are O(n), so the
+source must end (#115).
 """
 
 from __future__ import annotations
@@ -277,6 +280,14 @@ async def stream(
     Results are appended in completion order, not producer order — the
     producer's order isn't necessarily meaningful in a streaming
     context, and forcing index-preservation would defeat backpressure.
+
+    **What is bounded, and what is not (#115).** At most ``queue_size``
+    items wait in the queue and at most ``concurrency`` are in flight, at
+    any ``n`` -- the producer cannot run ahead of the consumers. The
+    returned list holds every result, so memory for results is O(n), and
+    ``stream`` returns only once the producer is exhausted: on a source
+    that never ends it never returns. ``tests/test_stream_result_retention.py``
+    pins both halves.
 
     Args:
         producer: async iterable of items.
