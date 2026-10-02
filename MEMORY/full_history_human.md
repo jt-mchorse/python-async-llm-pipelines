@@ -1310,3 +1310,14 @@ rather than making a new call.
 **Open questions / blockers:** #123 is also open here (MEMORY conflict only).
 
 **Next session:** none.
+
+## 2026-10-02 — the bench script's `--help` no longer tells you to overwrite the committed snapshot (#128)
+
+#120 fixed the README's copy of the 1000-doc bench command, which left out
+`--out` and so overwrote the committed `docs/benchmarks.*`, and added a test
+that reads the README. The script's own docstring had the same commands, and
+it doubles as `--help`. The docstring examples now write to `/tmp`. The one
+deliberate "regenerate the snapshot" command is labelled as such. The test now
+reads both the README and the docstring. Filed separately as #129: under
+non-default arguments, two sentences of the rendered report contradict its own
+numbers.
