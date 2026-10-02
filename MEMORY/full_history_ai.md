@@ -1358,3 +1358,23 @@ context_for_next_session:
   - BRANCH_NOTE_123_IS_ALSO_OPEN_MEMORY_conflict_only
 followups: ["portfolio-ops#81"]
 ---
+
+---
+session: 2026-10-02T07:48Z
+issue: 126
+focus: A_BARE_STRING_BECAME_ONE_DOCUMENT_PER_CHARACTER_IN_run_pipeline_THE_THREE_PIPELINES_AND_process
+phase: shipped
+duration_min: 3   # plan comment 07:45:17Z -> date -u 07:48Z
+delta:
+  files_changed: 3
+  tests_added: 28
+  suite: "518 -> 546 green; ruff check and format clean"
+decisions_made: []
+measured: "revert probe ONE SUBPROCESS PER ID, 28 ids counted: baseline 0; process guard removed 4 red; each pipeline's run guard removed 4 red apiece; run_pipeline guard removed 1 red (the unchecked third-party pipeline arm)."
+context_for_next_session:
+  - make_batch_caller_NEVER_CALLS_THE_FakeLLM_IT_WRAPS_so_its_call_count_IS_ALWAYS_0_a_zero_calls_arm_through_it_IS_VACUOUS_the_tests_use_a_counting_batch_caller_instead
+  - AsyncPipeline_run_CHECKS_docs_ITSELF_rather_than_relying_on_process_SO_THE_MESSAGE_NAMES_docs_NOT_process_s_items_the_per_pipeline_probe_is_red_on_the_NAME
+  - run_pipeline_CHECKS_AS_WELL_because_pipeline_IS_Any_and_n_docs_len_docs_IS_COMPUTED_THERE_a_third_party_pipeline_that_accepts_anything_would_still_have_published_a_character_count
+  - stream_UNTOUCHED_a_str_is_not_an_AsyncIterable
+followups: []
+---
