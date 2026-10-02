@@ -1310,3 +1310,13 @@ rather than making a new call.
 **Open questions / blockers:** #123 is also open here (MEMORY conflict only).
 
 **Next session:** none.
+
+## 2026-10-02 — bench_backpressure's docstring no longer tells you to overwrite the committed artifact (#132)
+
+The same problem fixed today for the 1000-doc bench, in the second bench
+script. Its docstring's command left out the output flags, which default to
+the committed files, and also left out the comparison flags that the committed
+three-row table was produced with. Running it as written replaced the table
+with a single row. The docstring now shows a `/tmp` example and the exact
+regeneration command from the README, labelled as such. A test keeps the two
+in step. 3 new tests.

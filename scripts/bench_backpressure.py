@@ -12,12 +12,20 @@ It does not bound peak heap, and this docstring used to say it did
 ``peak_heap_kb`` column grows with ``n`` -- the table this script writes
 shows it, and the claim sentence it renders now says so from the rows.
 
-Numbers are real and reproducible:
+Numbers are real and reproducible. ``--out-md``/``--out-json`` default to the
+COMMITTED ``docs/backpressure.{md,json}``, so a run that omits them rewrites
+the artifact the doc-surface tests pin (#132). To explore:
 
     python scripts/bench_backpressure.py --n 5000 --queue-size 8 \\
-        --consumer-ms 1 --concurrency 2
+        --consumer-ms 1 --concurrency 2 \\
+        --out-md /tmp/backpressure.md --out-json /tmp/backpressure.json
 
-Writes ``docs/backpressure.md`` and ``docs/backpressure.json`` with the
+To regenerate the committed artifact (the README's provenance command):
+
+    python scripts/bench_backpressure.py --n 5000 --queue-size 8 \\
+        --consumer-ms 1 --concurrency 2 --compare --compare-n  # regenerates the committed snapshot
+
+That writes ``docs/backpressure.md`` and ``docs/backpressure.json`` with the
 measured peak-heap and pause-time numbers. The bench is dep-free
 (``tracemalloc`` and ``asyncio`` are stdlib) so D-002 holds.
 """
