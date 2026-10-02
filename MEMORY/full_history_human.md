@@ -1310,3 +1310,17 @@ rather than making a new call.
 **Open questions / blockers:** #123 is also open here (MEMORY conflict only).
 
 **Next session:** none.
+
+## 2026-10-02 — a bare string is refused where documents are expected (#126)
+
+`run_pipeline(SerialPipeline(llm, llm), "summarize this doc")` reported 18
+documents and made 36 LLM calls. `process("abc", fn)` fanned `fn` out over the
+letters, and `process(b"ab", fn)` over integers. `process`, each pipeline's
+`run`, and `run_pipeline` now refuse a bare string before any call. Each names
+its own parameter and gives the working spelling. `run_pipeline` checks too:
+it computes `n_docs` itself and accepts any pipeline object, so a third-party
+pipeline that doesn't check would otherwise still have published a character
+count. One test-writing trap: `make_batch_caller` never calls the fake LLM it
+wraps, so "zero calls" through it is always true. The tests use a counting
+batch caller instead. 28 new tests; each guard, reverted on its own, turns at
+least one red.
