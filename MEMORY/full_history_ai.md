@@ -1321,6 +1321,25 @@ followups: []
 ---
 
 ---
+session: 2026-10-01T08:35Z
+issue: 122
+focus: THE_RENDERED_REPRODUCE_BLOCK_WAS_A_FIFTH_SPELLING_THE_PROVENANCE_LOCK_DID_NOT_SCAN
+phase: shipped
+duration_min: 3   # 08:32 plan -> 08:35 close, from date -u
+delta:
+  files_changed: 5
+  tests_added: 7
+  suite: "495 -> 502 green"
+decisions_made: []
+measured: "hunt agent: --latency 0.0025 run's Reproduce block re-measured at 0.02 (~7x durations); the committed block, run as written, overwrote docs/benchmarks.* and turned 3 snapshot arms red. Revert probes over the three surface modules, control 34: render drops latency 3 red, drops out 2, .3f instead of repr 3, old committed md 1, old --compare help 1."
+context_for_next_session:
+  - A_LOCK_THAT_SAYS_IT_DISCOVERS_THE_SURFACES_SCANNED_A_HAND_LIST_OF_TWO_FILES_and_the_GENERATED_block_was_the_spelling_it_never_read_COUNT_THE_GENERATORS_AS_SURFACES
+  - AN_ARM_ASSERTING_NO_SPELLING_PASSES_latency_WAS_TRUE_AND_ONLY_HARMLESS_AT_THE_DEFAULT_rewritten_to_require_at_least_one_omitting_spelling
+  - THE_OLD_COMMITTED_BLOCK_RESOLVES_TO_THE_COMMITTED_WORKLOAD_so_only_a_render_equality_arm_sees_it_1_red
+followups: []
+---
+
+---
 session: 2026-10-01T08:55Z
 issue: 124
 focus: ATOMIC_WRITE_TEXT_CREATED_EVERY_FILE_0600_AND_AN_OVERWRITE_DEMOTED_0644_TO_0600_NamedTemporaryFile_mode_carried_by_os_replace

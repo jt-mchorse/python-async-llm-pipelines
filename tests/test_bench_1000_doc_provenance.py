@@ -55,9 +55,13 @@ from scripts.bench_1000_doc import build_arg_parser, workload_from_args  # noqa:
 README = REPO_ROOT / "README.md"
 SNAPSHOT_TEST = REPO_ROOT / "tests" / "test_bench_table_snapshot.py"
 BENCH_JSON = REPO_ROOT / "docs" / "benchmarks.json"
+BENCH_MD = REPO_ROOT / "docs" / "benchmarks.md"
 
 #: Every file that may spell the command. Scanned, not hand-indexed into.
-SURFACE_FILES = (README, SNAPSHOT_TEST)
+#: `docs/benchmarks.md` joined in #122: its "## Reproduce" block is written by
+#: `render_markdown`, which dropped `--latency` and `--out`, so following it
+#: re-measured at the default latency and overwrote the committed artifacts.
+SURFACE_FILES = (README, SNAPSHOT_TEST, BENCH_MD)
 
 #: What the committed artifact says it was produced with.
 COMMITTED_WORKLOAD = json.loads(BENCH_JSON.read_text(encoding="utf-8"))["workload"]
@@ -126,14 +130,15 @@ def test_every_documented_spelling_is_discovered() -> None:
     stopped locking.
     """
     found = _all_documented_commands()
-    assert len(found) == 4, (
-        "expected 4 documented spellings of the bench command "
+    assert len(found) == 5, (
+        "expected 5 documented spellings of the bench command "
         "(README ## 1000-doc benchmark, README ## Demo, the snapshot test's "
-        f"module docstring, and its REGEN_HINT); found {len(found)}: {found}"
+        "module docstring, its REGEN_HINT, and docs/benchmarks.md's rendered "
+        f"## Reproduce block, #122); found {len(found)}: {found}"
     )
-    # Both files contribute; a regex that only matched one would still hit 4
-    # if one file happened to spell it four times.
-    assert {name for name, _ in found} == {README.name, SNAPSHOT_TEST.name}
+    # Every file contributes; a regex that only matched one would still hit 5
+    # if one file happened to spell it five times.
+    assert {name for name, _ in found} == {README.name, SNAPSHOT_TEST.name, BENCH_MD.name}
 
 
 # ----------------------------------------------------------------------
@@ -165,13 +170,14 @@ def test_each_documented_command_resolves_to_the_committed_workload(
 def test_the_latency_default_is_what_puts_llm_call_seconds_in_the_artifact() -> None:
     """The flag nobody writes, which is why this lock parses instead of matching.
 
-    No documented spelling passes `--latency`, so `llm_call_seconds` reaches
-    the committed artifact from the parser's default. A string-comparison lock
+    The hand-written spellings do not pass `--latency`, so for them
+    `llm_call_seconds` comes from the parser's default. A string-comparison lock
     over the commands is structurally blind to it: the default could move and
-    every documented command would stay byte-identical.
+    every such command would stay byte-identical. (The rendered Reproduce block
+    spells it out since #122, and the parametrised arm above resolves it.)
     """
-    for _surface, tail in _all_documented_commands():
-        assert "--latency" not in tail
+    omitting = [tail for _surface, tail in _all_documented_commands() if "--latency" not in tail]
+    assert omitting, "every spelling now passes --latency; this arm guards nothing"
     default = build_arg_parser().parse_args([]).latency
     assert default == COMMITTED_WORKLOAD["llm_call_seconds"]
 
@@ -279,3 +285,53 @@ def test_every_documented_flag_currently_passes_the_parsers_own_default() -> Non
     """
     bare = workload_from_args(build_arg_parser().parse_args([])).to_dict()
     assert bare == COMMITTED_WORKLOAD
+
+
+# ----------------------------------------------------------------------
+# The rendered block reproduces the report it is printed in (#122)
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "workload",
+    [
+        {"n_docs": 40, "llm_call_seconds": 0.0025, "concurrency": 4, "batch_size": 4},
+        {"n_docs": 1000, "llm_call_seconds": 0.02, "concurrency": 32, "batch_size": 8},
+        {"n_docs": 7, "llm_call_seconds": 0.1 + 0.2, "concurrency": 1, "batch_size": 1},
+    ],
+    ids=["hunt-repro", "committed", "unrepresentable-sum"],
+)
+def test_the_rendered_reproduce_block_resolves_to_its_own_workload(workload: dict) -> None:
+    from async_pipelines.benchmark import Workload  # noqa: PLC0415
+    from scripts.bench_1000_doc import render_markdown  # noqa: PLC0415
+
+    md = render_markdown(Workload(**workload), [])
+    (tail,) = _documented_commands(md.split("## Reproduce", 1)[1])
+    assert _resolved_workload(tail) == Workload(**workload).to_dict()
+
+
+def test_the_rendered_reproduce_block_never_writes_into_docs() -> None:
+    """#120's harm: the default `--out` is `docs/benchmarks.md`."""
+    from async_pipelines.benchmark import Workload  # noqa: PLC0415
+    from scripts.bench_1000_doc import render_markdown  # noqa: PLC0415
+
+    md = render_markdown(
+        Workload(n_docs=10, llm_call_seconds=0.01, concurrency=2, batch_size=2), []
+    )
+    (tail,) = _documented_commands(md.split("## Reproduce", 1)[1])
+    out = build_arg_parser().parse_args(shlex.split(tail)).out
+    assert not Path(out).resolve().is_relative_to((REPO_ROOT / "docs").resolve())
+
+
+def test_the_committed_reproduce_block_is_what_the_renderer_writes() -> None:
+    """The committed `docs/benchmarks.md` carries the renderer's current block,
+    not the pre-#122 one: an old block still resolves to the committed workload
+    (its `--latency` was the default) and would pass every arm above."""
+    from async_pipelines.benchmark import Workload  # noqa: PLC0415
+    from scripts.bench_1000_doc import render_markdown  # noqa: PLC0415
+
+    def reproduce_line(md: str) -> str:
+        return md.split("## Reproduce", 1)[1].split("```bash\n", 1)[1].split("\n", 1)[0]
+
+    rendered = render_markdown(Workload(**COMMITTED_WORKLOAD), [])
+    assert reproduce_line(BENCH_MD.read_text(encoding="utf-8")) == reproduce_line(rendered)

@@ -236,3 +236,15 @@ def test_the_readme_documents_the_command_that_produces_the_committed_rows() -> 
         "single-`n` table and the README's rows become unreproducible"
     )
     assert "--compare" in command
+
+
+def test_the_compare_help_does_not_promise_a_heap_bound() -> None:
+    """#122: #115/#117 retracted "the queue bounds peak heap" everywhere but the
+    `--compare` help, which still said it showed "the heap bound moves".
+    Measured with `--compare`: qs=8 peak 83.1 kb vs qs=32 peak 80.0 kb -- only
+    `max_queue_depth` follows `queue_size`."""
+    from scripts.bench_backpressure import _build_parser  # noqa: PLC0415
+
+    compare = next(a for a in _build_parser()._actions if "--compare" in a.option_strings)
+    assert "heap" not in (compare.help or "")
+    assert "max_queue_depth" in (compare.help or "")

@@ -13,7 +13,7 @@
 ## Reproduce
 
 ```bash
-python scripts/bench_1000_doc.py --n 1000 --concurrency 32 --batch-size 8
+python scripts/bench_1000_doc.py --n 1000 --latency 0.02 --concurrency 32 --batch-size 8 --out /tmp/bench.md
 ```
 
 ## Real-API mode (operator action)

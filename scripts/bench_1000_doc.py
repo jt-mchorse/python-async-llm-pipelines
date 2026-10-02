@@ -125,9 +125,17 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     lines.append("## Reproduce")
     lines.append("")
     lines.append("```bash")
+    # Every workload flag, `--latency` included, and an `--out` outside `docs/`
+    # (#122). The block dropped both: following it re-measured at the default
+    # 20 ms whatever latency the report was run at, and -- the default `--out`
+    # being `docs/benchmarks.md` -- overwrote the committed artifacts, the #120
+    # harm on the one spelling #121 did not reach. `repr` of a float round-trips,
+    # so the latency reads back as exactly the value measured.
     lines.append(
         f"python scripts/bench_1000_doc.py --n {workload.n_docs} "
-        f"--concurrency {workload.concurrency} --batch-size {workload.batch_size}"
+        f"--latency {workload.llm_call_seconds!r} "
+        f"--concurrency {workload.concurrency} --batch-size {workload.batch_size} "
+        "--out /tmp/bench.md"
     )
     lines.append("```")
     lines.append("")
