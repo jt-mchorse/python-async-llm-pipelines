@@ -1298,3 +1298,15 @@ rather than making a new call.
 **Open questions / blockers:** none.
 
 **Next session:** none queued.
+
+## 2026-10-01 — Issue #124: atomic writes keep normal file permissions
+**Duration:** ~7 min · **Branch:** session/2026-10-01-0848-issue-124
+
+- `atomic_write_text` created its temp file with `NamedTemporaryFile`, which is always 0600, and the rename carried that mode onto the target. Every report and benchmark JSON was owner-only, and rewriting an existing 0644 file made it 0600. The temp file is now opened 0o666 so the umask applies, and an existing file's mode is copied over before the rename. The temp-name cap, surrogate-path handling, fsync and cleanup are unchanged.
+- 16 new tests (umask 022/077/027 for new files; 0644/0600/0640 overwrites under two umasks; `dump_benchmark_json`; temp-name shape; collision retry). The revert probe on main's helper gives 12 failed + 2 errors.
+
+**Why this work, this session:** part of the portfolio-wide sweep (portfolio-ops#81).
+
+**Open questions / blockers:** #123 is also open here (MEMORY conflict only).
+
+**Next session:** none.
