@@ -1310,3 +1310,14 @@ rather than making a new call.
 **Open questions / blockers:** #123 is also open here (MEMORY conflict only).
 
 **Next session:** none.
+
+## 2026-10-02 — the bench report agrees with its own numbers under non-default arguments (#129)
+
+Two sentences in the 1000-doc bench report were written for the default
+settings. With `--latency 0.0004`, the workload line said "0 ms simulated per
+call" directly above `sleep(0.0004)`. With `--concurrency 2`, the report said
+real APIs land in a 5–20× range, right under a table whose own ceiling was
+about 2×. The latency now prints as given. The real-API sentence is kept
+word for word when the measured ceiling is at least 20×; otherwise it says
+real speedups land below the measured ceiling. The committed report's ceiling
+is 251×, so the committed file doesn't change. 8 new tests.
