@@ -1430,3 +1430,22 @@ context_for_next_session:
   - NOT_FILED_the_spans_n_paragraph_claims_n_independence_evidence_under_compare_n_with_n_50_where_the_queue_never_filled_pauses_0_max_depth_5_a_129_style_wording_issue
 followups: []
 ---
+
+---
+session: 2026-10-05T08:48Z
+duration_min: 3   # computed: started 08:46Z -> 08:48Z
+issue: 134
+branch: session/2026-10-05-0846-issue-134
+focus: BACKPRESSURE_REPORT_CALLED_AN_UNFILLED_COMPARE_N_ROW_EVIDENCE_FOR_N_INDEPENDENCE_AND_ADVISED_A_FLAG_ALREADY_PASSED_AT_N_1
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 4
+  suite: "558 -> 562 green; ruff clean; committed docs/backpressure.json re-renders the committed paragraph verbatim"
+decisions_made: []
+measured: "n=50 + n=5 (depth 5 < queue 8, 0 pauses) was evidence on main, now named as never filled. Probes: every row as evidence 2 red, old advice 1 red"
+context_for_next_session:
+  - EVIDENCE_FOR_A_BOUND_IS_A_ROW_WHERE_THE_BOUND_APPLIED_saturation_is_max_depth_reaching_queue_size_or_a_producer_pause
+  - SAME_BLAME_A_FLAG_ALREADY_USED_SHAPE_AS_135_IN_THE_SIBLING_SCRIPT
+followups: []
+---

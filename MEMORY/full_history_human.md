@@ -1356,3 +1356,13 @@ three-row table was produced with. Running it as written replaced the table
 with a single row. The docstring now shows a `/tmp` example and the exact
 regeneration command from the README, labelled as such. A test keeps the two
 in step. 3 new tests.
+
+## 2026-10-05 — the backpressure report only counts runs where the bound applied (#134)
+
+The backpressure report called its rows evidence that the queue bound holds at
+any workload size. But a small comparison run can be smaller than the queue,
+so the queue never fills and the bound never applies. The report now counts
+only runs that actually filled the queue, and names the ones that didn't. It
+also stopped telling readers to re-run with `--compare-n` when they already
+had; it now says what workload size makes the comparison meaningful. The
+committed report reads the same, since all of its runs filled the queue.
