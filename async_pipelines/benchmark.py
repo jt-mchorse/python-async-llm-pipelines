@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from .core import process
+from .core import _refuse_bare_string, process
 from .io_utils import atomic_write_text
 
 
@@ -262,6 +262,7 @@ class SerialPipeline:
         self.llm2 = llm2
 
     async def run(self, docs: list[str]) -> list[str]:
+        _refuse_bare_string("docs", docs)  # #126: before the first LLM call
         out: list[str] = []
         for doc in docs:
             mid = await self.llm1(doc)
@@ -303,6 +304,8 @@ class AsyncPipeline:
         self.concurrency = concurrency
 
     async def run(self, docs: list[str]) -> list[str]:
+        _refuse_bare_string("docs", docs)  # #126: named `docs`, not `process`'s `items`
+
         async def process_one(doc: str) -> str:
             mid = await self.llm1(doc)
             return await self.llm2(mid)
@@ -349,6 +352,7 @@ class BatchedAsyncPipeline:
         self.batch_size = batch_size
 
     async def run(self, docs: list[str]) -> list[str]:
+        _refuse_bare_string("docs", docs)  # #126: `_chunk` would slice the string
         batches = _chunk(docs, self.batch_size)
 
         async def process_batch(batch: list[str]) -> list[str]:
@@ -428,6 +432,10 @@ def make_batch_caller(
 
 async def run_pipeline(pipeline: Any, docs: list[str]) -> RunResult:
     """Time a pipeline's `.run(docs)` call. Returns a `RunResult`."""
+    # Here as well as in each pipeline's `.run`: `pipeline` is `Any`, and
+    # `n_docs=len(docs)` below would publish a character count for a third-party
+    # pipeline that does not check (#126).
+    _refuse_bare_string("docs", docs)
     t0 = time.perf_counter()
     await pipeline.run(docs)
     elapsed = time.perf_counter() - t0
