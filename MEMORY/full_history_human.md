@@ -1356,3 +1356,12 @@ three-row table was produced with. Running it as written replaced the table
 with a single row. The docstring now shows a `/tmp` example and the exact
 regeneration command from the README, labelled as such. A test keeps the two
 in step. 3 new tests.
+
+## 2026-10-05 — the README warns that the backpressure command rewrites the snapshot (#138)
+
+The README's backpressure benchmark command, run as written, overwrote the
+committed results files without saying so. The 1000-document commands had
+been fixed for the same thing earlier. The README now labels that command as
+the one that regenerates the snapshot, and shows how to write to `/tmp`
+instead. A test checks that every benchmark command in the README either
+writes outside `docs/` or says that it rewrites it.
