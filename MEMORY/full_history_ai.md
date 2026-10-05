@@ -1378,3 +1378,20 @@ context_for_next_session:
   - stream_UNTOUCHED_a_str_is_not_an_AsyncIterable
 followups: []
 ---
+
+---
+session: 2026-10-02T10:10Z
+issue: 128
+focus: THE_BENCH_SCRIPTS_DOCSTRING_EQUALS_HELP_STILL_DOCUMENTED_COMMANDS_THAT_OVERWRITE_docs_120s_RULE_COVERED_THE_README_ONLY
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 1
+  suite: "518 -> 519 green; ruff clean"
+decisions_made: []
+measured: "hunt agent ran the docstring's second command in a throwaway copy: it wrote docs/benchmarks.md/.json and test_bench_table_snapshot went red. Revert of the docstring: 2 of 3 lock arms red (commands rule + help text); the 'commands are found' arm stays green by design."
+context_for_next_session:
+  - THE_LOCK_NOW_WALKS_TWO_SOURCES_README_AND_THE_SCRIPT_DOCSTRING_and_a_docs_out_is_allowed_only_on_a_line_labelled_regenerates_the_committed_snapshot
+  - 129_FILED_LOW_the_rendered_reports_latency_bullet_and_fixed_5_20x_sentence_contradict_their_numbers_under_non_default_args
+followups: ["#129"]
+---
