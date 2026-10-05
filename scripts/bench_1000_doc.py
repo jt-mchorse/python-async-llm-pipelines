@@ -6,10 +6,11 @@ under the synthetic LLM; the *absolute latency* is per the simulated
 per-call cost. Real-Anthropic numbers are an operator-side swap — see
 the bottom of `docs/benchmarks.md`.
 
-Usage:
-    python scripts/bench_1000_doc.py
-    python scripts/bench_1000_doc.py --n 200 --concurrency 16 --batch-size 8
-    python scripts/bench_1000_doc.py --out docs/benchmarks.md
+Usage (`--out` defaults to the COMMITTED `docs/benchmarks.md`, so a run that
+omits it overwrites the snapshot the tests pin -- #120, #128):
+    python scripts/bench_1000_doc.py --out /tmp/bench.md
+    python scripts/bench_1000_doc.py --n 200 --concurrency 16 --batch-size 8 --out /tmp/bench.md
+    python scripts/bench_1000_doc.py --out docs/benchmarks.md   # regenerates the committed snapshot
 """
 
 from __future__ import annotations
@@ -78,7 +79,9 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     lines.append("")
     lines.append(
         f"- **Workload.** {workload.n_docs} docs · 2 LLM calls per doc · "
-        f"{workload.llm_call_seconds * 1000:.0f} ms simulated per call · "
+        # `:g`, not `.0f` (#129): `--latency 0.0004` rendered `0 ms` directly
+        # above `asyncio.sleep(0.0004)`; the default 0.020 is still `20 ms`.
+        f"{workload.llm_call_seconds * 1000:g} ms simulated per call · "
         f"concurrency {workload.concurrency} · batch size {workload.batch_size}"
     )
     lines.append(
@@ -152,6 +155,22 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     # inverted sentence and is corrected with it;
     # `tests/test_real_api_claim_direction.py` locks the direction of both,
     # rather than either phrasing.
+    # The "5-20x" range is a claim about real APIs at the DEFAULT workload, and
+    # it sits below a ceiling this very run measured (#129). At `--concurrency
+    # 2` the table shows ~2x, and "real-API speedups land in the 5-20x range"
+    # would put the real floor above the measured ceiling. Keep the sentence
+    # verbatim when the ceiling clears the range; otherwise state it relative
+    # to the number above it.
+    ceiling = max(
+        (r.speedup_vs_serial for r in results if r.speedup_vs_serial is not None), default=None
+    )
+    if ceiling is None or ceiling >= 20:
+        landing = "so real-API speedups land in the 5-20x spec range. "
+    else:
+        landing = (
+            f"so real-API speedups land below the {ceiling:.2f}× measured above "
+            "(the 5-20x spec range assumes the default `--concurrency 32` workload). "
+        )
     lines.append(
         "Swap `FakeLLM` for an Anthropic adapter that conforms to the "
         "`LLMClient` Protocol (`async __call__(prompt: str) -> str`) and "
@@ -160,9 +179,9 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
         "`FakeLLM`'s pure-wait `asyncio.sleep` has no per-request CPU, socket, "
         "TLS or JSON cost, so it fans out perfectly and the ratios here are "
         "the theoretical upper bound. Real API I/O adds that overhead and is "
-        "additionally bounded by rate limits and connection-pool limits, so "
-        "real-API speedups land in the 5-20x spec range. Batch API workloads "
-        "are the documented exception and can exceed it."
+        "additionally bounded by rate limits and connection-pool limits, "
+        + landing
+        + "Batch API workloads are the documented exception and can exceed it."
     )
     lines.append("")
     return "\n".join(lines)

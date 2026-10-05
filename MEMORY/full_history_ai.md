@@ -1360,6 +1360,60 @@ followups: ["portfolio-ops#81"]
 ---
 
 ---
+session: 2026-10-02T07:48Z
+issue: 126
+focus: A_BARE_STRING_BECAME_ONE_DOCUMENT_PER_CHARACTER_IN_run_pipeline_THE_THREE_PIPELINES_AND_process
+phase: shipped
+duration_min: 3   # plan comment 07:45:17Z -> date -u 07:48Z
+delta:
+  files_changed: 3
+  tests_added: 28
+  suite: "518 -> 546 green; ruff check and format clean"
+decisions_made: []
+measured: "revert probe ONE SUBPROCESS PER ID, 28 ids counted: baseline 0; process guard removed 4 red; each pipeline's run guard removed 4 red apiece; run_pipeline guard removed 1 red (the unchecked third-party pipeline arm)."
+context_for_next_session:
+  - make_batch_caller_NEVER_CALLS_THE_FakeLLM_IT_WRAPS_so_its_call_count_IS_ALWAYS_0_a_zero_calls_arm_through_it_IS_VACUOUS_the_tests_use_a_counting_batch_caller_instead
+  - AsyncPipeline_run_CHECKS_docs_ITSELF_rather_than_relying_on_process_SO_THE_MESSAGE_NAMES_docs_NOT_process_s_items_the_per_pipeline_probe_is_red_on_the_NAME
+  - run_pipeline_CHECKS_AS_WELL_because_pipeline_IS_Any_and_n_docs_len_docs_IS_COMPUTED_THERE_a_third_party_pipeline_that_accepts_anything_would_still_have_published_a_character_count
+  - stream_UNTOUCHED_a_str_is_not_an_AsyncIterable
+followups: []
+---
+
+---
+session: 2026-10-02T10:10Z
+issue: 128
+focus: THE_BENCH_SCRIPTS_DOCSTRING_EQUALS_HELP_STILL_DOCUMENTED_COMMANDS_THAT_OVERWRITE_docs_120s_RULE_COVERED_THE_README_ONLY
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 1
+  suite: "518 -> 519 green; ruff clean"
+decisions_made: []
+measured: "hunt agent ran the docstring's second command in a throwaway copy: it wrote docs/benchmarks.md/.json and test_bench_table_snapshot went red. Revert of the docstring: 2 of 3 lock arms red (commands rule + help text); the 'commands are found' arm stays green by design."
+context_for_next_session:
+  - THE_LOCK_NOW_WALKS_TWO_SOURCES_README_AND_THE_SCRIPT_DOCSTRING_and_a_docs_out_is_allowed_only_on_a_line_labelled_regenerates_the_committed_snapshot
+  - 129_FILED_LOW_the_rendered_reports_latency_bullet_and_fixed_5_20x_sentence_contradict_their_numbers_under_non_default_args
+followups: ["#129"]
+---
+
+---
+session: 2026-10-02T10:40Z
+issue: 129
+focus: THE_BENCH_REPORT_CONTRADICTED_ITS_OWN_NUMBERS_UNDER_NON_DEFAULT_ARGS_0_MS_BESIDE_SLEEP_0_0004_AND_5_20X_UNDER_A_2X_CEILING
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 8
+  suite: "518 -> 526 green; ruff clean"
+decisions_made: []
+measured: "Revert to main's script: 5 of 8 red. Committed docs/benchmarks.json ceiling is 251x, so the committed paragraph and the '20 ms' bullet are byte-identical under the new template; nothing regenerated."
+context_for_next_session:
+  - RUN_THE_DOCUMENTED_COMMAND_WITH_A_DIFFERENT_ARGUMENT_paid_again_both_sentences_were_only_true_at_the_default
+  - THE_SPEC_SENTENCE_IS_KEPT_VERBATIM_AT_CEILING_GE_20_so_test_real_api_claim_direction_108_still_passes_untouched
+followups: []
+---
+
+---
 session: 2026-10-02T14:15Z
 issue: 132
 focus: bench_backpressure_DOCSTRING_COMMAND_OVERWROTE_THE_COMMITTED_3_ROW_ARTIFACT_WITH_1_ROW_SIBLING_OF_128

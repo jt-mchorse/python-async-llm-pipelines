@@ -1311,6 +1311,42 @@ rather than making a new call.
 
 **Next session:** none.
 
+## 2026-10-02 — a bare string is refused where documents are expected (#126)
+
+`run_pipeline(SerialPipeline(llm, llm), "summarize this doc")` reported 18
+documents and made 36 LLM calls. `process("abc", fn)` fanned `fn` out over the
+letters, and `process(b"ab", fn)` over integers. `process`, each pipeline's
+`run`, and `run_pipeline` now refuse a bare string before any call. Each names
+its own parameter and gives the working spelling. `run_pipeline` checks too:
+it computes `n_docs` itself and accepts any pipeline object, so a third-party
+pipeline that doesn't check would otherwise still have published a character
+count. One test-writing trap: `make_batch_caller` never calls the fake LLM it
+wraps, so "zero calls" through it is always true. The tests use a counting
+batch caller instead. 28 new tests; each guard, reverted on its own, turns at
+least one red.
+
+## 2026-10-02 — the bench script's `--help` no longer tells you to overwrite the committed snapshot (#128)
+
+#120 fixed the README's copy of the 1000-doc bench command, which left out
+`--out` and so overwrote the committed `docs/benchmarks.*`, and added a test
+that reads the README. The script's own docstring had the same commands, and
+it doubles as `--help`. The docstring examples now write to `/tmp`. The one
+deliberate "regenerate the snapshot" command is labelled as such. The test now
+reads both the README and the docstring. Filed separately as #129: under
+non-default arguments, two sentences of the rendered report contradict its own
+numbers.
+
+## 2026-10-02 — the bench report agrees with its own numbers under non-default arguments (#129)
+
+Two sentences in the 1000-doc bench report were written for the default
+settings. With `--latency 0.0004`, the workload line said "0 ms simulated per
+call" directly above `sleep(0.0004)`. With `--concurrency 2`, the report said
+real APIs land in a 5–20× range, right under a table whose own ceiling was
+about 2×. The latency now prints as given. The real-API sentence is kept
+word for word when the measured ceiling is at least 20×; otherwise it says
+real speedups land below the measured ceiling. The committed report's ceiling
+is 251×, so the committed file doesn't change. 8 new tests.
+
 ## 2026-10-02 — bench_backpressure's docstring no longer tells you to overwrite the committed artifact (#132)
 
 The same problem fixed today for the 1000-doc bench, in the second bench
