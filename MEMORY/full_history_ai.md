@@ -1395,3 +1395,20 @@ context_for_next_session:
   - 129_FILED_LOW_the_rendered_reports_latency_bullet_and_fixed_5_20x_sentence_contradict_their_numbers_under_non_default_args
 followups: ["#129"]
 ---
+
+---
+session: 2026-10-02T10:40Z
+issue: 129
+focus: THE_BENCH_REPORT_CONTRADICTED_ITS_OWN_NUMBERS_UNDER_NON_DEFAULT_ARGS_0_MS_BESIDE_SLEEP_0_0004_AND_5_20X_UNDER_A_2X_CEILING
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 8
+  suite: "518 -> 526 green; ruff clean"
+decisions_made: []
+measured: "Revert to main's script: 5 of 8 red. Committed docs/benchmarks.json ceiling is 251x, so the committed paragraph and the '20 ms' bullet are byte-identical under the new template; nothing regenerated."
+context_for_next_session:
+  - RUN_THE_DOCUMENTED_COMMAND_WITH_A_DIFFERENT_ARGUMENT_paid_again_both_sentences_were_only_true_at_the_default
+  - THE_SPEC_SENTENCE_IS_KEPT_VERBATIM_AT_CEILING_GE_20_so_test_real_api_claim_direction_108_still_passes_untouched
+followups: []
+---
