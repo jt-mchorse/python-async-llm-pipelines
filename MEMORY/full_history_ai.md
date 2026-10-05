@@ -1433,7 +1433,7 @@ followups: []
 
 ---
 session: 2026-10-05T08:02Z
-duration_min: 8   # plan comment 2026-10-05T08:00:29Z -> 08:02Z
+duration_min: 3   # first repro ~07:59Z; plan comment 2026-10-05T08:00:29Z -> 08:02Z
 issue: 135
 branch: session/2026-10-05-0800-issue-135
 focus: THE_LOW_CEILING_PARENTHETICAL_BLAMED_concurrency_32_ON_A_RUN_THAT_USED_32_n_10_was_the_cause
