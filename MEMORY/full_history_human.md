@@ -1346,3 +1346,13 @@ about 2×. The latency now prints as given. The real-API sentence is kept
 word for word when the measured ceiling is at least 20×; otherwise it says
 real speedups land below the measured ceiling. The committed report's ceiling
 is 251×, so the committed file doesn't change. 8 new tests.
+
+## 2026-10-02 — bench_backpressure's docstring no longer tells you to overwrite the committed artifact (#132)
+
+The same problem fixed today for the 1000-doc bench, in the second bench
+script. Its docstring's command left out the output flags, which default to
+the committed files, and also left out the comparison flags that the committed
+three-row table was produced with. Running it as written replaced the table
+with a single row. The docstring now shows a `/tmp` example and the exact
+regeneration command from the README, labelled as such. A test keeps the two
+in step. 3 new tests.

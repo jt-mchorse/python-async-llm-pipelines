@@ -1412,3 +1412,21 @@ context_for_next_session:
   - THE_SPEC_SENTENCE_IS_KEPT_VERBATIM_AT_CEILING_GE_20_so_test_real_api_claim_direction_108_still_passes_untouched
 followups: []
 ---
+
+---
+session: 2026-10-02T14:15Z
+issue: 132
+focus: bench_backpressure_DOCSTRING_COMMAND_OVERWROTE_THE_COMMITTED_3_ROW_ARTIFACT_WITH_1_ROW_SIBLING_OF_128
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "518 -> 521 green; ruff clean"
+decisions_made: []
+measured: "hunt agent ran the docstring command as written: docs/backpressure.{md,json} rewritten with 1 row, two doc-surface tests red. Revert: 3 of 3 red."
+context_for_next_session:
+  - THE_LOCK_TIES_THE_DOCSTRINGS_LABELLED_REGENERATION_TO_THE_READMES_PROVENANCE_COMMAND_ARGV_FOR_ARGV
+  - pyasync_HAS_FOUR_OPEN_PRS_FROM_TODAY_127_130_131_133ish_all_append_MEMORY
+  - NOT_FILED_the_spans_n_paragraph_claims_n_independence_evidence_under_compare_n_with_n_50_where_the_queue_never_filled_pauses_0_max_depth_5_a_129_style_wording_issue
+followups: []
+---
