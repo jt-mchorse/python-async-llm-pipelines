@@ -104,6 +104,26 @@ class StreamMetrics:
         }
 
 
+def _refuse_bare_string(name: str, value: object) -> None:
+    """Raise ``ValueError`` if *value* is a bare ``str``/``bytes`` (#126).
+
+    A ``str`` is an ``Iterable[str]``, so ``list(items)`` turns one document
+    into one item per character and every result has the right shape: measured,
+    ``run_pipeline(SerialPipeline(llm, llm), "summarize this doc")`` reported
+    ``n_docs=18`` and made 36 LLM calls. ``bytes`` fans out over ints.
+
+    Only the bare-string shape. Every other iterable is still accepted, and
+    ``stream`` needs no call -- a ``str`` is not an ``AsyncIterable``, so it
+    already fails loud.
+    """
+    if isinstance(value, (str, bytes, bytearray)):
+        fix = f"pass [{value!r}]" if isinstance(value, str) else "decode it to str first"
+        raise ValueError(
+            f"{name} must be a collection of items, not a bare {type(value).__name__}: "
+            f"{value!r} would be split into its characters -- {fix}"
+        )
+
+
 def _require_timeout_seconds(timeout: object) -> float | None:
     """Return `timeout` as a positive finite number of seconds, `None`, or raise.
 
@@ -203,6 +223,8 @@ async def process(
         ``return_exceptions=True``, failing items appear as the
         ``BaseException`` instance.
     """
+    # First, before any `fn` call can be scheduled (#126).
+    _refuse_bare_string("items", items)
     # Integer + finite guards (#32). Pre-#32 NaN/Infinity/fractional passed
     # the sign-only check; asyncio.Semaphore(NaN) raises deep at acquire,
     # Semaphore(1.5) is the same shape, Semaphore(True) silently flattens

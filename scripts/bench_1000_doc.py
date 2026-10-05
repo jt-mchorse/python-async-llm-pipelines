@@ -6,10 +6,11 @@ under the synthetic LLM; the *absolute latency* is per the simulated
 per-call cost. Real-Anthropic numbers are an operator-side swap — see
 the bottom of `docs/benchmarks.md`.
 
-Usage:
-    python scripts/bench_1000_doc.py
-    python scripts/bench_1000_doc.py --n 200 --concurrency 16 --batch-size 8
-    python scripts/bench_1000_doc.py --out docs/benchmarks.md
+Usage (`--out` defaults to the COMMITTED `docs/benchmarks.md`, so a run that
+omits it overwrites the snapshot the tests pin -- #120, #128):
+    python scripts/bench_1000_doc.py --out /tmp/bench.md
+    python scripts/bench_1000_doc.py --n 200 --concurrency 16 --batch-size 8 --out /tmp/bench.md
+    python scripts/bench_1000_doc.py --out docs/benchmarks.md   # regenerates the committed snapshot
 """
 
 from __future__ import annotations

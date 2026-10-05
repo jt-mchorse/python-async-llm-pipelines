@@ -1311,6 +1311,31 @@ rather than making a new call.
 
 **Next session:** none.
 
+## 2026-10-02 — a bare string is refused where documents are expected (#126)
+
+`run_pipeline(SerialPipeline(llm, llm), "summarize this doc")` reported 18
+documents and made 36 LLM calls. `process("abc", fn)` fanned `fn` out over the
+letters, and `process(b"ab", fn)` over integers. `process`, each pipeline's
+`run`, and `run_pipeline` now refuse a bare string before any call. Each names
+its own parameter and gives the working spelling. `run_pipeline` checks too:
+it computes `n_docs` itself and accepts any pipeline object, so a third-party
+pipeline that doesn't check would otherwise still have published a character
+count. One test-writing trap: `make_batch_caller` never calls the fake LLM it
+wraps, so "zero calls" through it is always true. The tests use a counting
+batch caller instead. 28 new tests; each guard, reverted on its own, turns at
+least one red.
+
+## 2026-10-02 — the bench script's `--help` no longer tells you to overwrite the committed snapshot (#128)
+
+#120 fixed the README's copy of the 1000-doc bench command, which left out
+`--out` and so overwrote the committed `docs/benchmarks.*`, and added a test
+that reads the README. The script's own docstring had the same commands, and
+it doubles as `--help`. The docstring examples now write to `/tmp`. The one
+deliberate "regenerate the snapshot" command is labelled as such. The test now
+reads both the README and the docstring. Filed separately as #129: under
+non-default arguments, two sentences of the rendered report contradict its own
+numbers.
+
 ## 2026-10-02 — the bench report agrees with its own numbers under non-default arguments (#129)
 
 Two sentences in the 1000-doc bench report were written for the default
