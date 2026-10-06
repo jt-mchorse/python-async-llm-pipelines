@@ -1385,3 +1385,12 @@ been fixed for the same thing earlier. The README now labels that command as
 the one that regenerates the snapshot, and shows how to write to `/tmp`
 instead. A test checks that every benchmark command in the README either
 writes outside `docs/` or says that it rewrites it.
+
+## 2026-10-06 — a failed batch starts no extra LLM call (#146)
+
+When one item in `process` or `dispatch_tool_calls` failed, the slot it freed
+woke the next waiting item before the batch's cancellation arrived, so one
+more LLM or tool call started after the batch had already failed. The first
+failure now sets a flag before giving up its slot, and anything that gets a
+slot afterwards stops without calling. Runs that collect exceptions still
+process every item.
