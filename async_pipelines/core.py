@@ -241,9 +241,18 @@ async def process(
 
     sem = asyncio.Semaphore(concurrency)
     results: list[R | BaseException] = [None] * n  # type: ignore[list-item]
+    # Latched by the first failure that will propagate, BEFORE its slot is
+    # released (#146). Releasing the semaphore wakes the next waiting item,
+    # which ran ahead of the TaskGroup's cancellation and called `fn` -- one
+    # more LLM request per failed item, after the batch had already failed
+    # (concurrency=1: fn called for [0, 1]; `stream` already stopped at [0]).
+    failed = False
 
     async def _run_one(idx: int, item: T) -> None:
+        nonlocal failed
         async with sem:
+            if failed:
+                return
             try:
                 if timeout is None:
                     results[idx] = await fn(item)
@@ -273,6 +282,7 @@ async def process(
                 if return_exceptions and isinstance(e, Exception):
                     results[idx] = e
                 else:
+                    failed = True
                     raise
 
     async with asyncio.TaskGroup() as tg:

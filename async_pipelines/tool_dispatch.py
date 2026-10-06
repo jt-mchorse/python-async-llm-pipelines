@@ -245,6 +245,7 @@ async def dispatch_tool_calls(
 
     semaphore = asyncio.Semaphore(concurrency) if concurrency is not None else None
     results: list[ToolResult | None] = [None] * len(resolved)
+    failed = [False]
 
     async def _run_one(idx: int, call: ToolCall, fn: ToolFn) -> None:
         result = await _invoke_tool(
@@ -254,6 +255,7 @@ async def dispatch_tool_calls(
             semaphore,
             return_exceptions=return_exceptions,
             timeout=timeout,
+            failed=failed,
         )
         results[idx] = result
 
@@ -298,12 +300,24 @@ async def _invoke_tool(
     *,
     return_exceptions: bool,
     timeout: float | None,
-) -> ToolResult:
+    failed: list[bool] | None = None,
+) -> ToolResult | None:
     if semaphore is not None:
         async with semaphore:
-            return await _run_with_telemetry(
-                idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
-            )
+            # Latched by the first propagating failure before its slot is
+            # released (#146): the release woke the next waiting call ahead of
+            # the TaskGroup's cancellation, and it invoked its tool -- after the
+            # dispatch had already failed. `process` has the same latch.
+            if failed is not None and failed[0]:
+                return None
+            try:
+                return await _run_with_telemetry(
+                    idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
+                )
+            except BaseException:
+                if failed is not None:
+                    failed[0] = True
+                raise
     return await _run_with_telemetry(
         idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
     )
