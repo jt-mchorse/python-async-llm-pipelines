@@ -40,6 +40,22 @@ from async_pipelines.benchmark import (  # noqa: E402
 )
 from async_pipelines.io_utils import atomic_write_text  # noqa: E402
 
+#: The workload the README's numbers and the "5-20x" spec range describe. The
+#: argparse defaults read from it, so the report can say which flags a run
+#: changed (#135) without a second copy of the defaults to drift.
+DEFAULT_WORKLOAD = Workload(n_docs=1000, llm_call_seconds=0.020, concurrency=32, batch_size=8)
+
+
+def _changed_flags(workload: Workload) -> list[str]:
+    """The flags whose values differ from `DEFAULT_WORKLOAD`, as a reader types them."""
+    fields = [
+        ("--n", workload.n_docs, DEFAULT_WORKLOAD.n_docs),
+        ("--latency", workload.llm_call_seconds, DEFAULT_WORKLOAD.llm_call_seconds),
+        ("--concurrency", workload.concurrency, DEFAULT_WORKLOAD.concurrency),
+        ("--batch-size", workload.batch_size, DEFAULT_WORKLOAD.batch_size),
+    ]
+    return [f"`{flag} {value!r}`" for flag, value, default in fields if value != default]
+
 
 async def _run_all(workload: Workload) -> list[RunResult]:
     docs = [f"doc-{i:04d}" for i in range(workload.n_docs)]
@@ -167,10 +183,20 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     if ceiling is None or ceiling >= 20:
         landing = "so real-API speedups land in the 5-20x spec range. "
     else:
-        landing = (
-            f"so real-API speedups land below the {ceiling:.2f}× measured above "
-            "(the 5-20x spec range assumes the default `--concurrency 32` workload). "
+        # Name the whole default workload, and what this run changed. It said
+        # only "the default `--concurrency 32` workload", which blamed a flag a
+        # `--n 10` run had left at 32 -- ten docs cap fan-out at 10x just as
+        # well (#135).
+        d = DEFAULT_WORKLOAD
+        assumes = (
+            f"the 5-20x spec range assumes the default workload of {d.n_docs} docs, "
+            f"{d.llm_call_seconds * 1000:g} ms per call, `--concurrency {d.concurrency}`, "
+            f"`--batch-size {d.batch_size}`"
         )
+        changed = _changed_flags(workload)
+        if changed:
+            assumes += f"; this run used {', '.join(changed)}"
+        landing = f"so real-API speedups land below the {ceiling:.2f}× measured above ({assumes}). "
     lines.append(
         "Swap `FakeLLM` for an Anthropic adapter that conforms to the "
         "`LLMClient` Protocol (`async __call__(prompt: str) -> str`) and "
@@ -269,15 +295,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
     string-matching lock would stay green if this default moved.
     """
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--n", type=int, default=1000, help="Number of docs in the workload.")
+    p.add_argument(
+        "--n", type=int, default=DEFAULT_WORKLOAD.n_docs, help="Number of docs in the workload."
+    )
     p.add_argument(
         "--latency",
         type=float,
-        default=0.020,
+        default=DEFAULT_WORKLOAD.llm_call_seconds,
         help="Simulated per-call LLM latency in seconds.",
     )
-    p.add_argument("--concurrency", type=int, default=32, help="Fan-out width.")
-    p.add_argument("--batch-size", type=int, default=8, help="Batch size for the batched pipeline.")
+    p.add_argument(
+        "--concurrency", type=int, default=DEFAULT_WORKLOAD.concurrency, help="Fan-out width."
+    )
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=DEFAULT_WORKLOAD.batch_size,
+        help="Batch size for the batched pipeline.",
+    )
     p.add_argument(
         "--out",
         default="docs/benchmarks.md",
