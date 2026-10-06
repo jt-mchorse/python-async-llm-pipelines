@@ -1487,3 +1487,22 @@ context_for_next_session:
   - FOURTH_COPY_OF_THE_120_CLASS_README_THE_DOCSTRING_132_AND_bench_1000_doc_120_122_WERE_FIXED_THE_README_BACKPRESSURE_BLOCK_WAS_NOT_now_a_lock_covers_every_bench_block
 followups: []
 ---
+
+---
+session: 2026-10-06T08:57Z
+duration_min: 2   # computed: plan comment 08:55:38Z -> 08:57Z (date -u)
+issue: 144
+branch: session/2026-10-06-0855-issue-144
+focus: bench_backpressure_WITH_NO_FILLED_ROW_THE_137_FALLBACK_saturated_n_or_n_values_PRINTED_THE_ROWS_THAT_FILLED_THE_QUEUE_SHARE_ONE_n_10_100
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "570 -> 573 passed; ruff, format clean; committed snapshot unchanged"
+decisions_made: []
+measured: "--n 100 --queue-size 200 --compare-n: depths 100 and 10 under 200, no pauses; main printed 'filled the queue share one n ([10, 100])' and 'never filled'; fixed prints 'No row filled the queue' once. Revert probe: 2 regression arms red, control + 4 #134 arms green."
+context_for_next_session:
+  - AN_OR_FALLBACK_ON_AN_EMPTY_FILTERED_SET_RELABELS_THE_UNFILTERED_SET_WITH_THE_FILTERS_NAME_read_every_x_or_y_in_prose_builders
+  - MERGE_ORDER_pyasync_141_143_145_independent_files
+followups: []
+---

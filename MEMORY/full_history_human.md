@@ -1385,3 +1385,12 @@ been fixed for the same thing earlier. The README now labels that command as
 the one that regenerates the snapshot, and shows how to write to `/tmp`
 instead. A test checks that every benchmark command in the README either
 writes outside `docs/` or says that it rewrites it.
+
+## 2026-10-06 — the backpressure report admits when the bound was never reached (#144)
+
+When no row of the backpressure benchmark filled its queue, the report still
+described "the rows that filled the queue" as sharing one size, listed two
+sizes, and then said a few lines later that neither row filled the queue. It
+also presented "a fast producer cannot pile items up" as something the table
+showed. In that case the report now says plainly that no row reached the
+bound and what to run so that one does.
