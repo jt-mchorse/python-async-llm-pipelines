@@ -1356,3 +1356,13 @@ three-row table was produced with. Running it as written replaced the table
 with a single row. The docstring now shows a `/tmp` example and the exact
 regeneration command from the README, labelled as such. A test keeps the two
 in step. 3 new tests.
+
+## 2026-10-05 — the benchmark report names what a run changed (#135)
+
+When a run's measured speedup is below the 5-20× range the README quotes, the
+report explains why. It used to say the range assumes "the default
+`--concurrency 32` workload", even for a run that used concurrency 32 and
+changed only the document count. The report now names the whole default
+workload and the flags this run changed, e.g. "this run used `--n 10`". The
+defaults are defined once and shared by the command-line parser and the
+sentence.

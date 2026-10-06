@@ -53,7 +53,10 @@ def test_a_low_ceiling_run_does_not_claim_real_apis_beat_it() -> None:
     md = render_markdown(_workload(0.01, concurrency=2), _results(2.02))
     assert _SPEC not in md
     assert "land below the 2.02× measured above" in md
-    assert "assumes the default `--concurrency 32` workload" in md
+    # The cause is named among the flags this run changed (#135); the sentence
+    # used to name `--concurrency 32` whatever the run had changed.
+    assert "this run used " in md
+    assert "`--concurrency 2`" in md
 
 
 @pytest.mark.parametrize("ceiling", [5.0, 19.99])

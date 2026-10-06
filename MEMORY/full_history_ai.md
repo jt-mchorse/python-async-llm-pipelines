@@ -1430,3 +1430,23 @@ context_for_next_session:
   - NOT_FILED_the_spans_n_paragraph_claims_n_independence_evidence_under_compare_n_with_n_50_where_the_queue_never_filled_pauses_0_max_depth_5_a_129_style_wording_issue
 followups: []
 ---
+
+---
+session: 2026-10-05T08:02Z
+duration_min: 3   # first repro ~07:59Z; plan comment 2026-10-05T08:00:29Z -> 08:02Z
+issue: 135
+branch: session/2026-10-05-0800-issue-135
+focus: THE_LOW_CEILING_PARENTHETICAL_BLAMED_concurrency_32_ON_A_RUN_THAT_USED_32_n_10_was_the_cause
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 7
+  suite: "558 -> 565 green; ruff clean; docs/benchmarks.md untouched (a >=20x run never takes the branch)"
+decisions_made: []
+measured: "main --n 10: 'assumes the default --concurrency 32 workload' under a concurrency-32 bullet; now names the whole default and 'this run used --n 10'. Probes: fixed string 7 red, only-concurrency neighbour 4 red"
+context_for_next_session:
+  - DEFAULT_WORKLOAD_IS_THE_ONE_SOURCE_FOR_ARGPARSE_AND_THE_SENTENCE_pinned_by_a_parse_args_empty_equals_test
+  - 129S_TEST_PINNED_THE_HARD_CODED_STRING_ITSELF_a_test_that_asserts_a_literal_explanation_locks_the_bug_in_assert_the_property_instead
+  - NOT_DONE_bench_backpressure_n_1_compare_n_says_re_run_with_compare_n_when_compare_n_was_passed_only_at_n_1
+followups: []
+---
