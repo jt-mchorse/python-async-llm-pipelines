@@ -1385,3 +1385,12 @@ been fixed for the same thing earlier. The README now labels that command as
 the one that regenerates the snapshot, and shows how to write to `/tmp`
 instead. A test checks that every benchmark command in the README either
 writes outside `docs/` or says that it rewrites it.
+
+## 2026-10-06 — the demo runs one Python and states no stale numbers (#142)
+
+The demo's first stage ran whatever `pytest` the shell found first, which here
+was a different Python from the one the second stage used; with no `pytest` on
+the path it failed outright. It now runs the same interpreter as the second
+stage. Its closing narration also said "30x is the upper bound" right under a
+table row showing 190x. The narration now refers to the measured async number
+above it instead of quoting a fixed one.
