@@ -1469,3 +1469,21 @@ context_for_next_session:
   - SAME_BLAME_A_FLAG_ALREADY_USED_SHAPE_AS_135_IN_THE_SIBLING_SCRIPT
 followups: []
 ---
+
+---
+session: 2026-10-05T09:16Z
+duration_min: 2   # computed: started 09:15Z -> 09:16Z
+issue: 138
+branch: session/2026-10-05-0915-issue-138
+focus: README_BENCH_BACKPRESSURE_COMMAND_SILENTLY_REWROTE_THE_COMMITTED_SNAPSHOT_SIBLING_OF_120
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 1
+  suite: "green; ruff clean"
+decisions_made: []
+measured: "README lock red against main, green after; existing command lock unchanged"
+context_for_next_session:
+  - FOURTH_COPY_OF_THE_120_CLASS_README_THE_DOCSTRING_132_AND_bench_1000_doc_120_122_WERE_FIXED_THE_README_BACKPRESSURE_BLOCK_WAS_NOT_now_a_lock_covers_every_bench_block
+followups: []
+---

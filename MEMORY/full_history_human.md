@@ -1376,3 +1376,12 @@ only runs that actually filled the queue, and names the ones that didn't. It
 also stopped telling readers to re-run with `--compare-n` when they already
 had; it now says what workload size makes the comparison meaningful. The
 committed report reads the same, since all of its runs filled the queue.
+
+## 2026-10-05 — the README warns that the backpressure command rewrites the snapshot (#138)
+
+The README's backpressure benchmark command, run as written, overwrote the
+committed results files without saying so. The 1000-document commands had
+been fixed for the same thing earlier. The README now labels that command as
+the one that regenerates the snapshot, and shows how to write to `/tmp`
+instead. A test checks that every benchmark command in the README either
+writes outside `docs/` or says that it rewrites it.

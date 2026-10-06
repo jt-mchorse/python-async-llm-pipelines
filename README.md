@@ -196,6 +196,11 @@ by `tests/test_backpressure_doc_surfaces.py`. The timing columns
 machine and are deliberately **not** pinned across surfaces — only the
 `.md`-against-`.json` pair, which comes from one run.
 
+This is the command that produced the committed snapshot, and running it
+**rewrites `docs/backpressure.md` and `docs/backpressure.json`** (the
+`--out-md`/`--out-json` defaults). To explore without touching them, add
+`--out-md /tmp/backpressure.md --out-json /tmp/backpressure.json`.
+
 ```bash
 python scripts/bench_backpressure.py --n 5000 --queue-size 8 \
     --consumer-ms 1 --concurrency 2 --compare --compare-n
