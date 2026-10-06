@@ -63,3 +63,30 @@ def test_one_n_states_the_condition_rather_than_naming_a_flag_already_used() -> 
     md = _render_markdown([_row(1, 8, 1, 0)])
     assert "Re-run with `--compare-n` for a varied-`n` row" not in md
     assert "`n // 10` exceeds the `queue_size` (8)" in md
+
+
+# --- #144: no row filled the queue -------------------------------------------
+
+
+def test_no_filled_row_names_no_filled_rows() -> None:
+    # The measured `--n 100 --queue-size 200 --compare-n` shape.
+    md = _render_markdown([_row(100, 200, 100, 0), _row(10, 200, 10, 0)])
+    assert "The rows that filled the queue" not in md
+    assert "share one `n` ([10, 100])" not in md
+    assert "No row filled the queue" in md
+    assert "`n // 10` exceeds the `queue_size` (200)" in md
+    # Said once, not twice.
+    assert "never filled the queue" not in md
+
+
+def test_no_filled_row_does_not_present_the_bound_as_shown() -> None:
+    md = _render_markdown([_row(100, 200, 100, 0), _row(10, 200, 10, 0)])
+    assert "a fast producer cannot pile items up" not in md
+    assert "but no row reached it" in md
+
+
+def test_one_filled_row_keeps_the_bound_sentence() -> None:
+    md = _render_markdown([_row(5000, 8, 8, 2558)])
+    assert "a fast producer cannot pile items up" in md
+    assert "The rows that filled the queue share one `n` ([5000])" in md
+    assert "No row filled the queue" not in md
