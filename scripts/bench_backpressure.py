@@ -188,7 +188,6 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     # `--compare-n` instead of over-claiming again.
     n_values = sorted({r.n for r in results})
     queue_values = sorted({r.queue_size for r in results})
-    spans_n = len(n_values) > 1
     lines.append(
         f"`max_queue_depth` is bounded by `queue_size` in every row above "
         f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That "
@@ -203,24 +202,55 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     # themselves, so the sentence cannot contradict the column beside it.
     lines.append(_results_are_o_n_sentence(results))
     lines.append("")
-    if spans_n:
+
+    # Evidence for the bound is a row where the bound APPLIED (#134). A
+    # `--compare-n` row at n // 10 can be smaller than the queue: n=50 gave an
+    # n=5 row with queue_size 8, max_queue_depth 5 and no producer pauses -- the
+    # queue never filled, its depth followed `n`, and the paragraph still called
+    # the rows "evidence for the `n`-independence of the bound".
+    def saturated(r: BackpressureResult) -> bool:
+        return r.metrics["max_queue_depth"] >= r.queue_size or r.metrics["producer_pauses"] > 0
+
+    saturated_n = sorted({r.n for r in results if saturated(r)})
+    unfilled_n = sorted({r.n for r in results if not saturated(r)})
+    proof = (
+        "The general claim is proved where it belongs, over a parameterised table "
+        "in `tests/test_stream.py` -- "
+        "`test_stream_metrics_max_depth_bounded_by_queue_size` -- which is "
+        "host-independent; this table is the measured illustration."
+    )
+    if len(saturated_n) > 1 and not unfilled_n:
+        # Every row filled the queue: the sentence the committed snapshot carries.
         lines.append(
             f"The rows span more than one `n` ({n_values}) at a fixed `queue_size`, "
             f"which is what makes this table evidence for the `n`-independence of "
-            f"the bound rather than only for its value at one workload size. The "
-            f"general claim is proved where it belongs, over a parameterised table "
-            f"in `tests/test_stream.py` -- "
-            f"`test_stream_metrics_max_depth_bounded_by_queue_size` -- which is "
-            f"host-independent; this table is the measured illustration."
+            f"the bound rather than only for its value at one workload size. {proof}"
+        )
+    elif len(saturated_n) > 1:
+        lines.append(
+            f"The rows that filled the queue span more than one `n` ({saturated_n}) "
+            f"at a fixed `queue_size`, which is what makes them evidence for the "
+            f"`n`-independence of the bound rather than only for its value at one "
+            f"workload size. {proof}"
         )
     else:
+        # With one `n` the advice used to be "Re-run with `--compare-n`" even
+        # when `--compare-n` had been passed: at `--n 1` its extra row is
+        # max(1, 1 // 10) = 1 again (#134). State the condition instead.
+        q = max(queue_values)
         lines.append(
-            f"These rows share one `n` ({n_values[0]}), so they show the bound at a "
-            f"single workload size and not its independence from `n`. Re-run with "
-            f"`--compare-n` for a varied-`n` row. The `n`-independent claim is "
-            f"proved over a parameterised table in `tests/test_stream.py` -- "
-            f"`test_stream_metrics_max_depth_bounded_by_queue_size` -- which is "
-            f"host-independent."
+            f"The rows that filled the queue share one `n` ({saturated_n or n_values}), "
+            f"so they show the bound at a single workload size and not its "
+            f"independence from `n`. A varied-`n` row is evidence only if it also "
+            f"fills the queue: run `--compare-n` with an `--n` large enough that "
+            f"`n // {_COMPARE_N_DIVISOR}` exceeds the `queue_size` ({q}). {proof}"
+        )
+    if unfilled_n:
+        lines.append("")
+        lines.append(
+            f"Rows at `n` {unfilled_n} never filled the queue (`max_queue_depth` "
+            f"below `queue_size`, no producer pauses), so the bound never applied "
+            f"to them: their depth followed `n`."
         )
     lines.append("")
     return "\n".join(lines)

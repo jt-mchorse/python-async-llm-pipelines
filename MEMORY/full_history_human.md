@@ -1366,3 +1366,13 @@ changed only the document count. The report now names the whole default
 workload and the flags this run changed, e.g. "this run used `--n 10`". The
 defaults are defined once and shared by the command-line parser and the
 sentence.
+
+## 2026-10-05 — the backpressure report only counts runs where the bound applied (#134)
+
+The backpressure report called its rows evidence that the queue bound holds at
+any workload size. But a small comparison run can be smaller than the queue,
+so the queue never fills and the bound never applies. The report now counts
+only runs that actually filled the queue, and names the ones that didn't. It
+also stopped telling readers to re-run with `--compare-n` when they already
+had; it now says what workload size makes the comparison meaningful. The
+committed report reads the same, since all of its runs filled the queue.
