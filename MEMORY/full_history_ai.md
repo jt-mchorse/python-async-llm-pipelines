@@ -1432,6 +1432,45 @@ followups: []
 ---
 
 ---
+session: 2026-10-05T08:02Z
+duration_min: 3   # first repro ~07:59Z; plan comment 2026-10-05T08:00:29Z -> 08:02Z
+issue: 135
+branch: session/2026-10-05-0800-issue-135
+focus: THE_LOW_CEILING_PARENTHETICAL_BLAMED_concurrency_32_ON_A_RUN_THAT_USED_32_n_10_was_the_cause
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 7
+  suite: "558 -> 565 green; ruff clean; docs/benchmarks.md untouched (a >=20x run never takes the branch)"
+decisions_made: []
+measured: "main --n 10: 'assumes the default --concurrency 32 workload' under a concurrency-32 bullet; now names the whole default and 'this run used --n 10'. Probes: fixed string 7 red, only-concurrency neighbour 4 red"
+context_for_next_session:
+  - DEFAULT_WORKLOAD_IS_THE_ONE_SOURCE_FOR_ARGPARSE_AND_THE_SENTENCE_pinned_by_a_parse_args_empty_equals_test
+  - 129S_TEST_PINNED_THE_HARD_CODED_STRING_ITSELF_a_test_that_asserts_a_literal_explanation_locks_the_bug_in_assert_the_property_instead
+  - NOT_DONE_bench_backpressure_n_1_compare_n_says_re_run_with_compare_n_when_compare_n_was_passed_only_at_n_1
+followups: []
+---
+
+---
+session: 2026-10-05T08:48Z
+duration_min: 3   # computed: started 08:46Z -> 08:48Z
+issue: 134
+branch: session/2026-10-05-0846-issue-134
+focus: BACKPRESSURE_REPORT_CALLED_AN_UNFILLED_COMPARE_N_ROW_EVIDENCE_FOR_N_INDEPENDENCE_AND_ADVISED_A_FLAG_ALREADY_PASSED_AT_N_1
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 4
+  suite: "558 -> 562 green; ruff clean; committed docs/backpressure.json re-renders the committed paragraph verbatim"
+decisions_made: []
+measured: "n=50 + n=5 (depth 5 < queue 8, 0 pauses) was evidence on main, now named as never filled. Probes: every row as evidence 2 red, old advice 1 red"
+context_for_next_session:
+  - EVIDENCE_FOR_A_BOUND_IS_A_ROW_WHERE_THE_BOUND_APPLIED_saturation_is_max_depth_reaching_queue_size_or_a_producer_pause
+  - SAME_BLAME_A_FLAG_ALREADY_USED_SHAPE_AS_135_IN_THE_SIBLING_SCRIPT
+followups: []
+---
+
+---
 session: 2026-10-05T09:16Z
 duration_min: 2   # computed: started 09:15Z -> 09:16Z
 issue: 138
