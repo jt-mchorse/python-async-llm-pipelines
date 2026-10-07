@@ -1431,3 +1431,9 @@ wrong queue size in its advice. Rows are now named by item count and queue
 size together. Also filed #148 for JT: a tool written as a plain (non-async)
 function runs and then gets reported as failed, and the right fix is a
 contract choice.
+## 2026-10-07 — the fake LLM's latency is checked (#151)
+
+The benchmark's fake LLM accepted any latency value. `True` made every call
+sleep a full second, and a negative value made the batched pipeline report an
+impossible 263,000 documents per second. It now applies the same check as the
+other timing settings, and so does the batch caller for any LLM object.
