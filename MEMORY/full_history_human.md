@@ -1394,3 +1394,12 @@ will land below it. It took that measurement from the largest row, which is
 almost always the batched one, which the same paragraph calls the exception.
 With low concurrency, the async speedup was 2x and the report still promised
 5-20x. It now reads the async row.
+
+## 2026-10-06 — the demo runs one Python and states no stale numbers (#142)
+
+The demo's first stage ran whatever `pytest` the shell found first, which here
+was a different Python from the one the second stage used; with no `pytest` on
+the path it failed outright. It now runs the same interpreter as the second
+stage. Its closing narration also said "30x is the upper bound" right under a
+table row showing 190x. The narration now refers to the measured async number
+above it instead of quoting a fixed one.

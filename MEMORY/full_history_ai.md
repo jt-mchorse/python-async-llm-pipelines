@@ -1507,3 +1507,22 @@ context_for_next_session:
   - OPEN_SIBLINGS_FROM_THE_SAME_HUNT_capture_bare_pytest_and_hard_coded_30x_banner_and_backpressure_share_one_n
 followups: []
 ---
+
+---
+session: 2026-10-06T08:48Z
+duration_min: 3   # computed: plan comment 08:45:16Z -> 08:48Z (date -u)
+issue: 142
+branch: session/2026-10-06-0845-issue-142
+focus: capture_demo_STAGE_1_RAN_PATHS_PYTEST_homebrews_AND_THE_NARRATION_HARD_CODED_30x_UPPER_BOUND_UNDER_A_190x_ROW
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "570 -> 572 passed; ruff, format clean"
+decisions_made: []
+measured: "which -a pytest -> /opt/homebrew/bin/pytest; capture table async 27.91x, batched 190.07x under '30x is the upper bound'. Revert probe: both arms rc 1."
+context_for_next_session:
+  - A_TEST_THAT_RUNS_THE_CAPTURE_MUST_LIVE_IN_test_capture_demo_smoke_py_the_capture_runs_pytest_and_ignores_only_that_file_ANY_OTHER_FILE_RECURSES
+  - MERGE_ORDER_141_THEN_143_independent_files_no_conflict_expected_except_MEMORY
+followups: []
+---
