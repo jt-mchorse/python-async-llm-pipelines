@@ -43,7 +43,9 @@ _EVIDENCE = "evidence for the `n`-independence"
 def test_an_unfilled_compare_n_row_is_not_evidence() -> None:
     md = _render_markdown([_row(50, 8, 8, 20), _row(5, 8, 5, 0)])
     assert _EVIDENCE not in md
-    assert "Rows at `n` [5] never filled the queue" in md
+    assert (
+        "Rows at (`n`, `queue_size`) [(5, 8)] never filled the queue" in md
+    )  # (n, queue_size) since #149
 
 
 def test_rows_that_all_filled_the_queue_keep_the_committed_sentence() -> None:
@@ -56,7 +58,9 @@ def test_rows_that_all_filled_the_queue_keep_the_committed_sentence() -> None:
 def test_filled_rows_spanning_n_beside_an_unfilled_one_name_only_the_filled() -> None:
     md = _render_markdown([_row(5000, 8, 8, 9), _row(500, 8, 8, 3), _row(5, 8, 5, 0)])
     assert "The rows that filled the queue span more than one `n` ([500, 5000])" in md
-    assert "Rows at `n` [5] never filled the queue" in md
+    assert (
+        "Rows at (`n`, `queue_size`) [(5, 8)] never filled the queue" in md
+    )  # (n, queue_size) since #149
 
 
 def test_one_n_states_the_condition_rather_than_naming_a_flag_already_used() -> None:
