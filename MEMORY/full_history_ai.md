@@ -1489,6 +1489,64 @@ followups: []
 ---
 
 ---
+session: 2026-10-06T08:44Z
+duration_min: 1   # computed: plan comment 08:43:21Z -> 08:44Z (date -u); reproduced from ~08:41Z after a hunt agent's report
+issue: 140
+branch: session/2026-10-06-0843-issue-140
+focus: bench_1000_doc_THE_129_CEILING_GUARD_TOOK_MAX_OVER_ASYNC_PLUS_BATCHED_TOO_so_async_at_2_00x_still_printed_5_20x
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "570 -> 572 passed; ruff, format clean; committed snapshot unchanged"
+decisions_made: []
+measured: "--n 200 --concurrency 2 --batch-size 16: async 2.00x, batched 28.92x; main 'land in the 5-20x spec range', fixed 'land below the 2.00x'. Revert probe: the split-speedup arm red, the high-ceiling control green."
+context_for_next_session:
+  - A_FIXTURE_THAT_GIVES_TWO_ROWS_THE_SAME_VALUE_CANNOT_TELL_WHICH_ROW_A_MAX_READ_129s_did_exactly_that
+  - mypy_HAS_2_PRE_EXISTING_ERRORS_IN_benchmark_py_313_368_list_str_or_BaseException_NOT_A_CI_GATE_HERE
+  - OPEN_SIBLINGS_FROM_THE_SAME_HUNT_capture_bare_pytest_and_hard_coded_30x_banner_and_backpressure_share_one_n
+followups: []
+---
+
+---
+session: 2026-10-06T08:48Z
+duration_min: 3   # computed: plan comment 08:45:16Z -> 08:48Z (date -u)
+issue: 142
+branch: session/2026-10-06-0845-issue-142
+focus: capture_demo_STAGE_1_RAN_PATHS_PYTEST_homebrews_AND_THE_NARRATION_HARD_CODED_30x_UPPER_BOUND_UNDER_A_190x_ROW
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "570 -> 572 passed; ruff, format clean"
+decisions_made: []
+measured: "which -a pytest -> /opt/homebrew/bin/pytest; capture table async 27.91x, batched 190.07x under '30x is the upper bound'. Revert probe: both arms rc 1."
+context_for_next_session:
+  - A_TEST_THAT_RUNS_THE_CAPTURE_MUST_LIVE_IN_test_capture_demo_smoke_py_the_capture_runs_pytest_and_ignores_only_that_file_ANY_OTHER_FILE_RECURSES
+  - MERGE_ORDER_141_THEN_143_independent_files_no_conflict_expected_except_MEMORY
+followups: []
+---
+
+---
+session: 2026-10-06T08:57Z
+duration_min: 2   # computed: plan comment 08:55:38Z -> 08:57Z (date -u)
+issue: 144
+branch: session/2026-10-06-0855-issue-144
+focus: bench_backpressure_WITH_NO_FILLED_ROW_THE_137_FALLBACK_saturated_n_or_n_values_PRINTED_THE_ROWS_THAT_FILLED_THE_QUEUE_SHARE_ONE_n_10_100
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "570 -> 573 passed; ruff, format clean; committed snapshot unchanged"
+decisions_made: []
+measured: "--n 100 --queue-size 200 --compare-n: depths 100 and 10 under 200, no pauses; main printed 'filled the queue share one n ([10, 100])' and 'never filled'; fixed prints 'No row filled the queue' once. Revert probe: 2 regression arms red, control + 4 #134 arms green."
+context_for_next_session:
+  - AN_OR_FALLBACK_ON_AN_EMPTY_FILTERED_SET_RELABELS_THE_UNFILTERED_SET_WITH_THE_FILTERS_NAME_read_every_x_or_y_in_prose_builders
+  - MERGE_ORDER_pyasync_141_143_145_independent_files
+followups: []
+---
+
+---
 session: 2026-10-06T09:54Z
 duration_min: 1   # computed: plan comment 09:53:41Z -> 09:54Z (date -u); fix drafted from ~09:51Z
 issue: 146
