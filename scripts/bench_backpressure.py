@@ -188,20 +188,6 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     # `--compare-n` instead of over-claiming again.
     n_values = sorted({r.n for r in results})
     queue_values = sorted({r.queue_size for r in results})
-    lines.append(
-        f"`max_queue_depth` is bounded by `queue_size` in every row above "
-        f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That "
-        f"bounds the input *waiting to be processed*: a fast producer cannot pile "
-        f"items up ahead of a slow consumer, at any `n`."
-    )
-    lines.append("")
-    # And what it does not bound (#115). This sentence used to end "peak
-    # in-memory items are O(queue_size)", printed under a `peak_heap_kb` column
-    # that grew ~10x with `n` in the same table. `stream` returns every result in
-    # one list, so results are O(n). The heap figures are quoted from the rows
-    # themselves, so the sentence cannot contradict the column beside it.
-    lines.append(_results_are_o_n_sentence(results))
-    lines.append("")
 
     # Evidence for the bound is a row where the bound APPLIED (#134). A
     # `--compare-n` row at n // 10 can be smaller than the queue: n=50 gave an
@@ -213,6 +199,30 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
 
     saturated_n = sorted({r.n for r in results if saturated(r)})
     unfilled_n = sorted({r.n for r in results if not saturated(r)})
+    if saturated_n:
+        lines.append(
+            f"`max_queue_depth` is bounded by `queue_size` in every row above "
+            f"({len(results)} rows, queue_size {queue_values}, n {n_values}). That "
+            f"bounds the input *waiting to be processed*: a fast producer cannot pile "
+            f"items up ahead of a slow consumer, at any `n`."
+        )
+    else:
+        # No row reached the bound (#144), so the table cannot show what it
+        # prevents; "a fast producer cannot pile items up" read as measured.
+        lines.append(
+            f"`max_queue_depth` stayed below `queue_size` in every row above "
+            f"({len(results)} rows, queue_size {queue_values}, n {n_values}), but no "
+            f"row reached it, so this run does not show what the bound prevents."
+        )
+    lines.append("")
+    # And what it does not bound (#115). This sentence used to end "peak
+    # in-memory items are O(queue_size)", printed under a `peak_heap_kb` column
+    # that grew ~10x with `n` in the same table. `stream` returns every result in
+    # one list, so results are O(n). The heap figures are quoted from the rows
+    # themselves, so the sentence cannot contradict the column beside it.
+    lines.append(_results_are_o_n_sentence(results))
+    lines.append("")
+
     proof = (
         "The general claim is proved where it belongs, over a parameterised table "
         "in `tests/test_stream.py` -- "
@@ -233,19 +243,33 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
             f"`n`-independence of the bound rather than only for its value at one "
             f"workload size. {proof}"
         )
+    elif not saturated_n:
+        # No row filled the queue (#144). This fell through to the branch below
+        # with `saturated_n or n_values`, which printed "the rows that filled the
+        # queue share one `n` ([10, 100])" -- naming rows that do not exist, two
+        # values for "one", above a sentence saying neither filled the queue.
+        q = max(queue_values)
+        lines.append(
+            f"No row filled the queue: every `max_queue_depth` stayed below "
+            f"`queue_size` with no producer pauses, so this run exercises the bound "
+            f"nowhere and its depth followed `n`. A row is evidence only if it fills "
+            f"the queue: run with an `--n` above the `queue_size` ({q}), and under "
+            f"`--compare-n` one large enough that `n // {_COMPARE_N_DIVISOR}` exceeds "
+            f"the `queue_size` ({q}). {proof}"
+        )
     else:
         # With one `n` the advice used to be "Re-run with `--compare-n`" even
         # when `--compare-n` had been passed: at `--n 1` its extra row is
         # max(1, 1 // 10) = 1 again (#134). State the condition instead.
         q = max(queue_values)
         lines.append(
-            f"The rows that filled the queue share one `n` ({saturated_n or n_values}), "
+            f"The rows that filled the queue share one `n` ({saturated_n}), "
             f"so they show the bound at a single workload size and not its "
             f"independence from `n`. A varied-`n` row is evidence only if it also "
             f"fills the queue: run `--compare-n` with an `--n` large enough that "
             f"`n // {_COMPARE_N_DIVISOR}` exceeds the `queue_size` ({q}). {proof}"
         )
-    if unfilled_n:
+    if unfilled_n and saturated_n:
         lines.append("")
         lines.append(
             f"Rows at `n` {unfilled_n} never filled the queue (`max_queue_depth` "
