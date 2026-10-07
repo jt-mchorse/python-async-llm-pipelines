@@ -1597,5 +1597,19 @@ decisions_made: []
 measured: "agent: True -> 2.005s/16 docs/s, -5.0 -> 263,737 docs/s. Revert 9/14 red."
 context_for_next_session:
   - A_COMMENT_SAYING_A_FALLBACK_IS_VALIDATED_IS_A_TEST_follow_the_getattr_to_its_source
+session: 2026-10-07T10:06Z
+duration_min: 3
+issue: 153
+branch: session/2026-10-07-pyasync-overflow
+focus: MATH_ISFINITE_RAISES_OVERFLOWERROR_ON_A_HUGE_INT_ESCAPING_THE_VALUEERROR_CONTRACT
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "587 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "main: 10**400 -> OverflowError at both validators. Revert 4/5 red."
+context_for_next_session:
+  - math_isfinite_IS_NOT_TOTAL_ON_INT_sweep_other_python_repos_for_isfinite_on_unconverted_ints
 followups: []
 ---
