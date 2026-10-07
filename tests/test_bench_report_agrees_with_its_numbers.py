@@ -78,3 +78,28 @@ def test_the_committed_snapshot_still_matches_the_template() -> None:
     committed = (ROOT / "docs" / "benchmarks.md").read_text(encoding="utf-8")
     assert _SPEC in committed
     assert re.search(r"· 20 ms simulated per call ·", committed)
+
+
+def _split(async_speedup: float, batched_speedup: float) -> list[RunResult]:
+    # #129's fixture gave both rows one speedup, so a ceiling taken over the
+    # batched row passed it. Real runs never look like that (#140).
+    return [
+        RunResult("serial", 40, 1.0, 40.0, 1.0),
+        RunResult("async", 40, 1.0 / async_speedup, 40.0 * async_speedup, async_speedup),
+        RunResult(
+            "async+batched", 40, 1.0 / batched_speedup, 40.0 * batched_speedup, batched_speedup
+        ),
+    ]
+
+
+def test_the_ceiling_is_the_async_row_not_the_batched_exception() -> None:
+    # The measured `--n 200 --concurrency 2 --batch-size 16` run.
+    md = render_markdown(_workload(0.02, concurrency=2), _split(2.00, 28.92))
+    assert _SPEC not in md
+    assert "land below the 2.00× measured above" in md
+    assert "28.92× measured above" not in md
+
+
+def test_a_high_async_ceiling_keeps_the_spec_sentence_whatever_batched_did() -> None:
+    md = render_markdown(_workload(0.02), _split(27.91, 190.07))
+    assert _SPEC in md

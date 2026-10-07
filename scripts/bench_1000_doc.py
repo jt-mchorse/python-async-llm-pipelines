@@ -177,8 +177,19 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     # would put the real floor above the measured ceiling. Keep the sentence
     # verbatim when the ceiling clears the range; otherwise state it relative
     # to the number above it.
+    #
+    # The ceiling is the async fan-out's, not the batched row's (#140). The
+    # paragraph calls batched workloads "the documented exception" that "can
+    # exceed" the range, and a `max()` over every row picked that exception
+    # almost every time: `--concurrency 2 --batch-size 16` measured async at
+    # 2.00x and batched at 28.92x, and the report said real APIs land in 5-20x.
     ceiling = max(
-        (r.speedup_vs_serial for r in results if r.speedup_vs_serial is not None), default=None
+        (
+            r.speedup_vs_serial
+            for r in results
+            if r.speedup_vs_serial is not None and r.pipeline_name != BatchedAsyncPipeline.name
+        ),
+        default=None,
     )
     if ceiling is None or ceiling >= 20:
         landing = "so real-API speedups land in the 5-20x spec range. "
