@@ -88,12 +88,16 @@ printf 'full 1000-doc headline numbers live in docs/benchmarks.md (locked by sna
 pace
 
 banner "1/2 · pytest · primitive surface (process · stream · tool_dispatch · backpressure · timeouts)"
-printf 'pytest --ignore=tests/test_capture_demo_smoke.py\n'
+printf '%s -m pytest --ignore=tests/test_capture_demo_smoke.py\n' "${PYTHON_BIN#"$REPO_ROOT"/}"
 printf '  every primitive covered by hermetic unit tests; passing summary is the contract.\n'
 printf '  (the smoke test is excluded here so the outer pytest run that invokes\n'
 printf '   this script does not recursively re-enter it. pyproject.toml addopts\n'
 printf '   already includes -q; an extra -q here would silence the summary line.)\n\n'
-pytest --ignore=tests/test_capture_demo_smoke.py
+# The interpreter stage 2 uses, not whatever `pytest` comes first on PATH:
+# that was Homebrew's here, so one recording ran the suite and the bench on two
+# different Pythons, and with no pytest on PATH this stage exited 127 even
+# though .venv existed (#142).
+"$PYTHON_BIN" -m pytest --ignore=tests/test_capture_demo_smoke.py
 pace
 
 banner "2/2 · bench_1000_doc.py · serial vs async vs async+batched (n=$N_DOCS for tempo)"
@@ -117,6 +121,11 @@ printf '    --batch-size 4 --out /tmp/real.md\n'
 # Direction corrected in #108 -- this said the ratios "will widen", which
 # inverts the README's honest-framing paragraph. A pure-wait asyncio.sleep has
 # no per-request overhead, so the synthetic ratio is the ceiling.
+# No measured number in this narration (#142): it said "30x is the upper
+# bound" under a table whose batched row read 190x, and any other n or machine
+# measures a different async ratio. The bench's own paragraph above states the
+# bound relative to the run it just made (#129, #140).
 printf '  expect LOWER ratios than the synthetic run above, not higher: a pure\n'
 printf '  asyncio.sleep has no TLS/JSON/socket cost, so it fans out perfectly\n'
-printf '  and 30x is the upper bound. real-API lands in the 5-20x spec range.\n'
+printf '  and the async ratio above is the upper bound. real-API lands below it,\n'
+printf '  in the 5-20x spec range; batched workloads are the documented exception.\n'

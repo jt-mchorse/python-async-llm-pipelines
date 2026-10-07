@@ -99,3 +99,53 @@ def test_surface_2_bench_renders_table_with_every_pipeline(capture_output: str) 
 def test_capture_demo_script_exists_and_is_executable() -> None:
     assert SCRIPT.exists(), f"missing {SCRIPT}"
     assert os.access(SCRIPT, os.X_OK), f"{SCRIPT} should be executable"
+
+
+# --- #142: the interpreter stage 1 runs on, and the closing narration ---------
+# These live in this file because the capture's own pytest run ignores it; a
+# test that runs the capture from any other file would recurse.
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+def test_stage_1_never_runs_a_pytest_from_path(tmp_path: Path) -> None:
+    """Stage 1 ran bare `pytest`: Homebrew's here, not the venv's (#142)."""
+    marker = "STALE-PYTEST-FROM-PATH"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake = fake_bin / "pytest"
+    fake.write_text(f"#!/bin/sh\necho {marker}\nexit 0\n")
+    fake.chmod(0o755)
+    env = dict(os.environ)
+    env["CAPTURE_PACE_SECONDS"] = "0"
+    # The fake first; this test's interpreter next, so `python` resolves
+    # without a .venv (CI).
+    env["PATH"] = os.pathsep.join([str(fake_bin), str(Path(sys.executable).parent), env["PATH"]])
+    r = subprocess.run(  # noqa: S603
+        ["bash", str(SCRIPT)],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr[-1500:]
+    assert marker not in r.stdout + r.stderr, "stage 1 ran the pytest on PATH"
+    stage1 = r.stdout.split("1/2 ·", 1)[1].split("2/2 ·", 1)[0]
+    assert re.search(r"\d+ passed", stage1), "stage 1 printed no pytest summary"
+
+
+def test_the_closing_narration_quotes_no_measured_ratio() -> None:
+    """It said "30x is the upper bound" beneath a 190x batched row (#142).
+
+    The one number allowed is the spec's own "5-20x" range, which
+    `test_real_api_claim_direction.py` requires the passage to name.
+    """
+    narration = "\n".join(
+        line
+        for line in SCRIPT.read_text(encoding="utf-8").splitlines()
+        if line.startswith("printf")
+    )
+    tail = narration[narration.index("expect LOWER") :]
+    without_spec = re.sub(r"5\s*[-–]\s*20\s*[x×]", "", tail)
+    assert not re.search(r"\d+(\.\d+)?\s*[x×]", without_spec), tail

@@ -1386,6 +1386,24 @@ the one that regenerates the snapshot, and shows how to write to `/tmp`
 instead. A test checks that every benchmark command in the README either
 writes outside `docs/` or says that it rewrites it.
 
+## 2026-10-06 — the bench's real-API sentence reads the right row (#140)
+
+The benchmark report says real-API speedups will land in the 5-20x range only
+when this run's own measured speedup clears that range; otherwise it says they
+will land below it. It took that measurement from the largest row, which is
+almost always the batched one, which the same paragraph calls the exception.
+With low concurrency, the async speedup was 2x and the report still promised
+5-20x. It now reads the async row.
+
+## 2026-10-06 — the demo runs one Python and states no stale numbers (#142)
+
+The demo's first stage ran whatever `pytest` the shell found first, which here
+was a different Python from the one the second stage used; with no `pytest` on
+the path it failed outright. It now runs the same interpreter as the second
+stage. Its closing narration also said "30x is the upper bound" right under a
+table row showing 190x. The narration now refers to the measured async number
+above it instead of quoting a fixed one.
+
 ## 2026-10-06 — the backpressure report admits when the bound was never reached (#144)
 
 When no row of the backpressure benchmark filled its queue, the report still
