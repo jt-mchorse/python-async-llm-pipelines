@@ -1442,3 +1442,9 @@ other timing settings, and so does the batch caller for any LLM object.
 Passing an integer too big to be a floating-point number as a timeout or
 latency raised an unexpected OverflowError instead of the ValueError the code
 promises. Both validators now report it like any other invalid duration.
+## 2026-10-07 — a nested tool timeout is reported as the tool's, not the caller's (#155)
+
+If a tool itself ran a second batch of tool calls and that inner batch timed
+out, the outer dispatcher reported the inner timeout as its own, with the wrong
+deadline and item number. The dispatcher now passes through only timeouts it
+raised itself; anything a tool raised is wrapped, as its documentation says.
