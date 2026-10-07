@@ -1545,3 +1545,22 @@ context_for_next_session:
   - MERGE_ORDER_pyasync_141_143_145_independent_files
 followups: []
 ---
+
+---
+session: 2026-10-06T09:54Z
+duration_min: 1   # computed: plan comment 09:53:41Z -> 09:54Z (date -u); fix drafted from ~09:51Z
+issue: 146
+branch: session/2026-10-06-0953-issue-146
+focus: process_AND_dispatch_tool_calls_STARTED_ONE_MORE_CALL_PER_FAILURE_the_failed_slots_release_woke_a_waiter_before_the_TaskGroup_cancelled_it
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "570 -> 575 passed; ruff, format clean"
+decisions_made: []
+measured: "process concurrency 1/2/4 calls: main [0,1] [0,1,2] [0..4]; fixed [0] [0,1] [0..3]. dispatch c0,c1 -> c0. Revert probes per file light exactly their arms."
+context_for_next_session:
+  - A_SEMAPHORE_RELEASE_ON_FAILURE_RUNS_AHEAD_OF_TASKGROUP_CANCELLATION_latch_before_release_check_after_acquire
+  - MERGE_ORDER_pyasync_141_143_145_147_independent_files
+followups: []
+---

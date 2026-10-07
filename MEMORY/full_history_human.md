@@ -1412,3 +1412,12 @@ sizes, and then said a few lines later that neither row filled the queue. It
 also presented "a fast producer cannot pile items up" as something the table
 showed. In that case the report now says plainly that no row reached the
 bound and what to run so that one does.
+
+## 2026-10-06 — a failed batch starts no extra LLM call (#146)
+
+When one item in `process` or `dispatch_tool_calls` failed, the slot it freed
+woke the next waiting item before the batch's cancellation arrived, so one
+more LLM or tool call started after the batch had already failed. The first
+failure now sets a flag before giving up its slot, and anything that gets a
+slot afterwards stops without calling. Runs that collect exceptions still
+process every item.
