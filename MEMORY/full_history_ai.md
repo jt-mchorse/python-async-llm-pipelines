@@ -1487,3 +1487,23 @@ context_for_next_session:
   - FOURTH_COPY_OF_THE_120_CLASS_README_THE_DOCSTRING_132_AND_bench_1000_doc_120_122_WERE_FIXED_THE_README_BACKPRESSURE_BLOCK_WAS_NOT_now_a_lock_covers_every_bench_block
 followups: []
 ---
+
+---
+session: 2026-10-06T08:44Z
+duration_min: 1   # computed: plan comment 08:43:21Z -> 08:44Z (date -u); reproduced from ~08:41Z after a hunt agent's report
+issue: 140
+branch: session/2026-10-06-0843-issue-140
+focus: bench_1000_doc_THE_129_CEILING_GUARD_TOOK_MAX_OVER_ASYNC_PLUS_BATCHED_TOO_so_async_at_2_00x_still_printed_5_20x
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "570 -> 572 passed; ruff, format clean; committed snapshot unchanged"
+decisions_made: []
+measured: "--n 200 --concurrency 2 --batch-size 16: async 2.00x, batched 28.92x; main 'land in the 5-20x spec range', fixed 'land below the 2.00x'. Revert probe: the split-speedup arm red, the high-ceiling control green."
+context_for_next_session:
+  - A_FIXTURE_THAT_GIVES_TWO_ROWS_THE_SAME_VALUE_CANNOT_TELL_WHICH_ROW_A_MAX_READ_129s_did_exactly_that
+  - mypy_HAS_2_PRE_EXISTING_ERRORS_IN_benchmark_py_313_368_list_str_or_BaseException_NOT_A_CI_GATE_HERE
+  - OPEN_SIBLINGS_FROM_THE_SAME_HUNT_capture_bare_pytest_and_hard_coded_30x_banner_and_backpressure_share_one_n
+followups: []
+---
