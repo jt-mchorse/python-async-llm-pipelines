@@ -194,7 +194,17 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     # n=5 row with queue_size 8, max_queue_depth 5 and no producer pauses -- the
     # queue never filled, its depth followed `n`, and the paragraph still called
     # the rows "evidence for the `n`-independence of the bound".
+    #
+    # And a row with `n == queue_size` is not one either (#161), though its depth
+    # reaches `queue_size`: that depth is just `n`. The producer put every item
+    # without waiting, and an unbounded queue gives the identical row.
+    # `--n 80 --compare-n` produced exactly that (8, 8) row, with 0 pauses, and
+    # the report called the pair evidence for `n`-independence. The bound can
+    # apply only when there are more items than the queue holds: the "exceeds"
+    # that the advice below already says.
     def saturated(r: BackpressureResult) -> bool:
+        if r.n <= r.queue_size:
+            return False
         return r.metrics["max_queue_depth"] >= r.queue_size or r.metrics["producer_pauses"] > 0
 
     saturated_n = sorted({r.n for r in results if saturated(r)})
@@ -220,9 +230,10 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # No row reached the bound (#144), so the table cannot show what it
         # prevents; "a fast producer cannot pile items up" read as measured.
         lines.append(
-            f"`max_queue_depth` stayed below `queue_size` in every row above "
+            f"`max_queue_depth` never exceeded `queue_size` in any row above "
             f"({len(results)} rows, queue_size {queue_values}, n {n_values}), but no "
-            f"row reached it, so this run does not show what the bound prevents."
+            f"row reached it with items still to put, so this run does not show what "
+            f"the bound prevents."
         )
     lines.append("")
     # And what it does not bound (#115). This sentence used to end "peak
@@ -260,8 +271,8 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # values for "one", above a sentence saying neither filled the queue.
         q = max(queue_values)
         lines.append(
-            f"No row filled the queue: every `max_queue_depth` stayed below "
-            f"`queue_size` with no producer pauses, so this run exercises the bound "
+            f"No row filled the queue while the producer had items left to put (no "
+            f"producer pauses), so this run exercises the bound "
             f"nowhere and its depth followed `n`. A row is evidence only if it fills "
             f"the queue: run with an `--n` above the `queue_size` ({q}), and under "
             f"`--compare-n` one large enough that `n // {_COMPARE_N_DIVISOR}` exceeds "
@@ -283,7 +294,7 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         lines.append("")
         lines.append(
             f"Rows at (`n`, `queue_size`) {unfilled_rows} never filled the queue "
-            f"(`max_queue_depth` below `queue_size`, no producer pauses), so the "
+            f"while the producer had items left to put (no producer pauses), so the "
             f"bound never applied to them: their depth followed `n`."
         )
     lines.append("")
