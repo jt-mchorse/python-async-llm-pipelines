@@ -241,6 +241,15 @@ class FakeLLM:
     call_id: str = "fake"
     call_count: int = field(default=0, init=False)
 
+    def __post_init__(self) -> None:
+        # The field that actually feeds the sleep (#151). #96 guarded
+        # `Workload.llm_call_seconds` and `batch_seconds` and left this one, and
+        # `make_batch_caller` reads it as its fallback: measured with 32 docs
+        # through `BatchedAsyncPipeline`, `latency_seconds=True` ran 2.005 s
+        # (16 docs/s) where 0.02 runs 0.044 s, and `-5.0` ran in 0 s and
+        # published 263,737 docs/s. Same rule, same message shape.
+        _require_duration_seconds(self.latency_seconds, "latency_seconds")
+
     async def __call__(self, prompt: str) -> str:
         self.call_count += 1
         await asyncio.sleep(self.latency_seconds)
@@ -411,6 +420,11 @@ def make_batch_caller(
     # how the gap got here.
     if batch_seconds is not None:
         _require_duration_seconds(batch_seconds, "batch_seconds")
+    else:
+        # The fallback this comment calls "validated" was not (#151): it is read
+        # off whatever `llm` is, and only `FakeLLM` checks its own field. Check
+        # the value actually used, here, for any LLM object.
+        _require_duration_seconds(getattr(llm, "latency_seconds", 0.0), "llm.latency_seconds")
 
     async def call_batch(items: list[str]) -> list[str]:
         # One simulated "round trip" for the batch, regardless of size.

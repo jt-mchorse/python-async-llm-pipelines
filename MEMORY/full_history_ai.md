@@ -1583,4 +1583,19 @@ context_for_next_session:
   - ALSO_FILED_148_DECISION_REVISIT_a_sync_tool_runs_then_is_reported_failed_three_options_JT
   - GOTCHA_bench_backpressure_DEFAULT_out_json_IS_docs_backpressure_json_a_local_run_with_only_out_md_DIRTIES_THE_COMMITTED_ARTIFACT_pass_both
 followups: ["#148"]
+session: 2026-10-07T10:02Z
+duration_min: 4
+issue: 151
+branch: session/2026-10-07-pyasync-fakellm-latency
+focus: FAKELLM_LATENCY_UNVALIDATED_AND_THE_BATCH_CALLERS_VALIDATED_FALLBACK_WAS_NOT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 14
+  suite: "596 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "agent: True -> 2.005s/16 docs/s, -5.0 -> 263,737 docs/s. Revert 9/14 red."
+context_for_next_session:
+  - A_COMMENT_SAYING_A_FALLBACK_IS_VALIDATED_IS_A_TEST_follow_the_getattr_to_its_source
+followups: []
 ---
