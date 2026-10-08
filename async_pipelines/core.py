@@ -124,6 +124,43 @@ def _refuse_bare_string(name: str, value: object) -> None:
         )
 
 
+def _stray_cancellation_as_error(exc: BaseException, *, index: int) -> BaseException:
+    """Return a `PipelineError` for a `CancelledError` that `fn` raised on its own.
+
+    Returns `exc` unchanged in every other case (#163).
+
+    `asyncio.TaskGroup` treats a child that raises `CancelledError` as
+    *cancelled*, and it ignores cancelled children. When `fn` itself raises one
+    while nobody cancelled the pipeline, for example by awaiting a future or
+    task that something else cancelled, the item's failure vanished. Measured
+    on `main`, five items with item 1's `fn` awaiting a cancelled future, no
+    exception raised either way, `return_exceptions` or not:
+
+        process(..., concurrency=1)          -> [0, None, None, None, None]
+        dispatch_tool_calls(5 calls)         -> c1 missing, 4 results
+        dispatch_tool_calls(..., concurrency=1) -> 1 result
+        stream(..., concurrency=1)           -> hangs forever
+
+    `cancelling()` tells the two apart. It is non-zero when this task is
+    being cancelled, whether from outside or by the TaskGroup cancelling the
+    siblings of a failed item, and in those cases `CancelledError` must keep
+    propagating (#36). It is zero only when the error came out of `fn`. The
+    replacement is an `Exception`, so it follows the `return_exceptions` policy
+    like any other failure of `fn`.
+    """
+    if not isinstance(exc, asyncio.CancelledError):
+        return exc
+    task = asyncio.current_task()
+    if task is None or task.cancelling():
+        return exc
+    err = PipelineError(
+        f"item at index {index}: fn raised CancelledError, but the pipeline was not "
+        f"cancelled -- treated as the item's failure"
+    )
+    err.__cause__ = exc
+    return err
+
+
 def _require_timeout_seconds(timeout: object) -> float | None:
     """Return `timeout` as a positive finite number of seconds, `None`, or raise.
 
@@ -277,7 +314,11 @@ async def process(
                         if cm.expired():
                             raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
                         raise
-            except BaseException as e:
+            except BaseException as caught:
+                # A CancelledError that `fn` raised on its own (nobody cancelled
+                # us) becomes a PipelineError here; TaskGroup would otherwise
+                # drop it and leave `None` at this index (#163).
+                e = _stray_cancellation_as_error(caught, index=idx)
                 # `return_exceptions` collects *fn's* failures so one bad item
                 # doesn't lose the batch — those are `Exception`s. A
                 # non-`Exception` `BaseException` (CancelledError, KeyboardInterrupt,
@@ -290,7 +331,9 @@ async def process(
                     results[idx] = e
                 else:
                     failed = True
-                    raise
+                    if e is caught:
+                        raise
+                    raise e  # noqa: B904 -- `__cause__` is already `caught`
 
     async with asyncio.TaskGroup() as tg:
         for i, item in enumerate(items_list):
@@ -406,7 +449,11 @@ async def stream(
                         if cm.expired():
                             raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
                         raise
-            except BaseException as e:
+            except BaseException as caught:
+                # Stray CancelledError from `fn` (#163): without this the only
+                # consumer at concurrency=1 died silently and the producer
+                # blocked on a full queue forever.
+                e = _stray_cancellation_as_error(caught, index=my_idx)
                 # See `process._run_one` (#36): only `Exception`s are collected
                 # under `return_exceptions`. A non-`Exception` `BaseException`
                 # (CancelledError / KeyboardInterrupt / SystemExit) propagates so
@@ -415,7 +462,9 @@ async def stream(
                     value = e
                 else:
                     queue.task_done()
-                    raise
+                    if e is caught:
+                        raise
+                    raise e  # noqa: B904 -- `__cause__` is already `caught`
             async with results_lock:
                 results.append(value)
             queue.task_done()

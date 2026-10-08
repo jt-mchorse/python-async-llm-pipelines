@@ -31,7 +31,12 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from .core import PipelineError, PipelineTimeoutError, _require_timeout_seconds
+from .core import (
+    PipelineError,
+    PipelineTimeoutError,
+    _require_timeout_seconds,
+    _stray_cancellation_as_error,
+)
 
 # A tool function is async, takes a single dict of arguments, and returns
 # anything JSON-serializable (whatever shape the model expects back).
@@ -389,10 +394,18 @@ async def _run_with_telemetry(
                     own._dispatch_owner = owner  # type: ignore[attr-defined]  # #155
                     raise own from exc
                 raise
-    except Exception as e:
+    except BaseException as caught:
+        # A tool that raises CancelledError on its own (the dispatch was not
+        # cancelled) becomes a PipelineError; TaskGroup ignored it and the
+        # call's ToolResult silently went missing from the returned list (#163).
+        e = _stray_cancellation_as_error(caught, index=idx)
+        if not isinstance(e, Exception):
+            raise  # a real cancellation / KeyboardInterrupt still propagates
         elapsed_ms = (time.perf_counter() - start) * 1000.0
         if not return_exceptions:
-            raise  # let TaskGroup collect it; outer raises PipelineError
+            if e is caught:
+                raise  # let TaskGroup collect it; outer raises PipelineError
+            raise e  # noqa: B904 -- `__cause__` is already `caught`
         return ToolResult(
             tool_call_id=call.id,
             name=call.name,
