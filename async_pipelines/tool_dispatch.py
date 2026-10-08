@@ -247,6 +247,13 @@ async def dispatch_tool_calls(
     results: list[ToolResult | None] = [None] * len(resolved)
     failed = [False]
 
+    # Identifies the deadline errors THIS call raises (#155). A tool may run its
+    # own `dispatch_tool_calls` and let that inner call's PipelineTimeoutError
+    # escape; by type alone the two are indistinguishable, and the outer call
+    # re-raised the inner one as its own -- "item at index 3 exceeded timeout of
+    # 0.05s" from a 2-call batch with a 5 s deadline.
+    owner = object()
+
     async def _run_one(idx: int, call: ToolCall, fn: ToolFn) -> None:
         result = await _invoke_tool(
             idx,
@@ -256,6 +263,7 @@ async def dispatch_tool_calls(
             return_exceptions=return_exceptions,
             timeout=timeout,
             failed=failed,
+            owner=owner,
         )
         results[idx] = result
 
@@ -277,7 +285,11 @@ async def dispatch_tool_calls(
         # pinned by tests either way, and both are documented in the docstring
         # above rather than asserted to be the same.
         first = eg.exceptions[0]
-        if isinstance(first, PipelineError):
+        # Only this call's own deadline passes through unwrapped. Anything a
+        # tool raised -- including a PipelineError from a nested dispatch -- is
+        # the tool's exception, and the docstring's contract for those is a
+        # wrapping PipelineError with the original as `__cause__` (#155).
+        if isinstance(first, PipelineError) and getattr(first, "_dispatch_owner", None) is owner:
             raise first from eg
         raise PipelineError(repr(first)) from first
 
@@ -301,6 +313,7 @@ async def _invoke_tool(
     return_exceptions: bool,
     timeout: float | None,
     failed: list[bool] | None = None,
+    owner: object | None = None,
 ) -> ToolResult | None:
     if semaphore is not None:
         async with semaphore:
@@ -312,14 +325,14 @@ async def _invoke_tool(
                 return None
             try:
                 return await _run_with_telemetry(
-                    idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
+                    idx, call, fn, return_exceptions=return_exceptions, timeout=timeout, owner=owner
                 )
             except BaseException:
                 if failed is not None:
                     failed[0] = True
                 raise
     return await _run_with_telemetry(
-        idx, call, fn, return_exceptions=return_exceptions, timeout=timeout
+        idx, call, fn, return_exceptions=return_exceptions, timeout=timeout, owner=owner
     )
 
 
@@ -330,6 +343,7 @@ async def _run_with_telemetry(
     *,
     return_exceptions: bool,
     timeout: float | None,
+    owner: object | None = None,
 ) -> ToolResult:
     start = time.perf_counter()
     # A per-invocation copy, not `call.arguments` itself (#102). `fn` is
@@ -371,7 +385,9 @@ async def _run_with_telemetry(
                     value = await fn(copy.deepcopy(call.arguments))
             except TimeoutError as exc:
                 if cm.expired():
-                    raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                    own = PipelineTimeoutError(index=idx, timeout_s=timeout)
+                    own._dispatch_owner = owner  # type: ignore[attr-defined]  # #155
+                    raise own from exc
                 raise
     except Exception as e:
         elapsed_ms = (time.perf_counter() - start) * 1000.0

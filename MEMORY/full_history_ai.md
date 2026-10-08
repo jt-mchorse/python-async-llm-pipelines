@@ -1611,5 +1611,19 @@ decisions_made: []
 measured: "main: 10**400 -> OverflowError at both validators. Revert 4/5 red."
 context_for_next_session:
   - math_isfinite_IS_NOT_TOTAL_ON_INT_sweep_other_python_repos_for_isfinite_on_unconverted_ints
+session: 2026-10-07T10:28Z
+duration_min: 7
+issue: 155
+branch: session/2026-10-07-pyasync-nested-timeout
+focus: A_NESTED_DISPATCHS_TIMEOUT_WAS_REPORTED_AS_THE_OUTER_CALLS_OWN_DEADLINE
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "585 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "nested 0.05s inside a 5s outer: main PipelineTimeoutError(0.05) cause ExceptionGroup; fix PipelineError cause inner timeout. Revert 2/3."
+context_for_next_session:
+  - TYPE_IS_NOT_PROVENANCE_an_isinstance_check_cannot_tell_my_error_from_the_same_type_raised_by_code_I_called_tag_with_a_per_call_token
 followups: []
 ---
