@@ -1564,3 +1564,23 @@ context_for_next_session:
   - MERGE_ORDER_pyasync_141_143_145_147_independent_files
 followups: []
 ---
+
+---
+session: 2026-10-07T08:14Z
+duration_min: 6
+issue: 149
+branch: session/2026-10-07-pyasync-bp-rows
+focus: BENCH_BACKPRESSURE_GROUPED_ROWS_BY_n_SO_A_COMPARE_PAIR_BOTH_FILLED_AND_NEVER_FILLED
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 4
+  tests_changed: 2
+  suite: "586 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "--n 20 --queue-size 8 --compare: main says share one n [20] AND rows at n [20] never filled, advice cites 32; fix names (20, 32) and cites 8. Revert 3/4 red."
+context_for_next_session:
+  - ALSO_FILED_148_DECISION_REVISIT_a_sync_tool_runs_then_is_reported_failed_three_options_JT
+  - GOTCHA_bench_backpressure_DEFAULT_out_json_IS_docs_backpressure_json_a_local_run_with_only_out_md_DIRTIES_THE_COMMITTED_ARTIFACT_pass_both
+followups: ["#148"]
+---

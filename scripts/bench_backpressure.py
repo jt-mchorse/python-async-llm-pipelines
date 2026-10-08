@@ -199,6 +199,16 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
 
     saturated_n = sorted({r.n for r in results if saturated(r)})
     unfilled_n = sorted({r.n for r in results if not saturated(r)})
+    # A row is identified by (n, queue_size), not by `n` (#149): `--compare`
+    # adds a same-`n` row at 4x the queue, so one `n` can be both a row that
+    # filled the queue and one that did not. Grouping by `n` alone printed
+    # "the rows that filled the queue share one `n` ([20])" and, two lines on,
+    # "Rows at `n` [20] never filled the queue".
+    unfilled_rows = sorted({(r.n, r.queue_size) for r in results if not saturated(r)})
+    # And the queue a `--compare-n` row runs at is the base row's, which is a
+    # row that filled -- not the largest queue in the table (the `--compare`
+    # row's 4x). The advice quoted `max(queue_values)`.
+    filled_queues = sorted({r.queue_size for r in results if saturated(r)})
     if saturated_n:
         lines.append(
             f"`max_queue_depth` is bounded by `queue_size` in every row above "
@@ -261,7 +271,7 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # With one `n` the advice used to be "Re-run with `--compare-n`" even
         # when `--compare-n` had been passed: at `--n 1` its extra row is
         # max(1, 1 // 10) = 1 again (#134). State the condition instead.
-        q = max(queue_values)
+        q = filled_queues[0] if len(filled_queues) == 1 else filled_queues
         lines.append(
             f"The rows that filled the queue share one `n` ({saturated_n}), "
             f"so they show the bound at a single workload size and not its "
@@ -272,9 +282,9 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     if unfilled_n and saturated_n:
         lines.append("")
         lines.append(
-            f"Rows at `n` {unfilled_n} never filled the queue (`max_queue_depth` "
-            f"below `queue_size`, no producer pauses), so the bound never applied "
-            f"to them: their depth followed `n`."
+            f"Rows at (`n`, `queue_size`) {unfilled_rows} never filled the queue "
+            f"(`max_queue_depth` below `queue_size`, no producer pauses), so the "
+            f"bound never applied to them: their depth followed `n`."
         )
     lines.append("")
     return "\n".join(lines)

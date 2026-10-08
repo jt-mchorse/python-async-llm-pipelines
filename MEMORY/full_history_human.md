@@ -1421,3 +1421,13 @@ more LLM or tool call started after the batch had already failed. The first
 failure now sets a flag before giving up its slot, and anything that gets a
 slot afterwards stops without calling. Runs that collect exceptions still
 process every item.
+
+## 2026-10-07 — the backpressure report stops contradicting itself (#149)
+
+With `--compare`, the benchmark adds a second row with the same item count and
+a bigger queue. The report grouped rows by item count alone, so it said the
+rows at 20 items both filled the queue and never filled it, and it quoted the
+wrong queue size in its advice. Rows are now named by item count and queue
+size together. Also filed #148 for JT: a tool written as a plain (non-async)
+function runs and then gets reported as failed, and the right fix is a
+contract choice.
