@@ -1448,3 +1448,14 @@ If a tool itself ran a second batch of tool calls and that inner batch timed
 out, the outer dispatcher reported the inner timeout as its own, with the wrong
 deadline and item number. The dispatcher now passes through only timeouts it
 raised itself; anything a tool raised is wrapped, as its documentation says.
+
+## 2026-10-08 — a row that never made the producer wait is not evidence (#161)
+
+The backpressure report treats a row as proof that the queue limit held if the
+queue reached its size. When a row has exactly as many items as the queue holds,
+the queue reaches its size only because every item went in. The producer never
+had to wait, and a queue with no limit would produce the same row. With
+`--n 80 --compare-n`, the report still cited that row as evidence. Rows now
+count only when they have more items than the queue holds, which is the rule
+the report's own advice already gave. The sentences about rows that don't count
+no longer claim their depth stayed below the queue size.

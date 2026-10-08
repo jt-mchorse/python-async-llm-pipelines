@@ -1627,3 +1627,20 @@ context_for_next_session:
   - TYPE_IS_NOT_PROVENANCE_an_isinstance_check_cannot_tell_my_error_from_the_same_type_raised_by_code_I_called_tag_with_a_per_call_token
 followups: []
 ---
+---
+session: 2026-10-08T08:20Z
+duration_min: 20
+issue: 161
+branch: session/2026-10-08-issue-161
+focus: BENCH_BACKPRESSURE_COUNTED_AN_n_EQUALS_queue_size_ROW_AS_FILLED_its_depth_is_just_n_and_the_producer_never_waited
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 4
+  suite: "full suite green; ruff, format clean; committed docs/backpressure.md re-renders identically"
+decisions_made: []
+measured: "--n 80 --queue-size 8 --compare-n: rows (80,8) 36 pauses and (8,8) 0 pauses depth 8; main called the pair evidence for n-independence; fixed names (8, 8) as never applying. Revert 3/4 red, the n = queue_size + 1 control green."
+context_for_next_session:
+  - AN_ACCEPTANCE_CRITERION_CAN_CARRY_THE_BOUNDARY_BUG_134_wrote_depth_GE_queue_size_and_the_advice_beside_it_said_EXCEEDS
+followups: []
+---
