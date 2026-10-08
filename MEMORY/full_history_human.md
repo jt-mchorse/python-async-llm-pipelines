@@ -1437,3 +1437,8 @@ The benchmark's fake LLM accepted any latency value. `True` made every call
 sleep a full second, and a negative value made the batched pipeline report an
 impossible 263,000 documents per second. It now applies the same check as the
 other timing settings, and so does the batch caller for any LLM object.
+## 2026-10-07 — absurdly large durations get the documented error (#153)
+
+Passing an integer too big to be a floating-point number as a timeout or
+latency raised an unexpected OverflowError instead of the ValueError the code
+promises. Both validators now report it like any other invalid duration.

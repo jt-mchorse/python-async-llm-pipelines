@@ -176,7 +176,14 @@ def _require_timeout_seconds(timeout: object) -> float | None:
         return None
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
         raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
-    if not math.isfinite(timeout) or timeout <= 0:
+    # An int too large for a double (`10**400`) makes `math.isfinite` itself
+    # raise OverflowError, which is not the ValueError this contract promises
+    # (#153). It is not a finite duration either, so it takes the same exit.
+    try:
+        finite = math.isfinite(timeout)
+    except OverflowError:
+        finite = False
+    if not finite or timeout <= 0:
         raise ValueError(f"timeout must be a finite positive number when set, got {timeout!r}")
     return float(timeout)
 

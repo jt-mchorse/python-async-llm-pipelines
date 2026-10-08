@@ -68,7 +68,14 @@ def _require_duration_seconds(value: object, field: str) -> float:
     """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{field} must be a finite number >= 0.0; got {value!r}")
-    if not math.isfinite(value) or value < 0.0:
+    # `math.isfinite(10**400)` raises OverflowError rather than returning False
+    # (#153), escaping the one-exception contract above; such an int is not a
+    # finite duration, so it takes the same ValueError.
+    try:
+        finite = math.isfinite(value)
+    except OverflowError:
+        finite = False
+    if not finite or value < 0.0:
         raise ValueError(f"{field} must be a finite number >= 0.0; got {value!r}")
     return float(value)
 
