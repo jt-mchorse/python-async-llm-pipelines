@@ -1448,3 +1448,12 @@ If a tool itself ran a second batch of tool calls and that inner batch timed
 out, the outer dispatcher reported the inner timeout as its own, with the wrong
 deadline and item number. The dispatcher now passes through only timeouts it
 raised itself; anything a tool raised is wrapped, as its documentation says.
+
+## 2026-10-08 — the README's metrics example runs (#159)
+
+An earlier fix (#115) changed the README's example producer so it takes a
+message count, and updated the example right below it. The StreamMetrics
+example further down still called it with no count, so pasting the README's
+examples failed with a TypeError. It now passes `10_000` like the first
+example. A new test checks that each README call to a function the README
+defines matches that function's arguments.
