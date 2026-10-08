@@ -1627,3 +1627,22 @@ context_for_next_session:
   - TYPE_IS_NOT_PROVENANCE_an_isinstance_check_cannot_tell_my_error_from_the_same_type_raised_by_code_I_called_tag_with_a_per_call_token
 followups: []
 ---
+
+---
+session: 2026-10-08T07:22Z
+duration_min: 6   # computed: plan comment 07:22Z -> commit (date -u)
+issue: 157
+branch: session/2026-10-08-issue-157
+focus: ATOMIC_WRITE_TEXT_OS_REPLACE_RENAMED_ONTO_A_SYMLINKED_DESTINATION_link_became_a_regular_file_linked_file_kept_old_contents
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 8
+  suite: "608 -> 616 passed (junitxml, rebased on 0e116e0); ruff, format clean"
+decisions_made: []
+measured: "atomic_write_text('link.md') on main: is_symlink False, real/bench.md still 'old'; Path.write_text: link kept, target 'new'. bench_1000_doc --out link.md rc 0, linked report stale. Revert probe: 4 atomic arms red, 4 write_text/plain controls green."
+context_for_next_session:
+  - 124_RESTORED_PATH_WRITE_TEXT_PARITY_FOR_MODE_ONLY_symlink_was_the_unwritten_half_and__copy_existing_mode_already_followed_the_link
+  - SIBLING_SWEEP_every_portfolio_io_utils_atomic_write_text_uses_the_same_os_replace_shape
+followups: []
+---
