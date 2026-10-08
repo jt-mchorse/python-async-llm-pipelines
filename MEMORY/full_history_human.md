@@ -1448,3 +1448,15 @@ If a tool itself ran a second batch of tool calls and that inner batch timed
 out, the outer dispatcher reported the inner timeout as its own, with the wrong
 deadline and item number. The dispatcher now passes through only timeouts it
 raised itself; anything a tool raised is wrapped, as its documentation says.
+
+## 2026-10-08 — a cancellation raised by the work itself no longer vanishes (#163)
+
+Python's TaskGroup quietly ignores a task that ends with a "cancelled" error.
+If the user's function raised one itself (for example by waiting on something
+that another part of the program cancelled) and nobody had cancelled the
+pipeline, that item's failure disappeared. `process` returned blank results,
+tool dispatch returned fewer results than calls, and `stream` with one worker
+hung forever. All three now check whether the pipeline itself is being
+cancelled. If it is not, the error is reported as that item's failure, under
+the usual fail-fast or collect-errors rule. Real cancellations behave exactly as
+before.

@@ -1627,3 +1627,21 @@ context_for_next_session:
   - TYPE_IS_NOT_PROVENANCE_an_isinstance_check_cannot_tell_my_error_from_the_same_type_raised_by_code_I_called_tag_with_a_per_call_token
 followups: []
 ---
+---
+session: 2026-10-08T09:05Z
+duration_min: 30
+issue: 163
+branch: session/2026-10-08-issue-163
+focus: TASKGROUP_IGNORES_A_CHILDS_OWN_CancelledError_so_fn_raising_one_vanished_process_None_results_dispatch_dropped_calls_stream_hung
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 14
+  suite: "622 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "item 1 awaits a cancelled future: main process c=1 -> [0, None, None, None, None], dispatch -> c1 missing (c=1: only c0), stream c=1 hangs; fixed raises PipelineError / collects it at index 1. Revert 12/14 red (2 controls green); dispatch-only revert 4 red; a cancelling()-blind wrong fix reddens the sibling control."
+context_for_next_session:
+  - THE_36_FIX_LISTED_CancelledError_IN_ITS_SET_AND_TESTED_A_CUSTOM_BaseException_the_one_member_TaskGroup_swallows_was_never_run
+  - task_cancelling_IS_THE_DISCRIMINATOR_zero_means_fn_raised_it_nonzero_means_we_are_being_cancelled
+followups: []
+---
