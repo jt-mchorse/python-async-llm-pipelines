@@ -149,7 +149,7 @@ from async_pipelines import StreamMetrics, stream
 
 metrics = StreamMetrics()
 results = await stream(
-    items_from_kafka(),
+    items_from_kafka(10_000),
     call_llm,
     concurrency=10,
     queue_size=50,

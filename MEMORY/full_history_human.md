@@ -1449,6 +1449,24 @@ out, the outer dispatcher reported the inner timeout as its own, with the wrong
 deadline and item number. The dispatcher now passes through only timeouts it
 raised itself; anything a tool raised is wrapped, as its documentation says.
 
+## 2026-10-08 — writing a report to a symlink updates the linked file (#157)
+
+The atomic file writer used by both benchmark scripts renamed its temporary
+file onto the output path. When that path was a symlink, the rename replaced
+the link with a plain file, and the file the link pointed to kept its old
+contents, even though the script said it had written the report. A plain
+`Path.write_text` writes through the link. The writer now follows the link
+first and atomically replaces the file it points to.
+
+## 2026-10-08 — the README's metrics example runs (#159)
+
+An earlier fix (#115) changed the README's example producer so it takes a
+message count, and updated the example right below it. The StreamMetrics
+example further down still called it with no count, so pasting the README's
+examples failed with a TypeError. It now passes `10_000` like the first
+example. A new test checks that each README call to a function the README
+defines matches that function's arguments.
+
 ## 2026-10-08 — a row that never made the producer wait is not evidence (#161)
 
 The backpressure report treats a row as proof that the queue limit held if the
