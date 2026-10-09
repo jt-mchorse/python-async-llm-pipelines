@@ -1699,3 +1699,23 @@ context_for_next_session:
   - task_cancelling_IS_THE_DISCRIMINATOR_zero_means_fn_raised_it_nonzero_means_we_are_being_cancelled
 followups: []
 ---
+
+---
+session: 2026-10-09T09:18Z
+duration_min: 8   # computed: issue filed 2026-10-09T09:15:41Z, PR 2026-10-09T09:17:57Z, test follow-up ~09:23Z (gh createdAt / git)
+issue: 167
+branch: session/2026-10-09-0930-issue-167
+focus: BENCH_SCRIPTS_TRIED_OUT_ONLY_AFTER_THE_RUN_AND_BENCH_1000_DOC_REPLACED_THE_MD_BEFORE_THE_JSON_PATH_FAILED
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 7
+  suite: "636 -> 643 passed; ruff clean"
+decisions_made: []
+measured: "main: --n 200 --out <file>/... refused after 9 s; b.json a dir -> 'benchmarks wrote b.md' then rc=2 with no JSON. Branch: refused in 0 s, nothing written. Revert (origin/main files checked out over the fix): 5 red / 2 controls."
+context_for_next_session:
+  - MY_FIRST_TEST_LET_AN_UNFIXED_RUN_REWRITE_THE_COMMITTED_docs_backpressure_md_because_only_one_of_two_output_flags_pointed_into_tmp_path_the_other_DEFAULTS_to_the_committed_doc_ALWAYS_PASS_EVERY_OUTPUT_FLAG
+  - I_OPENED_THE_PR_BEFORE_READING_THE_FULL_SUITE_RESULT_4_failed_from_that_dirty_doc_fixed_in_a_follow_up_commit_read_the_suite_line_before_gh_pr_create
+  - A_STASH_AFTER_COMMIT_IS_EMPTY_revert_probe_by_checking_out_origin_main_files_over_the_fix
+followups: []
+---
