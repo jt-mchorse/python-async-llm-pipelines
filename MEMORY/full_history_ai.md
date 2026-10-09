@@ -1646,3 +1646,21 @@ context_for_next_session:
   - SIBLING_SWEEP_every_portfolio_io_utils_atomic_write_text_uses_the_same_os_replace_shape
 followups: []
 ---
+
+---
+session: 2026-10-08T07:27Z
+duration_min: 5   # computed: plan comment 07:27Z -> commit (date -u)
+issue: 159
+branch: session/2026-10-08-issue-159
+focus: README_STREAMMETRICS_EXAMPLE_CALLED_items_from_kafka_WITH_NO_ARG_115_MADE_max_messages_REQUIRED_AND_UPDATED_ONE_OF_TWO_CALLS
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "608 -> 610 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "README blocks 1+2 exec'd with a stub consumer: TypeError missing max_messages on main. Revert probe: bind arm red, anti-vacuity arm green."
+context_for_next_session:
+  - A_SIGNATURE_CHANGE_IN_A_README_SNIPPET_HAS_CALLERS_IN_OTHER_BLOCKS_the_snippets_build_on_each_other
+followups: []
+---
