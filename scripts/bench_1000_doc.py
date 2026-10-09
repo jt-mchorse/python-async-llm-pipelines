@@ -183,11 +183,17 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
     # exceed" the range, and a `max()` over every row picked that exception
     # almost every time: `--concurrency 2 --batch-size 16` measured async at
     # 2.00x and batched at 28.92x, and the report said real APIs land in 5-20x.
+    #
+    # Nor the serial row's (#165): the baseline is 1.00x by definition, so with
+    # it in the `max()` an async row below 1x reported `--latency 0` at 0.42x
+    # and the paragraph said real APIs "land below the 1.00x measured above" --
+    # a ceiling no parallel pipeline measured.
+    excluded = {SerialPipeline.name, BatchedAsyncPipeline.name}
     ceiling = max(
         (
             r.speedup_vs_serial
             for r in results
-            if r.speedup_vs_serial is not None and r.pipeline_name != BatchedAsyncPipeline.name
+            if r.speedup_vs_serial is not None and r.pipeline_name not in excluded
         ),
         default=None,
     )
