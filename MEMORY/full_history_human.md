@@ -1466,3 +1466,14 @@ example further down still called it with no count, so pasting the README's
 examples failed with a TypeError. It now passes `10_000` like the first
 example. A new test checks that each README call to a function the README
 defines matches that function's arguments.
+
+## 2026-10-08 — a row that never made the producer wait is not evidence (#161)
+
+The backpressure report treats a row as proof that the queue limit held if the
+queue reached its size. When a row has exactly as many items as the queue holds,
+the queue reaches its size only because every item went in. The producer never
+had to wait, and a queue with no limit would produce the same row. With
+`--n 80 --compare-n`, the report still cited that row as evidence. Rows now
+count only when they have more items than the queue holds, which is the rule
+the report's own advice already gave. The sentences about rows that don't count
+no longer claim their depth stayed below the queue size.
