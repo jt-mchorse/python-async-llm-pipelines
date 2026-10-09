@@ -78,10 +78,16 @@ def test_bench_1000_doc_still_writes_both(tmp_path: Path) -> None:
     assert (tmp_path / "out" / "b.json").is_file()
 
 
-@pytest.mark.parametrize("flag", ["--out-md", "--out-json"])
-def test_bench_backpressure_refuses_a_bad_path_before_running(tmp_path: Path, flag: str) -> None:
-    assert _bp(flag, str(_blocker(tmp_path) / "x")) == 2
+@pytest.mark.parametrize("bad", ["--out-md", "--out-json"])
+def test_bench_backpressure_refuses_a_bad_path_before_running(tmp_path: Path, bad: str) -> None:
+    # Both flags always point into tmp_path: their defaults are the committed
+    # docs/backpressure.{md,json}, which a run on the unfixed tree would rewrite.
+    paths = {"--out-md": str(tmp_path / "bp.md"), "--out-json": str(tmp_path / "bp.json")}
+    paths[bad] = str(_blocker(tmp_path) / "x")
+    assert _bp(*[t for kv in paths.items() for t in kv]) == 2
     assert RUNS == []
+    assert not (tmp_path / "bp.md").exists()
+    assert not (tmp_path / "bp.json").exists()
 
 
 def test_bench_backpressure_still_writes(tmp_path: Path) -> None:
