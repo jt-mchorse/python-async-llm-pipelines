@@ -48,7 +48,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from async_pipelines import StreamMetrics, stream  # noqa: E402
-from async_pipelines.io_utils import atomic_write_text  # noqa: E402
+from async_pipelines.io_utils import atomic_write_text, check_writable  # noqa: E402
 
 
 @dataclass
@@ -342,6 +342,16 @@ async def main_async(args: argparse.Namespace) -> int:
                 args.concurrency,
             )
         )
+
+    # Every artifact path, before the run (#167), with the same message and code
+    # as the write below.
+    try:
+        for path in (args.out_md, args.out_json):
+            if path:
+                check_writable(path)
+    except OSError as e:
+        print(f"could not write report: {e}", file=sys.stderr)
+        return 2
 
     results: list[BackpressureResult] = []
     for n, qs, cms, c in cells:
