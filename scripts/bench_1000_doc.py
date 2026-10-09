@@ -38,7 +38,7 @@ from async_pipelines.benchmark import (  # noqa: E402
     make_batch_caller,
     run_pipeline,
 )
-from async_pipelines.io_utils import atomic_write_text  # noqa: E402
+from async_pipelines.io_utils import atomic_write_text, check_writable  # noqa: E402
 
 #: The workload the README's numbers and the "5-20x" spec range describe. The
 #: argparse defaults read from it, so the report can say which flags a run
@@ -253,9 +253,18 @@ async def amain(args: argparse.Namespace) -> int:
     except ValueError as e:
         print(f"invalid workload: {e}", file=sys.stderr)
         return 2
+    out_path = Path(args.out)
+    # Both artifacts, before the run (#167): an unwritable path used to cost the
+    # whole benchmark, and a bad JSON path left a freshly written .md beside no
+    # raw results.
+    try:
+        for path in (out_path, _json_path_for(out_path)):
+            check_writable(path)
+    except OSError as e:
+        print(f"could not write report: {e}", file=sys.stderr)
+        return 2
     results = await _run_all(workload)
     md = render_markdown(workload, results)
-    out_path = Path(args.out)
     # The output path is operator input too: an unwritable `--out` (a read-only
     # filesystem, a permission-denied dir, or a path component that is a file)
     # makes `atomic_write_text` raise OSError. Without this guard it escaped
