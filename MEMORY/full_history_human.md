@@ -1477,3 +1477,15 @@ had to wait, and a queue with no limit would produce the same row. With
 count only when they have more items than the queue holds, which is the rule
 the report's own advice already gave. The sentences about rows that don't count
 no longer claim their depth stayed below the queue size.
+
+## 2026-10-08 — a cancellation raised by the work itself no longer vanishes (#163)
+
+Python's TaskGroup quietly ignores a task that ends with a "cancelled" error.
+If the user's function raised one itself (for example by waiting on something
+that another part of the program cancelled) and nobody had cancelled the
+pipeline, that item's failure disappeared. `process` returned blank results,
+tool dispatch returned fewer results than calls, and `stream` with one worker
+hung forever. All three now check whether the pipeline itself is being
+cancelled. If it is not, the error is reported as that item's failure, under
+the usual fail-fast or collect-errors rule. Real cancellations behave exactly as
+before.
