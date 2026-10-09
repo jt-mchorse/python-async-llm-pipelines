@@ -115,6 +115,30 @@ def atomic_write_text(path: str | Path, text: str, encoding: str = "utf-8") -> N
                 tmp_path.unlink()
 
 
+def check_writable(path: str | Path) -> None:
+    """Raise the `OSError` `atomic_write_text(path, ...)` would, without writing (#167).
+
+    The bench scripts translated an unwritable output path into a clean exit 2,
+    but only once the benchmark had run -- ~45 s for `bench_1000_doc` at its
+    defaults -- and `bench_1000_doc` replaced its markdown before it found the
+    JSON path unwritable. This does what the writer does -- the same symlink
+    resolution (#157), the same parent `mkdir`, the same exclusively-created
+    temp file beside the target -- and removes the temp file, so a path passes
+    exactly when the real write would get that far. An existing directory is
+    refused too: the final `os.replace` onto it fails. The preflight
+    llm-eval-harness#287 and vector-search-at-scale#207 added.
+    """
+    target = _resolve_symlinked_target(Path(path))
+    if target.is_dir():
+        raise IsADirectoryError(21, "Is a directory", str(target))
+    with contextlib.suppress(FileNotFoundError):
+        os.stat(target)  # what `_copy_existing_mode` stats: a link loop raises here
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = _create_temp(target)
+    os.close(fd)
+    tmp_path.unlink()
+
+
 # File mode (#124, portfolio-ops#81). This helper used to create its temp file
 # with `tempfile.NamedTemporaryFile`, which always opens 0600 regardless of the
 # umask, and `os.replace` carries the temp file's mode onto the target. So every
