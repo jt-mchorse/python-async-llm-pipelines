@@ -95,7 +95,7 @@ def atomic_write_text(path: str | Path, text: str, encoding: str = "utf-8") -> N
     Parent directories are created with `mkdir(parents=True,
     exist_ok=True)`.
     """
-    target = Path(path)
+    target = _resolve_symlinked_target(Path(path))
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp_path: Path | None = None
     try:
@@ -144,6 +144,27 @@ def _create_temp(target: Path) -> tuple[int, Path]:
             continue
         return fd, candidate
     raise FileExistsError(f"could not create a unique temp file beside {target}")
+
+
+def _resolve_symlinked_target(target: Path) -> Path:
+    """The file a write to *target* lands in: through a symlink, as `Path.write_text` does (#157).
+
+    `os.replace` renames onto the LINK, not the file it points at. Writing to a
+    symlinked destination therefore turned the link into a regular file and left
+    the linked file holding its old contents, while `Path.write_text` -- the
+    call this helper replaced, and whose behaviour #124 restored for file mode --
+    writes through it. `_copy_existing_mode` already followed the link (`os.stat`),
+    so the helper copied the linked file's mode onto a file that then replaced
+    the link instead.
+
+    Resolving here also puts the temp file beside the RESOLVED file, which keeps
+    the rename on one filesystem when the link points to another one. A dangling
+    link resolves to the path it names, which the write then creates, as
+    `Path.write_text` would. A plain path is returned unchanged.
+    """
+    if not target.is_symlink():
+        return target
+    return Path(os.path.realpath(target))
 
 
 def _copy_existing_mode(target: Path, tmp_path: Path) -> None:

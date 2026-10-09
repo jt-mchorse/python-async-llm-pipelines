@@ -1627,6 +1627,60 @@ context_for_next_session:
   - TYPE_IS_NOT_PROVENANCE_an_isinstance_check_cannot_tell_my_error_from_the_same_type_raised_by_code_I_called_tag_with_a_per_call_token
 followups: []
 ---
+
+---
+session: 2026-10-08T07:22Z
+duration_min: 6   # computed: plan comment 07:22Z -> commit (date -u)
+issue: 157
+branch: session/2026-10-08-issue-157
+focus: ATOMIC_WRITE_TEXT_OS_REPLACE_RENAMED_ONTO_A_SYMLINKED_DESTINATION_link_became_a_regular_file_linked_file_kept_old_contents
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 8
+  suite: "608 -> 616 passed (junitxml, rebased on 0e116e0); ruff, format clean"
+decisions_made: []
+measured: "atomic_write_text('link.md') on main: is_symlink False, real/bench.md still 'old'; Path.write_text: link kept, target 'new'. bench_1000_doc --out link.md rc 0, linked report stale. Revert probe: 4 atomic arms red, 4 write_text/plain controls green."
+context_for_next_session:
+  - 124_RESTORED_PATH_WRITE_TEXT_PARITY_FOR_MODE_ONLY_symlink_was_the_unwritten_half_and__copy_existing_mode_already_followed_the_link
+  - SIBLING_SWEEP_every_portfolio_io_utils_atomic_write_text_uses_the_same_os_replace_shape
+followups: []
+---
+
+---
+session: 2026-10-08T07:27Z
+duration_min: 5   # computed: plan comment 07:27Z -> commit (date -u)
+issue: 159
+branch: session/2026-10-08-issue-159
+focus: README_STREAMMETRICS_EXAMPLE_CALLED_items_from_kafka_WITH_NO_ARG_115_MADE_max_messages_REQUIRED_AND_UPDATED_ONE_OF_TWO_CALLS
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "608 -> 610 passed (junitxml); ruff, format clean"
+decisions_made: []
+measured: "README blocks 1+2 exec'd with a stub consumer: TypeError missing max_messages on main. Revert probe: bind arm red, anti-vacuity arm green."
+context_for_next_session:
+  - A_SIGNATURE_CHANGE_IN_A_README_SNIPPET_HAS_CALLERS_IN_OTHER_BLOCKS_the_snippets_build_on_each_other
+followups: []
+---
+---
+session: 2026-10-08T08:20Z
+duration_min: 20
+issue: 161
+branch: session/2026-10-08-issue-161
+focus: BENCH_BACKPRESSURE_COUNTED_AN_n_EQUALS_queue_size_ROW_AS_FILLED_its_depth_is_just_n_and_the_producer_never_waited
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 4
+  suite: "full suite green; ruff, format clean; committed docs/backpressure.md re-renders identically"
+decisions_made: []
+measured: "--n 80 --queue-size 8 --compare-n: rows (80,8) 36 pauses and (8,8) 0 pauses depth 8; main called the pair evidence for n-independence; fixed names (8, 8) as never applying. Revert 3/4 red, the n = queue_size + 1 control green."
+context_for_next_session:
+  - AN_ACCEPTANCE_CRITERION_CAN_CARRY_THE_BOUNDARY_BUG_134_wrote_depth_GE_queue_size_and_the_advice_beside_it_said_EXCEEDS
+followups: []
+---
 ---
 session: 2026-10-08T09:05Z
 duration_min: 30
