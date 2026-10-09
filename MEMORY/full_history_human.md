@@ -1489,3 +1489,11 @@ hung forever. All three now check whether the pipeline itself is being
 cancelled. If it is not, the error is reported as that item's failure, under
 the usual fail-fast or collect-errors rule. Real cancellations behave exactly as
 before.
+
+## 2026-10-09 — The benchmark's ceiling is the async pipeline's own number (#165)
+
+The benchmark report says real-API speedups will land below the speedup it
+just measured. It picked that number as the largest in the table, leaving out
+only the batched row. The serial baseline is always exactly 1.00×, so whenever
+the async pipeline measured below 1× it quoted 1.00×, a figure no parallel
+pipeline produced. The serial row is now excluded as well.
