@@ -1518,3 +1518,11 @@ raised a cancellation error on its own. The same thing could happen in the
 source that feeds the pipeline, and there it still made `stream()` wait
 forever. That case now raises a clear pipeline error naming the producer. A
 real cancellation from the caller still stops the pipeline as before.
+
+## 2026-10-12 — `stream()` stops calling the model once the batch has failed (#171)
+
+An earlier fix (#146) stopped `process()` and tool dispatch from starting new
+calls after one item had already failed the batch. `stream()` was left out
+because it looked fine with one worker. With several workers, it went on to
+start extra calls (up to three more with four workers) that could only be
+thrown away. Each extra call is a paid model request. It now stops the same way.

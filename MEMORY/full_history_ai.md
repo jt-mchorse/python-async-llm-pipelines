@@ -1757,3 +1757,22 @@ context_for_next_session:
   - mypy_IS_NOT_INSTALLED_IN_THE_pyasync_VENV_ruff_only_here
 followups: []
 ---
+
+---
+session: 2026-10-12T08:23:16Z
+duration_min: 1   # computed: plan comment 2026-10-12T08:23:16Z -> PR 2026-10-12T08:24:50Z (gh createdAt)
+issue: 171
+branch: session/2026-10-12-0823-issue-171
+focus: STREAM_KEPT_CALLING_FN_AFTER_THE_BATCH_FAILED_AT_CONCURRENCY_GT_1_146_LATCHED_PROCESS_AND_DISPATCH_ONLY_ON_A_CONCURRENCY_1_CHECK
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 4
+  suite: "646 -> 650 passed; ruff clean"
+decisions_made: []
+measured: "equal 50 ms latencies, item 0 raises: main stream c=2 [0,1,2], c=4 [0..6]; branch [0,1] and [0..3] like process. Revert c=2,4 red / c=1 green; 5 consecutive green runs."
+context_for_next_session:
+  - 146_EXCLUDED_STREAM_ON_A_CHECK_AT_ONE_PARAMETER_VALUE_a_scope_justified_by_one_value_needs_the_sweep_the_sibling_got
+  - THE_LATCH_IS_SET_ON_THE_PROPAGATE_PATH_ONLY_return_exceptions_collects_and_keeps_going
+followups: []
+---
