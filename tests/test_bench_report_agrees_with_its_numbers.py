@@ -103,3 +103,17 @@ def test_the_ceiling_is_the_async_row_not_the_batched_exception() -> None:
 def test_a_high_async_ceiling_keeps_the_spec_sentence_whatever_batched_did() -> None:
     md = render_markdown(_workload(0.02), _split(27.91, 190.07))
     assert _SPEC in md
+
+
+@pytest.mark.parametrize("async_speedup", [0.42, 0.99])
+def test_a_sub_1x_async_row_is_the_ceiling_not_the_serial_baseline(async_speedup: float) -> None:
+    # #165: `--n 1 --concurrency 4 --batch-size 8 --latency 0` measured async at
+    # 0.42x, and the serial baseline's 1.00x was reported as the ceiling.
+    md = render_markdown(_workload(0.0, concurrency=4), _split(async_speedup, 0.45))
+    assert f"land below the {async_speedup:.2f}× measured above" in md
+    assert "land below the 1.00× measured above" not in md
+
+
+def test_a_1x_async_row_is_still_reported_as_its_own() -> None:
+    md = render_markdown(_workload(0.0, concurrency=4), _split(1.0, 0.45))
+    assert "land below the 1.00× measured above" in md

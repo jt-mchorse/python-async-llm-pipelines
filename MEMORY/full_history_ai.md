@@ -1699,3 +1699,21 @@ context_for_next_session:
   - task_cancelling_IS_THE_DISCRIMINATOR_zero_means_fn_raised_it_nonzero_means_we_are_being_cancelled
 followups: []
 ---
+
+---
+session: 2026-10-09T08:15Z
+duration_min: 4   # computed: issue filed 2026-10-09T08:13:54Z -> PR 2026-10-09T08:15:55Z (gh createdAt)
+issue: 165
+branch: session/2026-10-09-0815-issue-165
+focus: BENCH_CEILING_MAX_STILL_INCLUDED_THE_SERIAL_BASELINE_A_SUB_1X_ASYNC_RUN_REPORTED_THE_SERIAL_ROWS_1_00X_140_SIBLING
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "636 -> 639 passed; ruff clean"
+decisions_made: []
+measured: "CLI --n 1 --concurrency 4 --batch-size 8 --latency 0: main 'land below the 1.00x measured above' beside async 0.42x; branch 'land below the 0.42x'. Revert 2 red / 1.00x control green."
+context_for_next_session:
+  - A_FIX_THAT_EXCLUDES_ONE_ROW_FROM_A_MAX_ASK_WHICH_OTHER_ROW_IS_NOT_A_MEASUREMENT_OF_THE_THING_the_baseline_is_1_by_construction
+followups: []
+---
