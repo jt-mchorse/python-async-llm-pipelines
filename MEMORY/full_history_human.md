@@ -1497,3 +1497,16 @@ just measured. It picked that number as the largest in the table, leaving out
 only the batched row. The serial baseline is always exactly 1.00×, so whenever
 the async pipeline measured below 1× it quoted 1.00×, a figure no parallel
 pipeline produced. The serial row is now excluded as well.
+
+## 2026-10-09 — The bench scripts check their output paths before running (#167)
+
+Both benchmark scripts reported an unwritable output path cleanly, but only
+after the whole benchmark had run (up to about 45 seconds). One of them also
+replaced its markdown report before finding that it could not write the
+matching JSON, which left a new report beside missing raw data. Both now check
+every output path before starting, the same way the real write would.
+
+One slip worth recording: my first test let the unfixed script overwrite the
+repo's committed `docs/backpressure.md`, because one output flag was left at
+its default. The suite caught it, and the file was restored. The tests now
+always point both outputs at a temporary folder.
