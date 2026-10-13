@@ -399,6 +399,16 @@ async def stream(
             run. Cost is one ``qsize()`` call and a ``perf_counter``
             pair per produced item, so the overhead is negligible
             relative to any real ``fn`` work.
+        timeout: optional per-item deadline in seconds, as in ``process``:
+            each ``fn(item)`` call is wrapped in ``asyncio.timeout``, and
+            on expiry a ``PipelineTimeoutError`` is raised that follows the
+            ``return_exceptions`` policy. Only the deadline's own firing
+            maps to it; ``fn``'s own ``TimeoutError`` propagates
+            unrelabeled (#66). Unlike ``process``, the error's ``.index``
+            is the item's position in *consumption* order, not its
+            position in the producer's output -- ``stream`` does not keep
+            input order (D-003). ``None`` (the default) means no deadline
+            (#178).
     """
     # Integer + finite guards (#32) — see `process` for harm rationale; asyncio.Queue
     # additionally raises deep at put/get on a non-int maxsize, NaN included.

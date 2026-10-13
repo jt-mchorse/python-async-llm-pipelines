@@ -21,13 +21,17 @@ import inspect
 
 import pytest
 
-from async_pipelines.core import process
+from async_pipelines.core import process, stream
 from async_pipelines.tool_dispatch import dispatch_tool_calls
 
+# Every seam that takes a `timeout` (#178). This list was `[process,
+# dispatch_tool_calls]`, and `stream` -- the third seam, named as one by
+# `_require_timeout_seconds` -- had no `timeout` entry in its docstring at all.
+_TIMEOUT_SEAMS = [process, stream, dispatch_tool_calls]
+_IDS = [f.__name__ for f in _TIMEOUT_SEAMS]
 
-@pytest.mark.parametrize(
-    "fn", [process, dispatch_tool_calls], ids=["process", "dispatch_tool_calls"]
-)
+
+@pytest.mark.parametrize("fn", _TIMEOUT_SEAMS, ids=_IDS)
 def test_timeout_docstring_names_asyncio_timeout(fn) -> None:
     doc = inspect.getdoc(fn) or ""
     assert "asyncio.timeout" in doc, (
@@ -36,9 +40,7 @@ def test_timeout_docstring_names_asyncio_timeout(fn) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "fn", [process, dispatch_tool_calls], ids=["process", "dispatch_tool_calls"]
-)
+@pytest.mark.parametrize("fn", _TIMEOUT_SEAMS, ids=_IDS)
 def test_timeout_docstring_does_not_name_wait_for(fn) -> None:
     doc = inspect.getdoc(fn) or ""
     assert "wait_for" not in doc, (
@@ -46,3 +48,27 @@ def test_timeout_docstring_does_not_name_wait_for(fn) -> None:
         f"contract, but the implementation uses `asyncio.timeout` (#66/#72). "
         f"The contrast explanation belongs in an inline comment, not the docstring."
     )
+
+
+@pytest.mark.parametrize("fn", _TIMEOUT_SEAMS, ids=_IDS)
+def test_every_parameter_has_an_args_entry(fn) -> None:
+    """The shape that let `stream`'s `timeout` go undocumented (#178): the
+    other five parameters had entries, so the section read as complete."""
+    doc = inspect.getdoc(fn) or ""
+    args = doc[doc.index("Args:") :]
+    missing = [p for p in inspect.signature(fn).parameters if f"{p}:" not in args]
+    assert not missing, f"{fn.__name__} docstring `Args:` has no entry for {missing}"
+
+
+@pytest.mark.parametrize("fn", _TIMEOUT_SEAMS, ids=_IDS)
+def test_timeout_docstring_names_the_error_it_raises(fn) -> None:
+    doc = inspect.getdoc(fn) or ""
+    assert "PipelineTimeoutError" in doc, fn.__name__
+
+
+def test_stream_timeout_index_is_documented_as_consumption_order() -> None:
+    """`process`'s `.index` is the input position; `stream`'s is not (D-003).
+    A reader carrying the `process` meaning over looks up the wrong item."""
+    doc = inspect.getdoc(stream) or ""
+    entry = " ".join(doc[doc.index("timeout:") :].replace("*", "").split())
+    assert "consumption order" in entry, entry
