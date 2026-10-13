@@ -1510,3 +1510,11 @@ One slip worth recording: my first test let the unfixed script overwrite the
 repo's committed `docs/backpressure.md`, because one output flag was left at
 its default. The suite caught it, and the file was restored. The tests now
 always point both outputs at a temporary folder.
+
+## 2026-10-12 — `stream()` no longer hangs when its source is cancelled (#169)
+
+An earlier fix (#163) stopped `stream()` from hanging when an item's function
+raised a cancellation error on its own. The same thing could happen in the
+source that feeds the pipeline, and there it still made `stream()` wait
+forever. That case now raises a clear pipeline error naming the producer. A
+real cancellation from the caller still stops the pipeline as before.

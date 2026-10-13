@@ -1737,3 +1737,23 @@ context_for_next_session:
   - A_STASH_AFTER_COMMIT_IS_EMPTY_revert_probe_by_checking_out_origin_main_files_over_the_fix
 followups: []
 ---
+
+---
+session: 2026-10-12T07:45:49Z
+duration_min: 2   # computed: plan comment 2026-10-12T07:45:49Z -> PR 2026-10-12T07:47:53Z (gh createdAt)
+issue: 169
+branch: session/2026-10-12-0745-issue-169
+focus: STREAM_HUNG_FOREVER_WHEN_THE_PRODUCER_RAISED_ITS_OWN_CANCELLEDERROR_163_COVERED_FN_NOT_THE_SOURCE
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 5
+  suite: "639 -> 644 passed; ruff check + format clean"
+decisions_made: []
+measured: "main: ValueError from source -> ExceptionGroup at c=1,4; stray CancelledError from source -> HANG >2s at c=1,4; cancelling() 0. Revert 4 red / 15 green. Wrong fix (relabel every CancelledError) -> 2 controls red."
+context_for_next_session:
+  - A_FIX_THAT_NAMES_ITS_HARM_STREAM_HANGS_FOREVER_name_every_TASKGROUP_CHILD_that_can_end_cancelled_producer_and_consumers
+  - ONE_HELPER_TWO_CALLERS_origin_kwarg_rather_than_a_second_copy
+  - mypy_IS_NOT_INSTALLED_IN_THE_pyasync_VENV_ruff_only_here
+followups: []
+---

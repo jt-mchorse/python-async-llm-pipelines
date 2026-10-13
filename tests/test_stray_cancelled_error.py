@@ -166,3 +166,56 @@ async def test_control_siblings_cancelled_by_a_failure_are_not_relabelled() -> N
     with pytest.raises(ExceptionGroup) as ei:
         await process(range(_N), fn, concurrency=_N)
     assert [type(e) for e in ei.value.exceptions] == [ValueError]
+
+
+# --- the producer side (#169) -------------------------------------------------
+
+
+async def _cancelled_source():
+    """Yields one item, then raises CancelledError without anyone cancelling it."""
+    yield 0
+    fut = asyncio.get_running_loop().create_future()
+    fut.cancel()
+    await fut
+
+
+async def _ok(x: int) -> int:
+    return x
+
+
+@pytest.mark.parametrize("return_exceptions", [False, True])
+@pytest.mark.parametrize("concurrency", [1, 4])
+async def test_stream_raises_when_the_producer_raises_cancelled_error(
+    concurrency: int, return_exceptions: bool
+) -> None:
+    # #163 covered `fn`. A stray CancelledError from the source ended `_produce`
+    # as "cancelled", the TaskGroup ignored it, no sentinel was queued, and
+    # every consumer waited forever. It is not an item's failure, so
+    # `return_exceptions` does not collect it.
+    with pytest.raises(ExceptionGroup) as ei:
+        await asyncio.wait_for(
+            stream(
+                _cancelled_source(),
+                _ok,
+                concurrency=concurrency,
+                queue_size=2,
+                return_exceptions=return_exceptions,
+            ),
+            5,
+        )
+    assert any(_is_stray(e) and "the producer" in str(e) for e in ei.value.exceptions)
+
+
+async def test_control_outer_cancellation_during_a_slow_producer_still_propagates() -> None:
+    async def slow_source():
+        yield 0
+        await asyncio.sleep(10)
+        yield 1
+
+    task = asyncio.create_task(stream(slow_source(), _ok, concurrency=2, queue_size=2))
+    await asyncio.sleep(0.02)
+    task.cancel()
+    done, _ = await asyncio.wait({task}, timeout=2)
+    assert task in done, "cancelling the pipeline did not stop it"
+    with pytest.raises(asyncio.CancelledError):
+        await task

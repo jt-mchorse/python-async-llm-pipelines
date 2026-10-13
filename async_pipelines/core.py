@@ -124,7 +124,9 @@ def _refuse_bare_string(name: str, value: object) -> None:
         )
 
 
-def _stray_cancellation_as_error(exc: BaseException, *, index: int) -> BaseException:
+def _stray_cancellation_as_error(
+    exc: BaseException, *, index: int | None = None, origin: str | None = None
+) -> BaseException:
     """Return a `PipelineError` for a `CancelledError` that `fn` raised on its own.
 
     Returns `exc` unchanged in every other case (#163).
@@ -153,10 +155,19 @@ def _stray_cancellation_as_error(exc: BaseException, *, index: int) -> BaseExcep
     task = asyncio.current_task()
     if task is None or task.cancelling():
         return exc
-    err = PipelineError(
-        f"item at index {index}: fn raised CancelledError, but the pipeline was not "
-        f"cancelled -- treated as the item's failure"
-    )
+    if origin is None:
+        message = (
+            f"item at index {index}: fn raised CancelledError, but the pipeline was not "
+            f"cancelled -- treated as the item's failure"
+        )
+    else:
+        # The producer side of the same vanishing (#169): `origin` names what
+        # raised it when that is not an item's `fn`.
+        message = (
+            f"{origin} raised CancelledError, but the pipeline was not cancelled -- "
+            f"treated as its failure"
+        )
+    err = PipelineError(message)
     err.__cause__ = exc
     return err
 
@@ -407,22 +418,32 @@ async def stream(
     index_lock = asyncio.Lock()
 
     async def _produce() -> None:
-        async for item in producer:
-            if m is not None:
-                # Time the put so we can attribute pause time to backpressure.
-                if queue.full():
-                    m.producer_pauses += 1
-                    start = time.perf_counter()
-                    await queue.put(item)
-                    m.producer_pause_seconds += time.perf_counter() - start
+        try:
+            async for item in producer:
+                if m is not None:
+                    # Time the put so we can attribute pause time to backpressure.
+                    if queue.full():
+                        m.producer_pauses += 1
+                        start = time.perf_counter()
+                        await queue.put(item)
+                        m.producer_pause_seconds += time.perf_counter() - start
+                    else:
+                        await queue.put(item)
+                    m.produced += 1
+                    depth = queue.qsize()
+                    if depth > m.max_queue_depth:
+                        m.max_queue_depth = depth
                 else:
                     await queue.put(item)
-                m.produced += 1
-                depth = queue.qsize()
-                if depth > m.max_queue_depth:
-                    m.max_queue_depth = depth
-            else:
-                await queue.put(item)
+        except BaseException as caught:
+            # A stray CancelledError from the source itself (#169), the sibling
+            # of #163's `fn` case. The TaskGroup ignores a child that ends
+            # cancelled, so no sentinel was queued and every consumer waited on
+            # `queue.get()` forever. A real cancellation still propagates.
+            e = _stray_cancellation_as_error(caught, origin="the producer")
+            if e is caught:
+                raise
+            raise e  # noqa: B904 -- `__cause__` is already `caught`
         for _ in range(concurrency):
             await queue.put(sentinel)
 
