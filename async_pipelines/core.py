@@ -447,11 +447,18 @@ async def stream(
         for _ in range(concurrency):
             await queue.put(sentinel)
 
+    # #146's fail-fast latch, which `process` and `dispatch_tool_calls` got and
+    # this function did not (#171). A sibling consumer finishing in the same
+    # loop tick as a failure took the next item and called `fn` before the
+    # TaskGroup's cancellation reached it: at concurrency 4 with equal
+    # latencies, fn ran for [0..6] after item 0 had already failed the batch.
+    failed = False
+
     async def _consume() -> None:
-        nonlocal consumed_index
+        nonlocal consumed_index, failed
         while True:
             item = await queue.get()
-            if isinstance(item, _Sentinel):
+            if isinstance(item, _Sentinel) or failed:
                 queue.task_done()
                 return
             async with index_lock:
@@ -482,6 +489,7 @@ async def stream(
                 if return_exceptions and isinstance(e, Exception):
                     value = e
                 else:
+                    failed = True
                     queue.task_done()
                     if e is caught:
                         raise

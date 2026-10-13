@@ -13,7 +13,7 @@ import asyncio
 
 import pytest
 
-from async_pipelines import PipelineError, process
+from async_pipelines import PipelineError, process, stream
 from async_pipelines.tool_dispatch import ToolCall, ToolRegistry, dispatch_tool_calls
 
 
@@ -68,3 +68,50 @@ def test_dispatch_tool_calls_invokes_no_tool_after_the_failure() -> None:
 
     asyncio.run(run())
     assert invoked == ["c0"]
+
+
+# --- stream (#171) -------------------------------------------------------------
+
+
+def _stream_calls_made(concurrency: int, *, return_exceptions: bool = False) -> list[int]:
+    # Equal latencies, as the repo's own FakeLLM benchmark runs: a sibling
+    # consumer finishes in the same loop tick as item 0's failure.
+    calls: list[int] = []
+
+    async def fn(x: int) -> int:
+        calls.append(x)
+        await asyncio.sleep(0.01)
+        if x == 0:
+            raise ValueError("item 0 fails")
+        return x
+
+    async def source():
+        for i in range(10):
+            yield i
+
+    async def run() -> None:
+        try:
+            await stream(
+                source(),
+                fn,
+                concurrency=concurrency,
+                queue_size=10,
+                return_exceptions=return_exceptions,
+            )
+        except* ValueError:
+            pass
+
+    asyncio.run(run())
+    return calls
+
+
+@pytest.mark.parametrize("concurrency", [1, 2, 4])
+def test_stream_calls_fn_only_for_the_items_already_in_flight(concurrency: int) -> None:
+    # #146 left `stream` out on the strength of concurrency=1 alone; at 4 it
+    # called fn for [0..6] after the batch had failed.
+    assert sorted(_stream_calls_made(concurrency)) == list(range(concurrency))
+
+
+def test_stream_return_exceptions_still_runs_every_item() -> None:
+    # Collected failures do not latch: every item is still processed.
+    assert sorted(_stream_calls_made(4, return_exceptions=True)) == list(range(10))
