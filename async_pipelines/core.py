@@ -69,8 +69,10 @@ class StreamMetrics:
         consumed: number of items finished by ``fn`` (success or
             exception when ``return_exceptions=True``).
         producer_pauses: count of times ``queue.put`` had to wait for
-            space (the backpressure signal — non-zero means the producer
-            was slower than the consumer pool).
+            space (the backpressure signal — non-zero means the consumer
+            pool was the slower end: the producer had an item ready and
+            the queue was full). A producer that cannot keep up with the
+            consumers never fills the queue and leaves this at 0 (#176).
         max_queue_depth: high-water mark of items sitting in the queue.
         producer_pause_seconds: cumulative wall time the producer spent
             blocked on a full queue.
