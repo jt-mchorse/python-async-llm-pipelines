@@ -1535,3 +1535,15 @@ too, and that path did not set the same stop flag, so a worker finishing at
 that moment still picked up one more queued item and made one more paid call
 whose result was thrown away. This happened even with a single worker. The
 source's failure now stops new calls the same way.
+
+## 2026-10-13 — the backpressure metric's docs pointed at the wrong end (#176)
+
+`StreamMetrics.producer_pauses` counts how often the producer had to wait for
+room in the queue. Its documentation said a non-zero count meant the producer
+was the slow side. It means the opposite: the queue only fills when the
+workers can't keep up. The README's sentence was muddled in the same way,
+although its advice (add workers) was right. Since the metric exists to tell
+an operator which end is the bottleneck, getting the direction wrong sends
+them to the wrong end. Both texts are corrected. A new test runs a slow
+producer (0 pauses) and slow workers (24 pauses), then checks that each text
+names the workers as the slow end.
