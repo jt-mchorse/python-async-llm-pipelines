@@ -1547,3 +1547,14 @@ an operator which end is the bottleneck, getting the direction wrong sends
 them to the wrong end. Both texts are corrected. A new test runs a slow
 producer (0 pauses) and slow workers (24 pauses), then checks that each text
 names the workers as the slow end.
+
+## 2026-10-13 — `stream()` documents its timeout (#178)
+
+`stream()` has accepted a per-item `timeout` since #5, and the README says so.
+The function's own documentation never mentioned it, even though it covered
+every other option and both sibling functions describe theirs. That left out
+one difference: when a `stream()` item times out, the error's index counts
+items in the order they were processed, not the order they came in. The
+documentation now covers this. The existing documentation check, which only
+looked at the other two functions, now checks all three. A new check also
+fails if any of their options is undocumented.
