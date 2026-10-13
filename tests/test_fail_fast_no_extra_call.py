@@ -115,3 +115,58 @@ def test_stream_calls_fn_only_for_the_items_already_in_flight(concurrency: int) 
 def test_stream_return_exceptions_still_runs_every_item() -> None:
     # Collected failures do not latch: every item is still processed.
     assert sorted(_stream_calls_made(4, return_exceptions=True)) == list(range(10))
+
+
+# --- stream: the producer fails the batch (#173) -------------------------------
+
+
+def _stream_calls_after_source_failure(concurrency: int, kind: str) -> tuple[list[int], list[int]]:
+    # Deterministic tie: `fn(0)` wakes the source and yields once, so the source
+    # fails first and this consumer resumes in the same tick, with queued items.
+    calls: list[int] = []
+    after: list[int] = []
+    source_failed = False
+
+    async def run() -> None:
+        ev = asyncio.Event()
+        stray = asyncio.get_running_loop().create_future()
+        stray.cancel()
+
+        async def fn(x: int) -> int:
+            calls.append(x)
+            if source_failed:
+                after.append(x)
+            if x == 0:
+                ev.set()
+                await asyncio.sleep(0)
+            else:
+                await asyncio.sleep(0.05)
+            return x
+
+        async def source():
+            nonlocal source_failed
+            for i in range(concurrency + 2):
+                yield i
+            await ev.wait()
+            source_failed = True
+            if kind == "raise":
+                raise ConnectionError("source dropped")
+            await stray  # #169: the source's own CancelledError
+
+        try:
+            await stream(source(), fn, concurrency=concurrency, queue_size=8)
+        except* (ConnectionError, PipelineError):
+            pass
+
+    asyncio.run(run())
+    return calls, after
+
+
+@pytest.mark.parametrize("kind", ["raise", "stray_cancel"])
+@pytest.mark.parametrize("concurrency", [1, 2, 4])
+def test_stream_calls_no_fn_after_the_producer_failed(concurrency: int, kind: str) -> None:
+    # Unfixed: the consumer resuming in the failure's tick called fn for one
+    # more queued item at every concurrency (after == [concurrency]).
+    calls, after = _stream_calls_after_source_failure(concurrency, kind)
+    assert after == []
+    assert sorted(calls) == list(range(concurrency))
