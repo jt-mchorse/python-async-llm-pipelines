@@ -1796,3 +1796,23 @@ context_for_next_session:
   - stream_DOES_NOT_aclose_THE_SOURCE_ON_FAILURE_or_outer_cancel_finally_runs_only_at_GC_or_shutdown_asyncgens_unfiled_design_question
 followups: []
 ---
+
+---
+session: 2026-10-13T07:48:10Z
+duration_min: 20   # estimated: clone ~07:35Z -> commit ~07:55Z (round-2 hunt, prose-assertion lens)
+issue: 176
+branch: session/2026-10-13-0742-issue-176
+focus: STREAMMETRICS_DOCSTRING_SAID_PRODUCER_PAUSES_GT_0_MEANS_THE_PRODUCER_WAS_SLOWER_IT_MEANS_THE_CONSUMERS_ARE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 5
+  suite: "655 -> 660 passed; ruff check + format clean"
+decisions_made: []
+measured: "c=2 q=4 n=50: producer 5 ms/item + fn 1 ms -> pauses 0; producer 0 ms + fn 5 ms -> pauses 24. Docstring named the first as the non-zero case. Revert (origin/main core.py + README.md): 2 red (both prose arms) / 3 green (2 behaviour arms, 1 vacuity arm)."
+context_for_next_session:
+  - BEHAVIOUR_WAS_PINNED_THE_RIGHT_WAY_IN_test_stream_THE_PROSE_WAS_NOT_a_direction_claim_needs_a_direction_test_like_108
+  - MY_FIRST_FIX_TRIPPED_MY_OWN_INVERTED_PHRASE_LIST_a_producer_slower_than_the_consumers_never_pauses_is_a_true_sentence_that_contains_the_banned_substring
+  - REJECTED_the_producer_runs_queue_size_PLUS_ONE_ahead_already_accounted_for_by_INPUT_BOUND_in_test_stream_result_retention
+followups: []
+---

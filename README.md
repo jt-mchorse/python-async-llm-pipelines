@@ -165,9 +165,11 @@ print(
 
 `producer_pauses` is the count of `queue.put`s that had to wait for
 room; `producer_pause_seconds` is the cumulative wall-time blocked. A
-non-zero pause count is the operator's signal that fan-out has more
-headroom than the consumer can use — either grow `concurrency` or
-accept the queue as the rate limiter.
+non-zero pause count is the operator's signal that the consumer pool is
+the slower end — the producer had items ready and the queue was full —
+so either grow `concurrency` or accept the queue as the rate limiter. A
+producer that cannot keep up with the consumers never fills the queue,
+and the count stays at 0 (#176).
 
 Real numbers from `scripts/bench_backpressure.py`, read from the committed
 `docs/backpressure.json` so this table and the linked report are the same
