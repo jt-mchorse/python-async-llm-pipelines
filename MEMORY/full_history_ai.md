@@ -1816,3 +1816,22 @@ context_for_next_session:
   - REJECTED_the_producer_runs_queue_size_PLUS_ONE_ahead_already_accounted_for_by_INPUT_BOUND_in_test_stream_result_retention
 followups: []
 ---
+
+---
+session: 2026-10-13T07:51:53Z
+duration_min: 10   # estimated: issue filed ~07:50Z -> commit ~08:00Z
+issue: 178
+branch: session/2026-10-13-0750-issue-178
+focus: STREAM_DOCSTRING_HAD_NO_TIMEOUT_ENTRY_72_LOCK_ENUMERATED_PROCESS_AND_DISPATCH_ONLY
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 9
+  suite: "655 -> 664 passed; ruff check + format clean"
+decisions_made: []
+measured: "signature-vs-Args sweep over the three timeout seams: stream missing ['timeout'], no 'asyncio.timeout', no 'PipelineTimeoutError'; process and dispatch complete. Revert (origin/main core.py): 4 red (the stream arms) / 9 green."
+context_for_next_session:
+  - 72_LOCKED_TWO_OF_THREE_TIMEOUT_SEAMS_the_seam_list_already_existed_in_require_timeout_seconds_docstring_enumerate_from_it
+  - STREAM_TIMEOUT_INDEX_IS_CONSUMPTION_ORDER_not_input_position_now_said_in_the_docstring
+followups: []
+---
