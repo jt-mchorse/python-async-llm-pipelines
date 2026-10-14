@@ -1776,3 +1776,23 @@ context_for_next_session:
   - THE_LATCH_IS_SET_ON_THE_PROPAGATE_PATH_ONLY_return_exceptions_collects_and_keeps_going
 followups: []
 ---
+
+---
+session: 2026-10-13T07:19Z
+duration_min: 15
+issue: 173
+branch: session/2026-10-13-0719-issue-173
+focus: STREAM_PRODUCER_FAILURE_DID_NOT_LATCH_172_SET_failed_ON_THE_CONSUMER_PATH_ONLY_THE_169_PRODUCER_PATH_WAS_THE_OTHER_TASKGROUP_CHILD
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 6
+  suite: "655 -> 661 passed (junitxml); ruff check + format clean"
+decisions_made: []
+measured: "matrix process/stream/dispatch(None|k) x fn raise/fn CancelledError/fn BaseException/producer raise/producer CancelledError/outer cancel/timeout x c 1,2,4 x rex: only the two producer rows started fn after the failure (main AND #172 branch), at every c incl. 1: c=4 calls [0..4], after=[4]. Revert 6/6 red. Stacked on #172 (needs its flag)."
+context_for_next_session:
+  - A_LATCH_IS_SET_BY_EVERY_CHILD_THAT_CAN_FAIL_THE_BATCH_enumerate_the_TaskGroup_children_not_the_fn_call_sites
+  - DETERMINISTIC_TIE_fn_sets_an_Event_the_source_awaits_then_sleep_0_so_the_source_fails_first_in_the_same_tick
+  - stream_DOES_NOT_aclose_THE_SOURCE_ON_FAILURE_or_outer_cancel_finally_runs_only_at_GC_or_shutdown_asyncgens_unfiled_design_question
+followups: []
+---

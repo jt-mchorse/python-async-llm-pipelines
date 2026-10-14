@@ -1526,3 +1526,12 @@ calls after one item had already failed the batch. `stream()` was left out
 because it looked fine with one worker. With several workers, it went on to
 start extra calls (up to three more with four workers) that could only be
 thrown away. Each extra call is a paid model request. It now stops the same way.
+
+## 2026-10-13 — `stream()` also stops calling the model when the source fails (#173)
+
+Yesterday's fix (#171) made `stream()` stop starting new calls once a worker's
+call had failed the batch. The source feeding the pipeline can fail the batch
+too, and that path did not set the same stop flag, so a worker finishing at
+that moment still picked up one more queued item and made one more paid call
+whose result was thrown away. This happened even with a single worker. The
+source's failure now stops new calls the same way.

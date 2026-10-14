@@ -418,6 +418,7 @@ async def stream(
     index_lock = asyncio.Lock()
 
     async def _produce() -> None:
+        nonlocal failed
         try:
             async for item in producer:
                 if m is not None:
@@ -441,6 +442,11 @@ async def stream(
             # cancelled, so no sentinel was queued and every consumer waited on
             # `queue.get()` forever. A real cancellation still propagates.
             e = _stray_cancellation_as_error(caught, origin="the producer")
+            # The producer fails the batch too, so it latches like a consumer
+            # does (#173). Without this, a consumer finishing in the same tick
+            # took the next queued item and called `fn` -- at concurrency=1 --
+            # before the TaskGroup's cancellation reached it.
+            failed = True
             if e is caught:
                 raise
             raise e  # noqa: B904 -- `__cause__` is already `caught`
@@ -448,7 +454,9 @@ async def stream(
             await queue.put(sentinel)
 
     # #146's fail-fast latch, which `process` and `dispatch_tool_calls` got and
-    # this function did not (#171). A sibling consumer finishing in the same
+    # this function did not (#171). Set by both kinds of child that can fail
+    # the batch: a consumer whose `fn` failure propagates, and the producer
+    # (#173). A sibling consumer finishing in the same
     # loop tick as a failure took the next item and called `fn` before the
     # TaskGroup's cancellation reached it: at concurrency 4 with equal
     # latencies, fn ran for [0..6] after item 0 had already failed the batch.
