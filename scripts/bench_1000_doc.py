@@ -38,7 +38,7 @@ from async_pipelines.benchmark import (  # noqa: E402
     make_batch_caller,
     run_pipeline,
 )
-from async_pipelines.io_utils import atomic_write_text, check_writable  # noqa: E402
+from async_pipelines.io_utils import atomic_write_text, check_writable, display_path  # noqa: E402
 
 #: The workload the README's numbers and the "5-20x" spec range describe. The
 #: argparse defaults read from it, so the report can say which flags a run
@@ -300,11 +300,11 @@ async def amain(args: argparse.Namespace) -> int:
     try:
         atomic_write_text(out_path, md)
         print(md)
-        print(f"\nbenchmarks wrote {out_path}")
+        print(f"\nbenchmarks wrote {display_path(out_path)}")
         # Stash raw results next to the markdown for further analysis.
         json_path = _json_path_for(out_path)
         dump_benchmark_json(json_path, workload=workload, results=results)
-        print(f"raw results wrote {json_path}")
+        print(f"raw results wrote {display_path(json_path)}")
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2

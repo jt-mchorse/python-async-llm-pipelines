@@ -48,7 +48,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from async_pipelines import StreamMetrics, stream  # noqa: E402
-from async_pipelines.io_utils import atomic_write_text, check_writable  # noqa: E402
+from async_pipelines.io_utils import atomic_write_text, check_writable, display_path  # noqa: E402
 
 
 @dataclass
@@ -373,7 +373,7 @@ async def main_async(args: argparse.Namespace) -> int:
     try:
         if args.out_md:
             atomic_write_text(args.out_md, _render_markdown(results))
-            print(f"wrote {args.out_md}")
+            print(f"wrote {display_path(args.out_md)}")
         if args.out_json:
             payload = {
                 "results": [r.to_dict() for r in results],
@@ -381,7 +381,7 @@ async def main_async(args: argparse.Namespace) -> int:
                 "python": sys.version.split()[0],
             }
             atomic_write_text(args.out_json, json.dumps(payload, indent=2))
-            print(f"wrote {args.out_json}")
+            print(f"wrote {display_path(args.out_json)}")
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2
