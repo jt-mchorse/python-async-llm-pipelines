@@ -429,10 +429,23 @@ async def stream(
     consumed_index = 0
     index_lock = asyncio.Lock()
 
+    # Consumers are started by the producer, one per item put, until
+    # `concurrency` are running (#180). Starting `concurrency` of them up
+    # front -- and putting as many sentinels through the bounded queue --
+    # made the cap cost O(concurrency) whatever the source held: 25 s and
+    # 1.3 GiB for two items at concurrency=10**6, a hang at 10**400.
+    # `process` and `dispatch_tool_calls` already make one task per item.
+    started = 0
+
     async def _produce() -> None:
-        nonlocal failed
+        nonlocal failed, started
         try:
             async for item in producer:
+                # Not after the batch has failed (#172/#174): the TaskGroup is
+                # shutting down and the item will only be discarded.
+                if started < concurrency and not failed:
+                    tg.create_task(_consume())
+                    started += 1
                 if m is not None:
                     # Time the put so we can attribute pause time to backpressure.
                     if queue.full():
@@ -462,7 +475,7 @@ async def stream(
             if e is caught:
                 raise
             raise e  # noqa: B904 -- `__cause__` is already `caught`
-        for _ in range(concurrency):
+        for _ in range(started):
             await queue.put(sentinel)
 
     # #146's fail-fast latch, which `process` and `dispatch_tool_calls` got and
@@ -522,8 +535,6 @@ async def stream(
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(_produce())
-        for _ in range(concurrency):
-            tg.create_task(_consume())
 
     return results
 
