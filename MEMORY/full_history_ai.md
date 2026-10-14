@@ -1894,3 +1894,24 @@ context_for_next_session:
   - THE_PRODUCER_CHECKS_failed_BEFORE_create_task_TaskGroup_create_task_raises_RuntimeError_once_aborting
 followups: []
 ---
+
+---
+session: 2026-10-14T07:41Z
+duration_min: 25   # estimated: hunt ~07:35Z -> commit ~08:00Z (round-2, surface-the-last-fix-did-not-list lens on #104)
+issue: 186
+branch: session/2026-10-14-0741-issue-186
+focus: 104_LET_A_NON_UTF8_OUT_NAME_REACH_THE_WRITE_THE_NEXT_LINE_PRINTS_IT_STRICT_STDOUT_UNDER_EVERY_UTF8_LOCALE_BUT_C_UTF8_EXIT_1_MD_WITHOUT_JSON
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 9
+  suite: "675 -> 684 passed (3.12 and 3.11); ruff check + format clean"
+decisions_made: []
+measured: "HFS+ disk image (accepts 0xFF as %FF): PYTHONIOENCODING=utf-8:strict or LC_ALL=en_US.UTF-8 -> both scripts exit 1, UnicodeEncodeError at the first 'wrote' print, .md only; LC_ALL=C.UTF-8 -> exit 0, both files. Call-site revert (scripts only, helper kept) on HFS+: 2 of 9 red (both subprocess arms); on APFS all green (EILSEQ refuses the name before any write), CI ext4 runs them for real."
+context_for_next_session:
+  - A_PRINT_OF_AN_OPERATOR_PATH_IS_A_WRITE_SEAM_TOO_its_failure_mode_is_chosen_by_the_LOCALE_not_the_code
+  - CI_C_UTF8_GIVES_STDOUT_surrogateescape_en_US_UTF8_GIVES_strict_PIN_PYTHONIOENCODING_IN_THE_CHILD_SO_THE_HOST_NEVER_PICKS_THE_VERDICT
+  - HFS_PLUS_DMG_IS_A_LOCAL_BYTE_ACCEPTING_FS_hdiutil_create_fs_HFS_plus_then_pytest_basetemp_on_the_mount
+  - PRE_EXISTING_test_atomic_write_text_unencodable_target_name_fails_as_oserror_if_at_all_is_RED_ON_HFS_PLUS_on_origin_main_too_HFS_stores_the_byte_as_%FF_so_the_name_read_back_differs_host_artifact_not_filed
+followups: []
+---

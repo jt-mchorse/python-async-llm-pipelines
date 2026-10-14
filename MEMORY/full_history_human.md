@@ -1590,3 +1590,15 @@ up to the ceiling, so it never runs more workers than it has items. With more
 items than the ceiling it still runs the full number in parallel. The
 fail-fast behaviour from #172/#174 is unchanged: no new worker is started
 once the batch has failed.
+
+## 2026-10-14 — the bench scripts no longer crash printing an unusual file name (#186)
+
+An earlier fix (#104) let both benchmark scripts write their reports to a file
+whose name contains a byte that isn't valid UTF-8. The scripts then print
+"wrote <path>". Under most UTF-8 language settings (anything except the plain
+"C" setting CI uses) Python refuses to print that character. The script then
+crashed after the benchmark had run, leaving the markdown report written and
+its JSON companion missing, which is the half-finished state #167 was meant to
+prevent. The path is now printed with the odd byte shown as `\xff`, which can't
+fail. The new tests force the strict printing mode so the result no longer
+depends on the machine's language settings.
