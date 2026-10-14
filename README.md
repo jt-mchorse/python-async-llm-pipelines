@@ -42,7 +42,8 @@ parentheses:
   `concurrency=32`, which is the theoretical upper bound for the
   `FakeLLM` (pure-wait `asyncio.sleep`). Real-API speedups land in the
   5–20× spec range; the script is the seam an operator swaps for their
-  own `LLMClient` Protocol implementation.
+  own `LLMClient` Protocol implementation (serial and async rows; the
+  batched row needs a real batch endpoint, #181).
 - **Per-item timeouts + cooperative cancellation** (#5) — `timeout`
   parameter on both `process()` and `stream()` raises
   `PipelineTimeoutError` at the per-item level without poisoning the
@@ -334,7 +335,11 @@ is pure-wait, so the speedup ratio is the theoretical upper bound —
 spec's range, sometimes higher (Batch API workloads). The script is
 the seam where an operator swaps `FakeLLM` for an `AnthropicLLM`
 adapter (anything matching the `LLMClient` Protocol) and re-runs to
-get their workload's real numbers — same table shape, same reproducer.
+get their workload's real numbers — same table shape, same reproducer —
+for the serial and async rows. The async+batched row is built from
+`make_batch_caller`, which never calls the client it wraps, so it stays
+one simulated sleep per batch until its callers are replaced with a real
+batch endpoint (D-008, #181).
 
 ```bash
 # --out keeps the run from overwriting the committed docs/benchmarks.md that

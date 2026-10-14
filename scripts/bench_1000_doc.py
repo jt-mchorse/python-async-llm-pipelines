@@ -104,8 +104,9 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
         f"- **Synthetic LLM disclosure.** Each call is a deterministic "
         f"`await asyncio.sleep({workload.llm_call_seconds})`. The speedup "
         "ratios are load-bearing under this model; the absolute latency "
-        "is per the simulated cost. Real-API numbers are a `FakeLLM` → "
-        "`AnthropicLLM` swap; the `LLMClient` Protocol is the seam."
+        "is per the simulated cost. Real-API numbers for the serial and async "
+        "rows are a `FakeLLM` → `AnthropicLLM` swap; the `LLMClient` Protocol "
+        "is the seam."
     )
     lines.append(
         f"- **Host.** {platform.python_implementation()} {platform.python_version()} "
@@ -214,10 +215,21 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
         if changed:
             assumes += f"; this run used {', '.join(changed)}"
         landing = f"so real-API speedups land below the {ceiling:.2f}× measured above ({assumes}). "
+    # The swap reaches two of the three rows (#181). This said "The same script
+    # writes the same table", but the async+batched row is built from
+    # `make_batch_caller`, which never calls the client it wraps: after the
+    # swap, a counting client saw 16 + 16 calls from the serial and async
+    # pipelines and 0 from the batched one, and that row printed 37.64x over a
+    # real serial baseline. A real batched row needs a real batch endpoint
+    # (D-008).
     lines.append(
         "Swap `FakeLLM` for an Anthropic adapter that conforms to the "
         "`LLMClient` Protocol (`async __call__(prompt: str) -> str`) and "
-        "re-run. The same script writes the same table. Expect the speedup "
+        "re-run. That swap reaches the serial and async rows only: the "
+        "async+batched row's callers come from `make_batch_caller`, which never "
+        "calls the client it wraps, so that row stays one simulated sleep per "
+        "batch until its callers are replaced with a real batch endpoint "
+        "(D-008). Expect the speedup "
         "ratios to be **lower** than the synthetic ones above, not higher: "
         "`FakeLLM`'s pure-wait `asyncio.sleep` has no per-request CPU, socket, "
         "TLS or JSON cost, so it fans out perfectly and the ratios here are "

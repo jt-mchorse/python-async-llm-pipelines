@@ -14,8 +14,11 @@ benchmark times three implementations:
 `FakeLLM` is the synthetic in-process LLM used in CI: deterministic
 latency via `asyncio.sleep`. The benchmark's *speedup ratios* are
 load-bearing and meaningful with the fake; absolute wall-clock is per
-the simulated latency. Real-Anthropic-API mode is a documented one-line
-swap: anything matching the `LLMClient` Protocol works (D-008).
+the simulated latency. Real-Anthropic-API mode is a documented
+swap: anything matching the `LLMClient` Protocol works for the serial and
+async pipelines (D-007). The batched pipeline's callers are a separate seam:
+`make_batch_caller` never calls the client it is given, so a real batched
+row needs a real batch endpoint in its place (D-008, #181).
 """
 
 from __future__ import annotations
@@ -397,13 +400,23 @@ def _chunk(items: list[str], size: int) -> list[list[str]]:
 def make_batch_caller(
     llm: LLMClient, *, batch_seconds: float | None = None
 ) -> Callable[[list[str]], Awaitable[list[str]]]:
-    """Wrap a single-call LLM into a batch caller.
+    """Simulate a batch endpoint with the latency of one call from `llm`.
 
-    In the synthetic-LLM case, the batch latency defaults to one call's
-    latency (the `O(1)` per batch assumption). For a real LLM the
-    wrapper would do an actual batched HTTP request; here we just
-    `asyncio.gather` the per-item calls with a single sleep upfront,
-    simulating a single round trip.
+    The returned caller **never calls `llm`**. Each batch is one
+    `asyncio.sleep` (`batch_seconds`, or `llm.latency_seconds` when that is
+    unset, or 0.0 for a client without that attribute), followed by one
+    synthetic `"<item>:<llm.call_id>-batched"` string per item. That is the
+    `O(1)`-per-batch assumption D-008 emulates.
+
+    This docstring used to say the caller would "`asyncio.gather` the per-item
+    calls with a single sleep upfront" (#181). There was no gather and no
+    per-item call. So swapping `FakeLLM` for a real `LLMClient` in
+    `scripts/bench_1000_doc.py` changed the serial and async rows and left the
+    async+batched row fully synthetic. Measured with a counting client, 16
+    docs: the serial and async pipelines called it 16 times each and the batched
+    pipeline 0 times, and the batched row reported 37.64x against the real serial
+    baseline. A real batched row needs a real batch endpoint *in place of* this
+    caller. Wrapping a real client here does not give one.
     """
     # Finite + non-negative guard (#62) — `batch_seconds` is the one
     # latency/timing seam in this module that previously skipped the check

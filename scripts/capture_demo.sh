@@ -116,6 +116,8 @@ pace
 banner "done · five primitives + serial/async/batched speedup table wired end-to-end"
 printf 'next stop for real-API numbers:\n'
 printf '  swap FakeLLM for an AnthropicLLM adapter implementing LLMClient.\n'
+printf '  that reaches the serial and async rows; make_batch_caller never calls\n'
+printf '  the client, so the batched row needs a real batch endpoint (D-008).\n'
 printf '  ANTHROPIC_API_KEY=... python scripts/bench_1000_doc.py --n 200 --concurrency 16 \\\n'
 printf '    --batch-size 4 --out /tmp/real.md\n'
 # Direction corrected in #108 -- this said the ratios "will widen", which
