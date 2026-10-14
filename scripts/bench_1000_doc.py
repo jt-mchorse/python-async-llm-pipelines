@@ -272,6 +272,13 @@ async def amain(args: argparse.Namespace) -> int:
         print(f"invalid workload: {e}", file=sys.stderr)
         return 2
     out_path = Path(args.out)
+    # A path with no final component (`''` -> `.`, `.`, `/`) is a directory, and
+    # `_json_path_for` cannot derive a sibling from it: `with_name` raised
+    # ValueError past the OSError-only guard below, exit 1 with a traceback,
+    # where `..` or a named directory got the clean exit 2 (#183).
+    if not out_path.name:
+        print(f"could not write report: --out {args.out!r} names no file", file=sys.stderr)
+        return 2
     # Both artifacts, before the run (#167): an unwritable path used to cost the
     # whole benchmark, and a bad JSON path left a freshly written .md beside no
     # raw results.
