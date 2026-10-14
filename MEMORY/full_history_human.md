@@ -1569,3 +1569,11 @@ against a real serial baseline (37x in a small run). The helper's own descriptio
 also said it made per-item calls, which it never did. Every place that gives the
 swap instruction now says it reaches the serial and async rows only, and that a
 real batched row needs a real batch endpoint. No numbers changed.
+
+## 2026-10-14 — the 1000-doc bench rejects an empty output path cleanly (#183)
+
+Giving the 1000-doc benchmark an output path with no file name (an empty
+string, such as an unset shell variable, or `.` or `/`) crashed with a Python
+traceback and exit code 1. Every other bad output path gets a one-line
+"could not write report" message and exit code 2. These three now get the same
+message and code, before any benchmark work runs.

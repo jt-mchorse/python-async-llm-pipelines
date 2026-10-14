@@ -1855,3 +1855,22 @@ context_for_next_session:
   - docs_benchmarks_md_HAND_EDITED_PROSE_ONLY_host_line_kept_rendered_report_otherwise_line_identical
 followups: []
 ---
+
+---
+session: 2026-10-14T07:27Z
+duration_min: 15
+issue: 183
+branch: session/2026-10-14-0727-issue-183
+focus: BENCH_1000_DOC_OUT_WITH_EMPTY_PATH_NAME_EXITED_1_with_name_VALUEERROR_ESCAPED_THE_167_OSERROR_ONLY_PREFLIGHT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 5
+  suite: "675 -> 680 passed; ruff check + format clean"
+decisions_made: []
+measured: "--out '' / . / / -> exit 1 ValueError 'has an empty name' traceback; .. and a named dir -> exit 2 'could not write report'. Fix: refuse an empty Path.name before _json_path_for. Revert 3/5 red (the 2 controls green by design)."
+context_for_next_session:
+  - A_PREFLIGHT_THAT_DERIVES_A_PATH_CAN_RAISE_A_NON_OSERROR_check_the_derivation_not_only_the_write
+  - bench_backpressure_out_md_EMPTY_SKIPS_THE_WRITE_SILENTLY_looks_deliberate_if_path_not_filed
+followups: []
+---
