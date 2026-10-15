@@ -1577,3 +1577,16 @@ string, such as an unset shell variable, or `.` or `/`) crashed with a Python
 traceback and exit code 1. Every other bad output path gets a one-line
 "could not write report" message and exit code 2. These three now get the same
 message and code, before any benchmark work runs.
+
+## 2026-10-14 — a large `concurrency` no longer costs `stream()` anything (#180)
+
+`concurrency` is a ceiling on how many items `stream()` works on at once. It
+started that many workers before reading a single item, though, so a high
+ceiling cost time and memory even for a tiny input: two items with a ceiling
+of a million took 25 seconds and 1.3 GiB, and an absurdly large ceiling never
+finished. `process()` and tool dispatch never had this problem because they
+make one task per item. `stream()` now starts a worker as each item arrives,
+up to the ceiling, so it never runs more workers than it has items. With more
+items than the ceiling it still runs the full number in parallel. The
+fail-fast behaviour from #172/#174 is unchanged: no new worker is started
+once the batch has failed.

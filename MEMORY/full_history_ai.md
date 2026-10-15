@@ -1874,3 +1874,23 @@ context_for_next_session:
   - bench_backpressure_out_md_EMPTY_SKIPS_THE_WRITE_SILENTLY_looks_deliberate_if_path_not_filed
 followups: []
 ---
+
+---
+session: 2026-10-14T07:31Z
+duration_min: 20   # estimated: resume ~07:30Z -> commit ~07:50Z (issue filed 10-13, plan never shipped)
+issue: 180
+branch: session/2026-10-14-0731-issue-180
+focus: STREAM_STARTED_concurrency_CONSUMERS_AND_PUT_concurrency_SENTINELS_UP_FRONT_A_CAP_THAT_COST_O_CAP_process_AND_dispatch_ARE_ONE_TASK_PER_ITEM
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 13
+  suite: "675 -> 688 passed (3.12 and 3.11); ruff check + format clean; core.py 100% line cov"
+decisions_made: []
+measured: "2 items: c=10**6 24.9 s / 1.3 GiB -> 0.000 s; c=10**400 hang -> 0.000 s. Consumers now started by the producer, one per item, while started < concurrency and not failed; sentinels = started. Revert 8/13 red (every n < concurrency cell); 5 green arms (n >= c cells + in-flight still reaches the cap at n=20 c=4) reject an over-tightened neighbour."
+context_for_next_session:
+  - A_CAP_IS_A_CAP_compare_what_each_primitive_ALLOCATES_per_unit_of_its_cap_not_only_what_it_runs
+  - NO_TEST_PASSES_10_POW_400_against_unfixed_code_range_create_task_never_yields_so_wait_for_cannot_stop_it_it_hangs_CI_instead_of_failing
+  - THE_PRODUCER_CHECKS_failed_BEFORE_create_task_TaskGroup_create_task_raises_RuntimeError_once_aborting
+followups: []
+---
