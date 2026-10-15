@@ -14,7 +14,8 @@ references, so coverage is dual-axis (compare:
 ``embedding-model-shootout`` PR #20 #NN-only).
 
 Five invariants pinned (plus the #70 ``timeout`` kwarg-name lock in
-``test_architecture_doc_uses_real_timeout_kwarg_name``):
+``test_architecture_doc_uses_real_timeout_kwarg_name``, and #192's §5
+every-``timeout``-seam and §6 temp-file-shape locks at the end):
 
 1. **Path-token reachability.** Every backtick-quoted token starting with
    one of ``RESOLVABLE_PREFIXES`` resolves on disk. Operator-supplied
@@ -448,3 +449,55 @@ def test_architecture_doc_names_the_real_timeout_exception(doc_text: str) -> Non
         "docs/architecture.md timeout diagram must name PipelineTimeoutError "
         "(the relabeled exception the caller catches), not the raw asyncio one"
     )
+
+
+def _section(doc_text: str, heading: str) -> str:
+    """The body of the `## <heading>` section, up to the next `## ` heading."""
+    match = re.search(rf"^## {re.escape(heading)}\n(.*?)(?=^## )", doc_text, re.M | re.S)
+    assert match, f"docs/architecture.md has no '## {heading}' section"
+    return match.group(1)
+
+
+def test_architecture_doc_timeout_section_names_every_timeout_seam(doc_text: str) -> None:
+    """§5 names every public function that takes `timeout`, found from the code (#192).
+
+    #70's lock above inspects `process` and `stream` only. `dispatch_tool_calls`
+    has taken `timeout` since #26, and §5 said the timeout "doesn't change tool
+    dispatch's surface". The seams are enumerated from `__all__`, so a fourth
+    one is not invisible to this test the way the third was to that one.
+    """
+    import async_pipelines
+
+    seams = sorted(
+        name
+        for name in async_pipelines.__all__
+        if inspect.isfunction(getattr(async_pipelines, name))
+        and "timeout" in inspect.signature(getattr(async_pipelines, name)).parameters
+    )
+    assert seams == ["dispatch_tool_calls", "process", "stream"]
+    section = _section(doc_text, "5. Per-item timeout + cancellation")
+    for name in seams:
+        assert f"`{name}`" in section, f"§5 does not name the `timeout` seam `{name}`"
+    assert "doesn't change tool dispatch" not in section
+
+
+def test_architecture_doc_temp_file_shape_matches_the_helper(doc_text: str, tmp_path: Path) -> None:
+    """§6's temp-file name is the one `atomic_write_text` creates (#192).
+
+    It said `<dest>.tmp`; the helper creates `.<name>.<random>.tmp`. The
+    documented shape is turned into a pattern and matched against a real name.
+    """
+    import os
+
+    from async_pipelines.io_utils import _create_temp
+
+    section = _section(doc_text, "6. Cross-cutting: atomic file writes (#36)")
+    assert "`<dest>.tmp`" not in section
+    shapes = re.findall(r"`(\.?<[^`]*\.tmp)`", section)
+    assert len(shapes) == 1, f"§6 should document one temp-name shape, found {shapes}"
+    fd, real = _create_temp(tmp_path / "benchmarks.json")
+    os.close(fd)
+    real.unlink()
+    pattern = re.escape(shapes[0]).replace(re.escape("<name>"), re.escape("benchmarks.json"))
+    pattern = pattern.replace(re.escape("<random>"), "[0-9a-f]+")
+    assert re.fullmatch(pattern, real.name), (shapes[0], real.name)

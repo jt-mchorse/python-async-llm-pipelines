@@ -198,10 +198,11 @@ parsers don't break. Mirrors the observability-parity pattern landed in
 
 ## 5. Per-item timeout + cancellation
 
-**What it does.** A keyword-only `timeout` arg on `process`
-and `stream` that wraps each `fn(item)` call in `asyncio.timeout`.
-Times out individual items without cancelling the rest of the batch
-(when `return_exceptions=True`).
+**What it does.** A keyword-only `timeout` arg on `process`,
+`stream` and `dispatch_tool_calls` that wraps each `fn(item)` call (each
+tool invocation, for dispatch) in `asyncio.timeout`. Times out individual
+items without cancelling the rest of the batch (when
+`return_exceptions=True`).
 
 ```mermaid
 flowchart LR
@@ -213,8 +214,10 @@ flowchart LR
     RE -- "False (fail-fast)" --> CG["TaskGroup cancels siblings"]
 ```
 
-**Composes with.** Lives on both `process` and `stream` (D-010);
-doesn't change tool dispatch's surface. Pairs naturally with
+**Composes with.** Lives on `process` and `stream` (D-010), and on
+`dispatch_tool_calls` since #26, where `PipelineTimeoutError.index` is the
+call's position in `tool_calls` (#192). All three validate it
+through one rule, `_require_timeout_seconds` (#98). Pairs naturally with
 `return_exceptions=True` so a slow item doesn't kill the batch.
 
 **Why these decisions.**
@@ -232,10 +235,11 @@ doesn't change tool dispatch's surface. Pairs naturally with
 `async_pipelines/io_utils.py` exposes `atomic_write_text`, the
 package-level helper that every benchmark script
 (`scripts/bench_1000_doc.py`, `scripts/bench_backpressure.py`) calls
-when persisting JSON results.
-It writes to a `<dest>.tmp` sibling in the same directory, `fsync`s,
-then `os.replace`s into place — operators reading the benchmark JSON
-never see a half-written file from a `KeyboardInterrupt` mid-write.
+when persisting its markdown report and its JSON results.
+It writes to a hidden, exclusively-created `.<name>.<random>.tmp` sibling
+in the same directory, `fsync`s, then `os.replace`s into place — operators
+reading the benchmark artifacts never see a half-written file from a
+`KeyboardInterrupt` mid-write (#192).
 
 **Why these decisions.**
 
