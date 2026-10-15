@@ -1624,3 +1624,15 @@ timed-out item could not be deep-copied. Returned from a worker in a process
 pool, the same list crashed the whole pool. The error now tells Python to
 rebuild it from those two fields. Copying, pickling and process pools all work,
 and the type, message, `.index` and `.timeout_s` are all preserved.
+
+## 2026-10-15 — the architecture doc's timeout and atomic-write sections match the code (#192)
+
+`docs/architecture.md` said the per-item `timeout` option "doesn't change tool
+dispatch's surface". In fact tool dispatch has accepted the same `timeout`
+since #26, and the README documents it. The doc's own opening line says every
+primitive has one, so the doc contradicted itself. The atomic-write section
+also described a `<dest>.tmp` temporary file, but the helper actually creates a
+hidden `.<name>.<random>.tmp` file. Both sections are corrected, and two new
+checks read the code to keep them correct: one finds every public function with
+a `timeout` option, the other compares the documented temp name against a real
+one.
