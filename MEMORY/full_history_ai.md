@@ -1934,3 +1934,22 @@ context_for_next_session:
   - CASE_ONLY_ALIAS_WHEN_NEITHER_FILE_EXISTS_IS_NOT_CAUGHT_no_portable_compare_without_creating_one
 followups: []
 ---
+
+---
+session: 2026-10-15T07:43Z
+duration_min: 20   # estimated: hunt ~07:30Z -> commit ~07:50Z (round-2, argument/exception-contract lens on the public error types)
+issue: 190
+branch: session/2026-10-15-0743-issue-190
+focus: PIPELINETIMEOUTERROR_KEYWORD_ONLY_INIT_VS_BASEEXCEPTION_REDUCE_CLS_STAR_ARGS_COPY_DEEPCOPY_PICKLE_ALL_RAISED_TYPEERROR_A_RETURN_EXCEPTIONS_RESULT_BROKE_A_PROCESS_POOL
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 10
+  suite: "710 -> 720 passed (3.12); ruff check + format clean"
+decisions_made: []
+measured: "copy.copy / copy.deepcopy / pickle.loads(pickle.dumps(e)) -> TypeError '__init__() takes 1 positional argument but 2 were given' for PipelineTimeoutError only (PipelineError control ok). process(..., timeout=0.05, return_exceptions=True) returned from a ProcessPoolExecutor worker -> BrokenProcessPool; after the fix the list arrives intact. Fix: __reduce__ rebuilding from index/timeout_s plus __dict__. Revert 9/10 red (the PipelineError control green by design)."
+context_for_next_session:
+  - A_KEYWORD_ONLY_EXCEPTION_INIT_BREAKS_COPY_AND_PICKLE_BaseException_reduce_is_cls_star_args_grep_every_exception_subclass_with_a_custom_init
+  - pickle_dumps_SUCCEEDS_loads_FAILS_so_the_break_lands_on_the_RECEIVING_side_a_worker_finishes_and_the_parent_pool_dies
+followups: []
+---
