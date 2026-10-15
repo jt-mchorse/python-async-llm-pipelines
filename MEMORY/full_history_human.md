@@ -1602,3 +1602,13 @@ its JSON companion missing, which is the half-finished state #167 was meant to
 prevent. The path is now printed with the odd byte shown as `\xff`, which can't
 fail. The new tests force the strict printing mode so the result no longer
 depends on the machine's language settings.
+
+## 2026-10-15 — the backpressure bench refuses one file named for both reports (#188)
+
+The backpressure benchmark takes two output paths, one for the markdown report
+and one for the JSON. If both pointed at the same file (the same name, a
+`./` spelling, or a symlink), the JSON overwrote the report and the script
+still printed both "wrote" lines and exited 0. The 1000-doc benchmark has
+guarded against this since #118. The backpressure script now stops before the
+run with a one-line "could not write report: ... name the same file" message
+and exit code 2.

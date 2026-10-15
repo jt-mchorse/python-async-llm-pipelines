@@ -1915,3 +1915,22 @@ context_for_next_session:
   - PRE_EXISTING_test_atomic_write_text_unencodable_target_name_fails_as_oserror_if_at_all_is_RED_ON_HFS_PLUS_on_origin_main_too_HFS_stores_the_byte_as_%FF_so_the_name_read_back_differs_host_artifact_not_filed
 followups: []
 ---
+
+---
+session: 2026-10-15T07:24Z
+duration_min: 20   # estimated: hunt ~07:15Z -> commit ~07:35Z (surface-the-last-fix-did-not-list lens on #118/#167/#184)
+issue: 188
+branch: session/2026-10-15-0724-issue-188
+focus: BENCH_BACKPRESSURE_OUT_MD_AND_OUT_JSON_NAMING_ONE_FILE_EXIT_0_JSON_REPLACED_THE_REPORT_bench_1000_doc_GUARDS_THIS_SINCE_118
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 7
+  suite: "710 -> 717 passed (3.12 and 3.11); ruff check + format clean"
+decisions_made: []
+measured: "--out-md X --out-json X, ./X, sub/../X, a symlink alias -> exit 0, both 'wrote' lines, JSON only. Fix: after the per-path check_writable, compare os.path.realpath of the two (plus samefile when both exist, for hard links / case-only aliases) -> exit 2 'could not write report: ... name the same file' before the run. Revert 5/7 red (the 2 controls green by design)."
+context_for_next_session:
+  - TWO_INDEPENDENT_OUTPUT_FLAGS_NEED_A_PAIRWISE_CHECK_a_per_path_preflight_never_compares_them
+  - CASE_ONLY_ALIAS_WHEN_NEITHER_FILE_EXISTS_IS_NOT_CAUGHT_no_portable_compare_without_creating_one
+followups: []
+---
