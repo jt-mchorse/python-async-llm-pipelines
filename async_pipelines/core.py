@@ -54,6 +54,23 @@ class PipelineTimeoutError(PipelineError):
         self.index = index
         self.timeout_s = timeout_s
 
+    def __reduce__(self) -> tuple[Any, ...]:
+        # `BaseException.__reduce__` rebuilds as `cls(*self.args)`, and `args` is
+        # the one formatted message -- which the keyword-only `__init__` above
+        # refuses (#190). `copy.copy`, `copy.deepcopy` and `pickle.loads` all
+        # raised TypeError, so a `return_exceptions=True` result holding a
+        # timed-out item could not be deep-copied, and returned from a
+        # `ProcessPoolExecutor` worker it broke the pool (`BrokenProcessPool`).
+        # Rebuild from the two fields instead; `__dict__` carries the rest.
+        return (_rebuild_timeout_error, (type(self), self.index, self.timeout_s), self.__dict__)
+
+
+def _rebuild_timeout_error(
+    cls: type[PipelineTimeoutError], index: int, timeout_s: float
+) -> PipelineTimeoutError:
+    """Unpickle / copy hook for `PipelineTimeoutError.__reduce__` (#190)."""
+    return cls(index=index, timeout_s=timeout_s)
+
 
 @dataclass
 class StreamMetrics:
