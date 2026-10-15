@@ -36,6 +36,7 @@ import argparse
 import asyncio
 import json
 import math
+import os
 import sys
 import time
 import tracemalloc
@@ -349,6 +350,21 @@ async def main_async(args: argparse.Namespace) -> int:
         for path in (args.out_md, args.out_json):
             if path:
                 check_writable(path)
+        # Two flags that name one file (#188): the JSON write replaced the
+        # markdown report and both "wrote" lines printed, exit 0. bench_1000_doc
+        # derives its JSON path and has kept the pair apart since #118; here the
+        # two paths are independent operator input, so compare them. `realpath`
+        # covers `./`, `..` and symlinks; `samefile` an existing hard link or a
+        # case-only alias on a case-insensitive filesystem.
+        if args.out_md and args.out_json:
+            md, js = os.path.realpath(args.out_md), os.path.realpath(args.out_json)
+            if md == js or (os.path.exists(md) and os.path.exists(js) and os.path.samefile(md, js)):
+                print(
+                    f"could not write report: --out-md {args.out_md!r} and "
+                    f"--out-json {args.out_json!r} name the same file",
+                    file=sys.stderr,
+                )
+                return 2
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2
