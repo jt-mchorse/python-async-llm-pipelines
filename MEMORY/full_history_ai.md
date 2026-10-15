@@ -1835,3 +1835,23 @@ context_for_next_session:
   - STREAM_TIMEOUT_INDEX_IS_CONSUMPTION_ORDER_not_input_position_now_said_in_the_docstring
 followups: []
 ---
+
+---
+session: 2026-10-14T07:19Z
+duration_min: 20
+issue: 181
+branch: session/2026-10-14-0719-issue-181
+focus: REAL_API_SWAP_LEFT_THE_BATCHED_ROW_SYNTHETIC_make_batch_caller_NEVER_CALLS_THE_CLIENT_ITS_DOCSTRING_SAID_IT_GATHERS_PER_ITEM_CALLS
+phase: shipped
+delta:
+  files_changed: 6
+  tests_added: 8
+  suite: "661 -> 669 passed; ruff check + format clean"
+decisions_made: []
+measured: "documented swap (bench_1000_doc.FakeLLM -> counting LLMClient), 16 docs c=4 b=8: serial 16+16 calls, async 16+16, batched 0+0; batched row 37.64x over the real serial baseline. make_batch_caller(client) -> 0 calls, 0 s sleep (no latency_seconds). Revert 5/8 red (4 swap passages + docstring); 2 behaviour arms + vacuity arm green by design."
+context_for_next_session:
+  - A_SWAP_INSTRUCTION_IS_A_COVERAGE_CLAIM_enumerate_the_rows_and_check_each_one_actually_reads_the_swapped_object
+  - make_batch_caller_CALLING_llm_WOULD_MOVE_THE_COMMITTED_FIGURES_maintainer_call_not_filed
+  - docs_benchmarks_md_HAND_EDITED_PROSE_ONLY_host_line_kept_rendered_report_otherwise_line_identical
+followups: []
+---

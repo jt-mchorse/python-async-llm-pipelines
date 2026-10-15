@@ -1558,3 +1558,14 @@ items in the order they were processed, not the order they came in. The
 documentation now covers this. The existing documentation check, which only
 looked at the other two functions, now checks all three. A new check also
 fails if any of their options is undocumented.
+
+## 2026-10-14 — the real-API swap covers two of the three benchmark rows (#181)
+
+The benchmark docs said that swapping the fake LLM for a real client and
+re-running gives real numbers for "the same table". The batched row is built
+from a helper that only simulates a batch endpoint and never calls the client it
+is given. After the swap that row kept reporting a synthetic sleep, compared
+against a real serial baseline (37x in a small run). The helper's own description
+also said it made per-item calls, which it never did. Every place that gives the
+swap instruction now says it reaches the serial and async rows only, and that a
+real batched row needs a real batch endpoint. No numbers changed.
