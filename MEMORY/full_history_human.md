@@ -1636,3 +1636,17 @@ hidden `.<name>.<random>.tmp` file. Both sections are corrected, and two new
 checks read the code to keep them correct: one finds every public function with
 a `timeout` option, the other compares the documented temp name against a real
 one.
+
+## 2026-10-15 — `stream()` can be cancelled even when the work inside it ignores a cancel (#194)
+
+Some functions catch a cancellation so they can clean up, and then return a
+fallback value instead of passing the cancellation on. Some data sources
+retry their fetch when they are cancelled. Passed to `process()`, such a
+function did no harm: the batch still stopped. Passed to `stream()`, it
+froze the call for good. Cancelling it again did nothing, and a timeout
+wrapped around it never fired. `stream()` keeps a few workers looping
+over a queue. After the function returned, its worker went back to wait
+on the queue, but the side that would have filled it had already been
+stopped. A data source that ignored a cancel caused the same freeze from
+the other side. Both loops now check whether they've been asked to stop
+before they wait again, so `stream()` stops the way `process()` does.
