@@ -139,6 +139,23 @@ def check_writable(path: str | Path) -> None:
     tmp_path.unlink()
 
 
+def display_path(path: str | Path) -> str:
+    """*path* as text any UTF-8 stream can print, e.g. a "wrote <path>" line (#186).
+
+    A name byte that is not valid UTF-8 reaches Python as a lone surrogate
+    (`surrogateescape`, see `_name_bytes`), and printing it raises
+    `UnicodeEncodeError` unless `sys.stdout`'s error handler happens to be
+    `surrogateescape` -- true for the C / C.UTF-8 locale CI runs in, false for
+    `en_US.UTF-8` and every other UTF-8 locale. The bench scripts printed the
+    path between their two writes, so a name the write had just accepted ended
+    the run at exit 1 with the markdown written and no JSON.
+
+    The undecodable bytes are shown as `\\xff`, the shell's own `$'...'`
+    spelling; a name that is valid UTF-8 comes back unchanged.
+    """
+    return os.fsencode(path).decode("utf-8", "backslashreplace")
+
+
 # File mode (#124, portfolio-ops#81). This helper used to create its temp file
 # with `tempfile.NamedTemporaryFile`, which always opens 0600 regardless of the
 # umask, and `os.replace` carries the temp file's mode onto the target. So every
