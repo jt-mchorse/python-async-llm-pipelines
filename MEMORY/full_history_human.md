@@ -1650,3 +1650,16 @@ on the queue, but the side that would have filled it had already been
 stopped. A data source that ignored a cancel caused the same freeze from
 the other side. Both loops now check whether they've been asked to stop
 before they wait again, so `stream()` stops the way `process()` does.
+
+## 2026-10-16 — Streams no longer hang on Python 3.11/3.12 when a step uses its own TaskGroup (#196)
+
+Yesterday's #194 fix decided a pipeline worker had been cancelled by checking
+the worker task's cancellation count. On Python 3.11 and 3.12, the versions CI
+tests, that count also goes up when a step runs its own TaskGroup and handles a
+failure inside it, even though nothing is being cancelled. So `stream()` hung
+and `process()` silently dropped items on exactly the interpreters CI uses.
+Newer Pythons fixed the underlying CPython behaviour, which is why it didn't
+show on the development machine. The pipeline now asks a question it can
+answer reliably: has the caller been cancelled since the pipeline started, or
+has the batch already failed? Tests run the scenario on 3.11, 3.12 and 3.14,
+including one shape that raises the count on every version.

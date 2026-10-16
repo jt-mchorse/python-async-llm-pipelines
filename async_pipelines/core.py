@@ -143,8 +143,49 @@ def _refuse_bare_string(name: str, value: object) -> None:
         )
 
 
+class _CallerCancelProbe:
+    """Has the task that called the pipeline been cancelled since it called? (#196)
+
+    #163/#169/#194 asked the *child* task: ``asyncio.current_task().cancelling()``
+    inside `fn`'s or the source's task. On Python 3.11 and 3.12 that count is not
+    a cancellation signal. An ``asyncio.TaskGroup`` *inside* `fn` whose child
+    fails, and which `fn` then handles (``except* ValueError``), cancels the
+    enclosing task to wake its ``__aexit__`` and never uncancels it -- fixed in
+    3.13. The count stays at 1 with nobody cancelling anything. Measured on
+    3.11.14 and 3.12.12, `fn` handling a nested TaskGroup failure and returning:
+
+        stream(5 items, concurrency=1)                 -> hung (#194's guard fired)
+        process(..., return_exceptions=True) + a stray
+          CancelledError from fn at item 1             -> [0, None, None]
+                                                          (#163 undone)
+
+    and ``[0, 1, 2, 3, 4]`` / ``[0, PipelineError, 2]`` on 3.14.
+
+    The pipeline's own children are cancelled only when the pipeline is
+    stopping, and it stops for two reasons: a child's failure propagated (the
+    `failed` latch each entry point already keeps, set before the raise), or the
+    caller cancelled it. In the second case -- and in the first too, because a
+    ``TaskGroup`` cancels its parent to wake ``__aexit__`` when a child fails --
+    the *caller's* count rises above where it stood on entry. A TaskGroup inside
+    `fn` raises only the child's count, so it no longer reads as a cancellation.
+    """
+
+    __slots__ = ("_baseline", "_task")
+
+    def __init__(self) -> None:
+        self._task = asyncio.current_task()
+        self._baseline = self._task.cancelling() if self._task is not None else 0
+
+    def cancelled(self) -> bool:
+        return self._task is not None and self._task.cancelling() > self._baseline
+
+
 def _stray_cancellation_as_error(
-    exc: BaseException, *, index: int | None = None, origin: str | None = None
+    exc: BaseException,
+    *,
+    stopping: bool,
+    index: int | None = None,
+    origin: str | None = None,
 ) -> BaseException:
     """Return a `PipelineError` for a `CancelledError` that `fn` raised on its own.
 
@@ -162,17 +203,15 @@ def _stray_cancellation_as_error(
         dispatch_tool_calls(..., concurrency=1) -> 1 result
         stream(..., concurrency=1)           -> hangs forever
 
-    `cancelling()` tells the two apart. It is non-zero when this task is
-    being cancelled, whether from outside or by the TaskGroup cancelling the
-    siblings of a failed item, and in those cases `CancelledError` must keep
-    propagating (#36). It is zero only when the error came out of `fn`. The
-    replacement is an `Exception`, so it follows the `return_exceptions` policy
-    like any other failure of `fn`.
+    *stopping* tells the two apart: it is true when the pipeline is being torn
+    down -- a sibling's failure propagated, or the caller cancelled -- and then
+    `CancelledError` must keep propagating (#36). Otherwise the error came out of
+    `fn`. Callers pass ``failed or probe.cancelled()`` (`_CallerCancelProbe`),
+    not this task's ``cancelling()``, which a TaskGroup inside `fn` leaves raised
+    on 3.11/3.12 (#196). The replacement is an `Exception`, so it follows the
+    `return_exceptions` policy like any other failure of `fn`.
     """
-    if not isinstance(exc, asyncio.CancelledError):
-        return exc
-    task = asyncio.current_task()
-    if task is None or task.cancelling():
+    if not isinstance(exc, asyncio.CancelledError) or stopping:
         return exc
     if origin is None:
         message = (
@@ -191,8 +230,8 @@ def _stray_cancellation_as_error(
     return err
 
 
-def _raise_if_cancellation_absorbed() -> None:
-    """Raise `CancelledError` if this task was cancelled and something absorbed it.
+def _raise_if_cancellation_absorbed(stopping: bool) -> None:
+    """Raise `CancelledError` if the pipeline is stopping and something absorbed it.
 
     For `stream`'s two long-lived loops, which hand control to code they do not
     own (#194). `process` and `dispatch_tool_calls` run one task per item, so a
@@ -209,13 +248,12 @@ def _raise_if_cancellation_absorbed() -> None:
         stream, source absorbs               -> hung after 5 cancels
         asyncio.timeout(0.05) around stream  -> hung 2 s past its deadline
 
-    `cancelling()` is the same signal `_stray_cancellation_as_error` reads. It
-    stays non-zero after a cancellation is caught. A deadline from the
-    pipeline's own `timeout=` is uncancelled by `asyncio.timeout` on exit, so
-    it does not leave the count raised.
+    *stopping* is the signal `_stray_cancellation_as_error` takes:
+    ``failed or probe.cancelled()``. #194 read this task's own ``cancelling()``,
+    which a TaskGroup inside `fn` that handles a child's failure leaves at 1 on
+    3.11/3.12, so `stream` hung with nobody cancelling it (#196).
     """
-    task = asyncio.current_task()
-    if task is not None and task.cancelling():
+    if stopping:
         raise asyncio.CancelledError
 
 
@@ -349,6 +387,7 @@ async def process(
     # more LLM request per failed item, after the batch had already failed
     # (concurrency=1: fn called for [0, 1]; `stream` already stopped at [0]).
     failed = False
+    caller = _CallerCancelProbe()
 
     async def _run_one(idx: int, item: T) -> None:
         nonlocal failed
@@ -376,7 +415,9 @@ async def process(
                 # A CancelledError that `fn` raised on its own (nobody cancelled
                 # us) becomes a PipelineError here; TaskGroup would otherwise
                 # drop it and leave `None` at this index (#163).
-                e = _stray_cancellation_as_error(caught, index=idx)
+                e = _stray_cancellation_as_error(
+                    caught, stopping=failed or caller.cancelled(), index=idx
+                )
                 # `return_exceptions` collects *fn's* failures so one bad item
                 # doesn't lose the batch — those are `Exception`s. A
                 # non-`Exception` `BaseException` (CancelledError, KeyboardInterrupt,
@@ -488,7 +529,7 @@ async def stream(
             async for item in producer:
                 # The source may have absorbed a cancellation; stop before
                 # putting into a queue whose consumers are gone (#194).
-                _raise_if_cancellation_absorbed()
+                _raise_if_cancellation_absorbed(failed or caller.cancelled())
                 # Not after the batch has failed (#172/#174): the TaskGroup is
                 # shutting down and the item will only be discarded.
                 if started < concurrency and not failed:
@@ -509,13 +550,16 @@ async def stream(
                         m.max_queue_depth = depth
                 else:
                     await queue.put(item)
-            _raise_if_cancellation_absorbed()  # the source absorbed it, then ended (#194)
+            # The source absorbed it, then ended (#194).
+            _raise_if_cancellation_absorbed(failed or caller.cancelled())
         except BaseException as caught:
             # A stray CancelledError from the source itself (#169), the sibling
             # of #163's `fn` case. The TaskGroup ignores a child that ends
             # cancelled, so no sentinel was queued and every consumer waited on
             # `queue.get()` forever. A real cancellation still propagates.
-            e = _stray_cancellation_as_error(caught, origin="the producer")
+            e = _stray_cancellation_as_error(
+                caught, stopping=failed or caller.cancelled(), origin="the producer"
+            )
             # The producer fails the batch too, so it latches like a consumer
             # does (#173). Without this, a consumer finishing in the same tick
             # took the next queued item and called `fn` -- at concurrency=1 --
@@ -535,13 +579,14 @@ async def stream(
     # TaskGroup's cancellation reached it: at concurrency 4 with equal
     # latencies, fn ran for [0..6] after item 0 had already failed the batch.
     failed = False
+    caller = _CallerCancelProbe()
 
     async def _consume() -> None:
         nonlocal consumed_index, failed
         while True:
             # `fn` may have absorbed this task's cancellation and returned; do
             # not block on a queue the cancelled producer will never fill (#194).
-            _raise_if_cancellation_absorbed()
+            _raise_if_cancellation_absorbed(failed or caller.cancelled())
             item = await queue.get()
             if isinstance(item, _Sentinel) or failed:
                 queue.task_done()
@@ -566,7 +611,9 @@ async def stream(
                 # Stray CancelledError from `fn` (#163): without this the only
                 # consumer at concurrency=1 died silently and the producer
                 # blocked on a full queue forever.
-                e = _stray_cancellation_as_error(caught, index=my_idx)
+                e = _stray_cancellation_as_error(
+                    caught, stopping=failed or caller.cancelled(), index=my_idx
+                )
                 # See `process._run_one` (#36): only `Exception`s are collected
                 # under `return_exceptions`. A non-`Exception` `BaseException`
                 # (CancelledError / KeyboardInterrupt / SystemExit) propagates so
