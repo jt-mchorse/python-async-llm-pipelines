@@ -1953,3 +1953,22 @@ context_for_next_session:
   - pickle_dumps_SUCCEEDS_loads_FAILS_so_the_break_lands_on_the_RECEIVING_side_a_worker_finishes_and_the_parent_pool_dies
 followups: []
 ---
+
+---
+session: 2026-10-15T07:50Z
+duration_min: 15   # estimated: branch 07:50Z -> commit ~08:05Z (round-2, surface-the-last-fix-did-not-list lens on #70's kwarg lock)
+issue: 192
+branch: session/2026-10-15-0750-issue-192
+focus: ARCHITECTURE_MD_S5_SAID_TIMEOUT_DOESNT_CHANGE_TOOL_DISPATCHS_SURFACE_DISPATCH_HAS_HAD_IT_SINCE_26_S6_DOCUMENTED_A_DEST_TMP_NAME_THE_HELPER_NEVER_USES
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 2
+  suite: "710 -> 712 passed (3.12); ruff check + format clean"
+decisions_made: []
+measured: "inspect over __all__: timeout seams = [dispatch_tool_calls, process, stream]; #70's lock inspected process + stream only. _create_temp(benchmarks.json) -> .benchmarks.json.b30d3de4.tmp vs documented <dest>.tmp. Revert (doc only) 2/2 red."
+context_for_next_session:
+  - A_LOCK_THAT_NAMES_ITS_SEAMS_BY_HAND_misses_the_one_added_later_enumerate_from___all___plus_inspect
+  - A_DOC_THAT_QUOTES_ITS_OLD_WRONG_PHRASE_trips_its_own_absence_lock_keep_the_history_in_the_issue
+followups: []
+---
