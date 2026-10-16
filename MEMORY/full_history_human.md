@@ -1663,3 +1663,11 @@ show on the development machine. The pipeline now asks a question it can
 answer reliably: has the caller been cancelled since the pipeline started, or
 has the batch already failed? Tests run the scenario on 3.11, 3.12 and 3.14,
 including one shape that raises the count on every version.
+
+## 2026-10-16 — The benchmark report's sentence matches its own table (#198)
+
+The report decided which sentence to print using the exact speedup, while the
+table showed it rounded to two places. A 19.996× run therefore showed
+"20.00×" in the table and then said real APIs would land below "the 20.00×
+measured above". The sentence is now chosen from the rounded value the reader
+sees.
