@@ -34,6 +34,7 @@ from typing import Any
 from .core import (
     PipelineError,
     PipelineTimeoutError,
+    _CallerCancelProbe,
     _require_timeout_seconds,
     _stray_cancellation_as_error,
 )
@@ -251,6 +252,7 @@ async def dispatch_tool_calls(
     semaphore = asyncio.Semaphore(concurrency) if concurrency is not None else None
     results: list[ToolResult | None] = [None] * len(resolved)
     failed = [False]
+    caller = _CallerCancelProbe()  # #196: see `core._CallerCancelProbe`
 
     # Identifies the deadline errors THIS call raises (#155). A tool may run its
     # own `dispatch_tool_calls` and let that inner call's PipelineTimeoutError
@@ -269,6 +271,7 @@ async def dispatch_tool_calls(
             timeout=timeout,
             failed=failed,
             owner=owner,
+            stopping=lambda: failed[0] or caller.cancelled(),
         )
         results[idx] = result
 
@@ -317,6 +320,7 @@ async def _invoke_tool(
     *,
     return_exceptions: bool,
     timeout: float | None,
+    stopping: Callable[[], bool],
     failed: list[bool] | None = None,
     owner: object | None = None,
 ) -> ToolResult | None:
@@ -330,14 +334,26 @@ async def _invoke_tool(
                 return None
             try:
                 return await _run_with_telemetry(
-                    idx, call, fn, return_exceptions=return_exceptions, timeout=timeout, owner=owner
+                    idx,
+                    call,
+                    fn,
+                    return_exceptions=return_exceptions,
+                    timeout=timeout,
+                    owner=owner,
+                    stopping=stopping,
                 )
             except BaseException:
                 if failed is not None:
                     failed[0] = True
                 raise
     return await _run_with_telemetry(
-        idx, call, fn, return_exceptions=return_exceptions, timeout=timeout, owner=owner
+        idx,
+        call,
+        fn,
+        return_exceptions=return_exceptions,
+        timeout=timeout,
+        owner=owner,
+        stopping=stopping,
     )
 
 
@@ -348,6 +364,7 @@ async def _run_with_telemetry(
     *,
     return_exceptions: bool,
     timeout: float | None,
+    stopping: Callable[[], bool],
     owner: object | None = None,
 ) -> ToolResult:
     start = time.perf_counter()
@@ -398,7 +415,10 @@ async def _run_with_telemetry(
         # A tool that raises CancelledError on its own (the dispatch was not
         # cancelled) becomes a PipelineError; TaskGroup ignored it and the
         # call's ToolResult silently went missing from the returned list (#163).
-        e = _stray_cancellation_as_error(caught, index=idx)
+        # Whether the dispatch is stopping comes from the caller's task and the
+        # fail-fast latch, not this task's `cancelling()`, which a TaskGroup
+        # inside the tool leaves raised on 3.11/3.12 (#196).
+        e = _stray_cancellation_as_error(caught, stopping=stopping(), index=idx)
         if not isinstance(e, Exception):
             raise  # a real cancellation / KeyboardInterrupt still propagates
         elapsed_ms = (time.perf_counter() - start) * 1000.0
