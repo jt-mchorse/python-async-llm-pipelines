@@ -1993,3 +1993,22 @@ context_for_next_session:
   - LENS_1_COPY_PICKLE_SWEEP_OF_EVERY_PUBLIC_TYPE_CLEAN_BEYOND_190_LENS_3_TASKGROUP_AND_TIMEOUTS_STDLIB_BEHAVIOURALLY_IDENTICAL_3_11_14_VS_3_12_12
 followups: []
 ---
+
+---
+session: 2026-10-16T09:00Z
+issue: 196
+branch: session/2026-10-16-0808-issue-196
+focus: 194S_GUARD_AND_163S_CLASSIFIER_READ_THE_CHILD_TASKS_cancelling_WHICH_A_TASKGROUP_INSIDE_fn_LEAKS_ON_3_11_3_12_STREAM_HUNG_PROCESS_DROPPED_ITEMS_REGRESSION
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 11
+  suite: "743 -> 754 passed on 3.11.14, 3.12.12 AND 3.14.7; ruff + format clean"
+decisions_made: []
+measured: "main: stream fn-handles-nested-TG-failure HUNG on 3.11/3.12 ([0..4] pre-194 and on 3.14); process+stray [0,None,None] on 3.11/3.12. After: [0..4] and [0,PipelineError,2] on all three. Revert 8/11 red on 3.11 and 3.12, 4/11 on 3.14."
+context_for_next_session:
+  - TASK_cancelling_IS_NOT_A_CANCELLATION_SIGNAL_ON_3_11_3_12_a_handled_nested_TaskGroup_failure_leaves_it_at_1_ASK_THE_CALLERS_TASK_vs_a_baseline_captured_on_entry
+  - A_TASKGROUP_CANCELS_ITS_PARENT_WHEN_A_CHILD_FAILS_so_the_caller_probe_also_sees_sibling_failure_the_failed_latch_covers_the_window_before
+  - MY_VENV_IS_3_14_WHERE_THE_LEAK_DOES_NOT_EXIST_build_tmp_venvs_for_3_11_3_12_and_add_a_version_independent_arm_own_task_cancel_absorbed
+followups: []
+---
