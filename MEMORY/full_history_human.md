@@ -1612,3 +1612,15 @@ still printed both "wrote" lines and exited 0. The 1000-doc benchmark has
 guarded against this since #118. The backpressure script now stops before the
 run with a one-line "could not write report: ... name the same file" message
 and exit code 2.
+
+## 2026-10-15 — a timeout error can now be copied and sent between processes (#190)
+
+The error raised when an item exceeds its `timeout` could not be copied, and
+could not be rebuilt after being sent to another process. Python rebuilds an
+exception by calling its constructor with the stored message, but this error's
+constructor only accepts its two named fields (the item index and the
+timeout). That meant a `return_exceptions=True` result list containing one
+timed-out item could not be deep-copied. Returned from a worker in a process
+pool, the same list crashed the whole pool. The error now tells Python to
+rebuild it from those two fields. Copying, pickling and process pools all work,
+and the type, message, `.index` and `.timeout_s` are all preserved.
