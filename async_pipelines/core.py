@@ -191,6 +191,34 @@ def _stray_cancellation_as_error(
     return err
 
 
+def _raise_if_cancellation_absorbed() -> None:
+    """Raise `CancelledError` if this task was cancelled and something absorbed it.
+
+    For `stream`'s two long-lived loops, which hand control to code they do not
+    own (#194). `process` and `dispatch_tool_calls` run one task per item, so a
+    `fn` that catches the cancellation and returns just ends its task. `stream`'s
+    consumer loops back to `queue.get()` and its producer pulls the next item.
+    Either way the loop blocked again on a queue nobody would ever serve, because
+    the `TaskGroup` had already cancelled the other side. The task then hung for
+    good: `TaskGroup` cancels its children once, so cancelling `stream` again
+    never reached the stuck child. Measured on 3.11 and 3.12, with `fn` returning
+    a fallback from `except CancelledError`:
+
+        process, fn absorbs                  -> cancelled
+        stream, fn absorbs                   -> hung after 5 cancels
+        stream, source absorbs               -> hung after 5 cancels
+        asyncio.timeout(0.05) around stream  -> hung 2 s past its deadline
+
+    `cancelling()` is the same signal `_stray_cancellation_as_error` reads. It
+    stays non-zero after a cancellation is caught. A deadline from the
+    pipeline's own `timeout=` is uncancelled by `asyncio.timeout` on exit, so
+    it does not leave the count raised.
+    """
+    task = asyncio.current_task()
+    if task is not None and task.cancelling():
+        raise asyncio.CancelledError
+
+
 def _require_timeout_seconds(timeout: object) -> float | None:
     """Return `timeout` as a positive finite number of seconds, `None`, or raise.
 
@@ -458,6 +486,9 @@ async def stream(
         nonlocal failed, started
         try:
             async for item in producer:
+                # The source may have absorbed a cancellation; stop before
+                # putting into a queue whose consumers are gone (#194).
+                _raise_if_cancellation_absorbed()
                 # Not after the batch has failed (#172/#174): the TaskGroup is
                 # shutting down and the item will only be discarded.
                 if started < concurrency and not failed:
@@ -478,6 +509,7 @@ async def stream(
                         m.max_queue_depth = depth
                 else:
                     await queue.put(item)
+            _raise_if_cancellation_absorbed()  # the source absorbed it, then ended (#194)
         except BaseException as caught:
             # A stray CancelledError from the source itself (#169), the sibling
             # of #163's `fn` case. The TaskGroup ignores a child that ends
@@ -507,6 +539,9 @@ async def stream(
     async def _consume() -> None:
         nonlocal consumed_index, failed
         while True:
+            # `fn` may have absorbed this task's cancellation and returned; do
+            # not block on a queue the cancelled producer will never fill (#194).
+            _raise_if_cancellation_absorbed()
             item = await queue.get()
             if isinstance(item, _Sentinel) or failed:
                 queue.task_done()

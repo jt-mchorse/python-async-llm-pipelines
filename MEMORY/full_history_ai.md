@@ -1972,3 +1972,24 @@ context_for_next_session:
   - A_DOC_THAT_QUOTES_ITS_OLD_WRONG_PHRASE_trips_its_own_absence_lock_keep_the_history_in_the_issue
 followups: []
 ---
+
+---
+session: 2026-10-15T08:11Z
+duration_min: 30   # estimated: hunt ~07:55Z -> commit ~08:25Z (round-3, cancellation-semantics lens: cancel the outer task at every await of process/stream/dispatch)
+issue: 194
+branch: session/2026-10-15-0811-issue-194
+focus: STREAM_RUNS_TWO_LONG_LIVED_LOOPS_A_CANCELLATION_ABSORBED_BY_fn_OR_THE_SOURCE_LET_THE_LOOP_BLOCK_AGAIN_ON_A_QUEUE_NOBODY_SERVES_TASKGROUP_CANCELS_CHILDREN_ONCE_SO_THE_HANG_WAS_PERMANENT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 14
+  suite: "710 -> 724 passed (3.12 and 3.11); ruff check + format clean"
+decisions_made: []
+measured: "fn returning a fallback from `except CancelledError`: process cancelled; stream hung after 5 cancels; asyncio.timeout(0.05) around stream hung 2 s past its deadline; fail-fast with an idle source hung instead of ExceptionGroup. A source absorbing one cancellation: hung likewise. Identical on 3.11.14 and 3.12.12. Fix: `_raise_if_cancellation_absorbed()` (task.cancelling() != 0) before each consumer `queue.get()`, after each source item, and after the source ends. Revert 10/14 red; 4 green by design (2 process controls, an absorbed own-`timeout=` deadline that must NOT trip it, a plain run). Per-loop partial reverts: producer-only 4 red, consumer-only 6 red."
+context_for_next_session:
+  - A_LOOPING_CHILD_THAT_CALLS_USER_CODE_MUST_RECHECK_cancelling_AFTER_IT_RETURNS_one_task_per_item_primitives_are_immune_by_shape
+  - BOUND_A_HANG_ARM_WITH_asyncio_wait_NOT_wait_for_wait_for_cancels_then_awaits_and_hangs_the_same_way_cancel_the_stuck_children_directly_to_recover
+  - THE_POST_LOOP_CHECK_NEEDED_A_DETERMINISTIC_ARM_queue_one_slot_short_of_the_sentinels_a_timing_based_source_went_green_against_its_revert
+  - LENS_1_COPY_PICKLE_SWEEP_OF_EVERY_PUBLIC_TYPE_CLEAN_BEYOND_190_LENS_3_TASKGROUP_AND_TIMEOUTS_STDLIB_BEHAVIOURALLY_IDENTICAL_3_11_14_VS_3_12_12
+followups: []
+---
