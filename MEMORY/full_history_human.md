@@ -1650,3 +1650,11 @@ on the queue, but the side that would have filled it had already been
 stopped. A data source that ignored a cancel caused the same freeze from
 the other side. Both loops now check whether they've been asked to stop
 before they wait again, so `stream()` stops the way `process()` does.
+
+## 2026-10-16 — The benchmark report's sentence matches its own table (#198)
+
+The report decided which sentence to print using the exact speedup, while the
+table showed it rounded to two places. A 19.996× run therefore showed
+"20.00×" in the table and then said real APIs would land below "the 20.00×
+measured above". The sentence is now chosen from the rounded value the reader
+sees.

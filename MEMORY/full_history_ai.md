@@ -1993,3 +1993,21 @@ context_for_next_session:
   - LENS_1_COPY_PICKLE_SWEEP_OF_EVERY_PUBLIC_TYPE_CLEAN_BEYOND_190_LENS_3_TASKGROUP_AND_TIMEOUTS_STDLIB_BEHAVIOURALLY_IDENTICAL_3_11_14_VS_3_12_12
 followups: []
 ---
+
+---
+session: 2026-10-16T13:10Z
+issue: 198
+branch: session/2026-10-16-0901-issue-198
+focus: BENCH_REPORT_CHOSE_THE_REAL_API_SENTENCE_ON_THE_UNROUNDED_SPEEDUP_A_19_996X_ROW_PRINTED_20_00X_THEN_LAND_BELOW_THE_20_00X
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 9
+  suite: "743 -> 752 passed; ruff + format clean"
+decisions_made: []
+measured: "19.996x: '20.00×' cell + below-sentence on main; in-range after. 401-point boundary sweep agrees. Revert 5 of 9 red."
+context_for_next_session:
+  - DECIDE_ON_THE_VALUE_AS_PUBLISHED_round_and_format_round_the_same_binary_value
+  - A_TEST_THAT_CAN_SKIP_IS_A_PROBE_THAT_CANNOT_TELL_GREEN_FROM_DID_NOT_RUN_assert_the_precondition_instead
+followups: []
+---
