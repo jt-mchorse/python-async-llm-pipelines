@@ -2030,3 +2030,21 @@ context_for_next_session:
   - A_TEST_THAT_CAN_SKIP_IS_A_PROBE_THAT_CANNOT_TELL_GREEN_FROM_DID_NOT_RUN_assert_the_precondition_instead
 followups: []
 ---
+
+---
+session: 2026-10-19T07:23Z
+issue: 200
+branch: session/2026-10-19-0723-issue-200
+focus: ASYNCIO_TIMEOUT_STILL_READS_THE_LEAKED_cancelling_COUNT_ON_3_11_3_12_AN_EXPIRED_PER_ITEM_DEADLINE_ESCAPED_AS_CANCELLEDERROR_AND_WAS_RELABELLED_A_STRAY_PIPELINEERROR
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 15
+  suite: "763 -> 778 passed on 3.11.14 and 3.14.7; ruff check + format clean"
+decisions_made: []
+measured: "main 3.11.14, timeout=0.2, fn(1) handles a nested TG failure then hangs: process/stream/dispatch -> PipelineError at item 1; raw asyncio.timeout -> CancelledError with cm.expired()=True. fn cancelling its own task + absorbing: PipelineError on 3.11.14 AND 3.14.7. After: PipelineTimeoutError everywhere. Revert 8/15 red on 3.11, 4/15 on 3.14 (own-cancel arms only); green = 4 control-no-raise arms + 3 controls (stray cancel under an unexpired deadline, caller cancel x2)."
+context_for_next_session:
+  - "196_STOPPED_THE_LIBRARY_READING_cancelling_BUT_THE_STDLIB_asyncio_timeout_STILL_READS_IT_any_stdlib_cm_that_uncancels_is_a_surface_the_last_fix_did_not_list"
+  - "cm_expired_IS_THE_DEADLINE_SIGNAL_THAT_SURVIVES_THE_LEAK_gate_it_on_the_same_stopping_flag_so_a_real_teardown_still_propagates"
+followups: []
+---

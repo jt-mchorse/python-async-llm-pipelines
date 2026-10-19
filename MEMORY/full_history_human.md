@@ -1671,3 +1671,16 @@ table showed it rounded to two places. A 19.996× run therefore showed
 "20.00×" in the table and then said real APIs would land below "the 20.00×
 measured above". The sentence is now chosen from the rounded value the reader
 sees.
+
+## 2026-10-19 — A step's timeout is reported as a timeout again on Python 3.11/3.12 (#200)
+
+Last week's #196 fix stopped the pipeline trusting a task's cancellation count,
+which Python 3.11 and 3.12 leave raised after a step handles a failure inside
+its own TaskGroup. Python's own `asyncio.timeout` still reads that count, though.
+So when such a step then ran past its per-item deadline, the timeout came out
+as a plain cancellation, and the pipeline reported it as "fn raised
+CancelledError" instead of `PipelineTimeoutError`. Callers who catch timeouts
+to retry missed them. The pipeline now checks whether the deadline actually
+fired and the pipeline is not shutting down; if both hold, it reports a
+timeout. Tests cover the TaskGroup case (which only breaks on 3.11/3.12) and a
+version-independent case (which broke on 3.14 too).
