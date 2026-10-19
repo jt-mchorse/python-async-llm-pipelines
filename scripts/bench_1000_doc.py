@@ -198,7 +198,11 @@ def render_markdown(workload: Workload, results: list[RunResult]) -> str:
         ),
         default=None,
     )
-    if ceiling is None or ceiling >= 20:
+    # On the value as published (#198): the table and the sentence print the
+    # speedup `:.2f`, and 19.996 printed `20.00×` and then "land below the
+    # 20.00× measured above". Rounding first makes the cell and the sentence
+    # agree.
+    if ceiling is None or round(ceiling, 2) >= 20:
         landing = "so real-API speedups land in the 5-20x spec range. "
     else:
         # Name the whole default workload, and what this run changed. It said
