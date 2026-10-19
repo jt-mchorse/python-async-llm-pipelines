@@ -35,6 +35,7 @@ from .core import (
     PipelineError,
     PipelineTimeoutError,
     _CallerCancelProbe,
+    _deadline_escaped,
     _require_timeout_seconds,
     _stray_cancellation_as_error,
 )
@@ -407,6 +408,15 @@ async def _run_with_telemetry(
                     value = await fn(copy.deepcopy(call.arguments))
             except TimeoutError as exc:
                 if cm.expired():
+                    own = PipelineTimeoutError(index=idx, timeout_s=timeout)
+                    own._dispatch_owner = owner  # type: ignore[attr-defined]  # #155
+                    raise own from exc
+                raise
+            except asyncio.CancelledError as exc:
+                # The deadline's own cancellation, let through by
+                # `asyncio.timeout` when the tool left the task's cancelling()
+                # count raised (#200; see `core._deadline_escaped`).
+                if _deadline_escaped(cm, stopping=stopping()):
                     own = PipelineTimeoutError(index=idx, timeout_s=timeout)
                     own._dispatch_owner = owner  # type: ignore[attr-defined]  # #155
                     raise own from exc

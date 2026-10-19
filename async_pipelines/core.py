@@ -257,6 +257,30 @@ def _raise_if_cancellation_absorbed(stopping: bool) -> None:
         raise asyncio.CancelledError
 
 
+def _deadline_escaped(cm: asyncio.Timeout, *, stopping: bool) -> bool:
+    """Is this `CancelledError` the per-item deadline that `asyncio.timeout` let through? (#200)
+
+    `asyncio.timeout` turns its own cancellation into `TimeoutError` only when
+    the task's ``cancelling()`` count, after it uncancels once, is back where it
+    was on entry. A TaskGroup inside `fn` that handles a child's failure leaves
+    the count raised on 3.11/3.12 (#196; fixed in 3.13). So does `fn` cancelling
+    its own task and absorbing it, on every interpreter. The deadline's
+    cancellation then escapes as a bare `CancelledError`, and
+    `_stray_cancellation_as_error` relabelled it "fn raised CancelledError".
+    Measured on 3.11.14, `timeout=0.2`, `fn(1)` handling a nested TaskGroup
+    failure and then hanging:
+
+        process / stream / dispatch_tool_calls  -> PipelineError at item 1
+        raw asyncio.timeout around fn(1)        -> CancelledError, cm.expired()=True
+
+    and `PipelineTimeoutError` / `TimeoutError` on 3.14. `cm.expired()` says the
+    deadline fired. *stopping* (the same ``failed or probe.cancelled()`` the
+    other cancellation sites take) keeps a real teardown propagating as
+    `CancelledError` (#36).
+    """
+    return cm.expired() and not stopping
+
+
 def _require_timeout_seconds(timeout: object) -> float | None:
     """Return `timeout` as a positive finite number of seconds, `None`, or raise.
 
@@ -409,6 +433,12 @@ async def process(
                             results[idx] = await fn(item)
                     except TimeoutError as exc:
                         if cm.expired():
+                            raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
+                        raise
+                    except asyncio.CancelledError as exc:
+                        # The deadline fired but `asyncio.timeout` let its own
+                        # cancellation through (#200); see `_deadline_escaped`.
+                        if _deadline_escaped(cm, stopping=failed or caller.cancelled()):
                             raise PipelineTimeoutError(index=idx, timeout_s=timeout) from exc
                         raise
             except BaseException as caught:
@@ -605,6 +635,11 @@ async def stream(
                             value = await fn(item)  # type: ignore[assignment]
                     except TimeoutError as exc:
                         if cm.expired():
+                            raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
+                        raise
+                    except asyncio.CancelledError as exc:
+                        # The deadline's own cancellation, let through (#200).
+                        if _deadline_escaped(cm, stopping=failed or caller.cancelled()):
                             raise PipelineTimeoutError(index=my_idx, timeout_s=timeout) from exc
                         raise
             except BaseException as caught:
