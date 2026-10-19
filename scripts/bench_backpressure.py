@@ -270,7 +270,11 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # with `saturated_n or n_values`, which printed "the rows that filled the
         # queue share one `n` ([10, 100])" -- naming rows that do not exist, two
         # values for "one", above a sentence saying neither filled the queue.
-        q = max(queue_values)
+        # The base queue, not `max(queue_values)` (#202): under `--compare` the
+        # largest is the 4x row, and #149's reason holds here too -- a
+        # `--compare-n` row runs at the base queue, and the base row fills once
+        # `n` exceeds it. `--compare` only ever adds the larger queue.
+        q = min(queue_values)
         lines.append(
             f"No row filled the queue while the producer had items left to put (no "
             f"producer pauses), so this run exercises the bound "
