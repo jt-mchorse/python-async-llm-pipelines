@@ -1684,3 +1684,12 @@ to retry missed them. The pipeline now checks whether the deadline actually
 fired and the pipeline is not shutting down; if both hold, it reports a
 timeout. Tests cover the TaskGroup case (which only breaks on 3.11/3.12) and a
 version-independent case (which broke on 3.14 too).
+
+## 2026-10-19 — The backpressure report's "no row filled" advice names the right queue size (#202)
+
+When no row in the backpressure benchmark filled the queue and `--compare` was
+on, the advice told the reader to run with an `--n` above the *4x comparison*
+queue (32) rather than the base queue (8). That made the condition sound four
+times harder to meet than it is. #149 had fixed exactly this in the
+neighbouring sentence; this applies the same fix to the no-fill sentence. The
+committed benchmark doc never reaches this branch, so it is unchanged.

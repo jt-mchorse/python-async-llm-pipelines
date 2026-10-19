@@ -74,3 +74,41 @@ def test_every_row_filled_keeps_its_sentence_and_names_no_unfilled_rows() -> Non
     text = _oom_section([_row(100, 8, depth=8, pauses=40), _row(10, 8, depth=8, pauses=2)])
     assert "never filled the queue" not in text
     assert "The rows span more than one `n` ([10, 100])" in text
+
+
+# --- #202: the no-fill branch quoted the 4x `--compare` queue too ------------
+# Measured on `main`, `--n 5 --queue-size 8 --compare --compare-n` (no row
+# filled): "run with an `--n` above the `queue_size` (32) ... `n // 10` exceeds
+# the `queue_size` (32)", while `--n 9` already fills the base row (pauses=1,
+# depth 8) and the `--compare-n` row runs at 8.
+
+
+def _no_fill_advice(rows: list[BackpressureResult]) -> str:
+    text = _oom_section(rows)
+    start = text.index("No row filled the queue")
+    return text[start : text.index("The general claim", start)]
+
+
+NO_FILL_COMPARE_PAIR = [_row(5, 8, depth=5, pauses=0), _row(5, 32, depth=5, pauses=0)]
+NO_FILL_COMPARE_TRIPLE = [*NO_FILL_COMPARE_PAIR, _row(1, 8, depth=1, pauses=0)]
+
+
+def test_no_fill_compare_pair_quotes_the_base_queue() -> None:
+    advice = _no_fill_advice(NO_FILL_COMPARE_PAIR)
+    assert "an `--n` above the `queue_size` (8)" in advice
+    assert "`n // 10` exceeds the `queue_size` (8)" in advice
+    assert "(32)" not in advice
+
+
+def test_no_fill_compare_and_compare_n_quotes_the_base_queue() -> None:
+    advice = _no_fill_advice(NO_FILL_COMPARE_TRIPLE)
+    assert "an `--n` above the `queue_size` (8)" in advice
+    assert "`n // 10` exceeds the `queue_size` (8)" in advice
+    assert "(32)" not in advice
+
+
+def test_no_fill_single_queue_control_is_unchanged() -> None:
+    # One queue in the table: min and max agree. Green before and after.
+    advice = _no_fill_advice([_row(5, 8, depth=5, pauses=0), _row(1, 8, depth=1, pauses=0)])
+    assert "an `--n` above the `queue_size` (8)" in advice
+    assert "`n // 10` exceeds the `queue_size` (8)" in advice
