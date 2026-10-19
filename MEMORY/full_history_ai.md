@@ -2048,3 +2048,20 @@ context_for_next_session:
   - "cm_expired_IS_THE_DEADLINE_SIGNAL_THAT_SURVIVES_THE_LEAK_gate_it_on_the_same_stopping_flag_so_a_real_teardown_still_propagates"
 followups: []
 ---
+
+---
+session: 2026-10-19T07:31Z
+issue: 202
+branch: session/2026-10-19-0731-issue-202
+focus: BENCH_BACKPRESSURE_NO_FILL_ADVICE_QUOTED_MAX_QUEUE_VALUES_THE_4X_COMPARE_ROW_149_FIXED_ONLY_THE_NEIGHBOURING_ONE_N_BRANCH
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "763 -> 766 passed on 3.11.14 and 3.14.7; ruff check + format clean"
+decisions_made: []
+measured: "main, --n 5 --queue-size 8 --compare --compare-n: 'above the queue_size (32) ... n // 10 exceeds the queue_size (32)'; --n 9 already fills the base row (pauses=1, depth 8). After: (8) for both. Revert 2/3 red; green = single-queue control. docs/backpressure.md never reaches this branch, unchanged."
+context_for_next_session:
+  - "149_WROTE_ITS_REASON_IN_A_COMMENT_AND_APPLIED_IT_TO_ONE_BRANCH_grep_the_rejected_expression_max_queue_values_after_a_fix_names_it"
+followups: []
+---
