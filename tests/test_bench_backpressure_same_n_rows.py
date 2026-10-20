@@ -112,3 +112,39 @@ def test_no_fill_single_queue_control_is_unchanged() -> None:
     advice = _no_fill_advice([_row(5, 8, depth=5, pauses=0), _row(1, 8, depth=1, pauses=0)])
     assert "an `--n` above the `queue_size` (8)" in advice
     assert "`n // 10` exceeds the `queue_size` (8)" in advice
+
+
+# --- #208: the single-`n` advice named the 4x queue once that row filled too --
+# Measured on `main`, `--n 30 --queue-size 4 --consumer-ms 1 --concurrency 2
+# --compare --compare-n` (rows: n=30 q=4 13 pauses, n=30 q=16 7 pauses, n=3 q=4
+# 0 pauses): "`n // 10` exceeds the `queue_size` ([4, 16])", which asks for
+# `--n` >= 170 while `--n 50` already gives a filling n=5 row at queue 4.
+
+
+def _single_n_advice(rows: list[BackpressureResult]) -> str:
+    text = _oom_section(rows)
+    start = text.index("The rows that filled the queue share one `n`")
+    return text[start : text.index("The general claim", start)]
+
+
+BOTH_FILL_COMPARE_PAIR = [_row(30, 4, depth=4, pauses=13), _row(30, 16, depth=16, pauses=7)]
+BOTH_FILL_COMPARE_TRIPLE = [*BOTH_FILL_COMPARE_PAIR, _row(3, 4, depth=3, pauses=0)]
+
+
+def test_single_n_advice_quotes_the_base_queue_when_the_4x_row_also_fills() -> None:
+    advice = _single_n_advice(BOTH_FILL_COMPARE_TRIPLE)
+    assert "`n // 10` exceeds the `queue_size` (4)" in advice
+    assert "16" not in advice
+
+
+def test_single_n_advice_quotes_the_base_queue_for_a_filled_compare_pair() -> None:
+    # `--compare` without `--compare-n`: the same advice, the same base queue.
+    advice = _single_n_advice(BOTH_FILL_COMPARE_PAIR)
+    assert "`n // 10` exceeds the `queue_size` (4)" in advice
+    assert "16" not in advice
+
+
+def test_single_n_advice_single_queue_control_is_unchanged() -> None:
+    # One queue in the table: every choice of queue agrees. Green before and after.
+    advice = _single_n_advice([_row(30, 4, depth=4, pauses=13), _row(3, 4, depth=3, pauses=0)])
+    assert "`n // 10` exceeds the `queue_size` (4)" in advice

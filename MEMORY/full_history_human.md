@@ -1713,3 +1713,13 @@ earlier handled a failure in a task group of its own already looked that way,
 even though nobody had cancelled it. The library then cancelled it for real,
 and the program stopped. The fix now only re-delivers a cancellation that
 arrived while the library was working.
+
+## 2026-10-20 — The backpressure report's single-`n` advice names the base queue size (#208)
+
+When the filled rows in the backpressure benchmark all shared one `n` and the
+4x `--compare` row had also filled, the advice told the reader to make
+`n // 10` exceed both queue sizes ("[4, 16]"). That sounds like `--n` 170 is
+needed when `--n` 50 already works. A `--compare-n` row always runs at the
+base `--queue-size`. Both advice sentences now quote that one number, so this
+third variant of the #149/#202 mistake is gone. The committed benchmark doc
+does not reach this sentence, so it is unchanged.

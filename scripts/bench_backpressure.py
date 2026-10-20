@@ -216,10 +216,12 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
     # "the rows that filled the queue share one `n` ([20])" and, two lines on,
     # "Rows at `n` [20] never filled the queue".
     unfilled_rows = sorted({(r.n, r.queue_size) for r in results if not saturated(r)})
-    # And the queue a `--compare-n` row runs at is the base row's, which is a
-    # row that filled -- not the largest queue in the table (the `--compare`
-    # row's 4x). The advice quoted `max(queue_values)`.
-    filled_queues = sorted({r.queue_size for r in results if saturated(r)})
+    # And the queue a `--compare-n` row runs at is the base row's -- not the
+    # largest queue in the table (the `--compare` row's 4x). The advice quoted
+    # `max(queue_values)`; then the filled rows' queues, which is the 4x one
+    # too once that row also fills (#208). `--compare` only ever adds the
+    # larger queue, so the base is the smallest, whichever rows filled.
+    base_queue = min(queue_values)
     if saturated_n:
         lines.append(
             f"`max_queue_depth` is bounded by `queue_size` in every row above "
@@ -273,8 +275,8 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # The base queue, not `max(queue_values)` (#202): under `--compare` the
         # largest is the 4x row, and #149's reason holds here too -- a
         # `--compare-n` row runs at the base queue, and the base row fills once
-        # `n` exceeds it. `--compare` only ever adds the larger queue.
-        q = min(queue_values)
+        # `n` exceeds it.
+        q = base_queue
         lines.append(
             f"No row filled the queue while the producer had items left to put (no "
             f"producer pauses), so this run exercises the bound "
@@ -287,7 +289,10 @@ def _render_markdown(results: list[BackpressureResult]) -> str:
         # With one `n` the advice used to be "Re-run with `--compare-n`" even
         # when `--compare-n` had been passed: at `--n 1` its extra row is
         # max(1, 1 // 10) = 1 again (#134). State the condition instead.
-        q = filled_queues[0] if len(filled_queues) == 1 else filled_queues
+        # The base queue here too (#208): `--n 30 --queue-size 4 --compare
+        # --compare-n` filled both the 4 and the 16 row and asked for `n // 10`
+        # to exceed "[4, 16]", while `--n 50` already gives a filling n=5 row.
+        q = base_queue
         lines.append(
             f"The rows that filled the queue share one `n` ({saturated_n}), "
             f"so they show the bound at a single workload size and not its "
