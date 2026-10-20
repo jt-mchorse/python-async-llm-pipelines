@@ -1693,3 +1693,14 @@ queue (32) rather than the base queue (8). That made the condition sound four
 times harder to meet than it is. #149 had fixed exactly this in the
 neighbouring sentence; this applies the same fix to the no-fill sentence. The
 committed benchmark doc never reaches this branch, so it is unchanged.
+
+## 2026-10-20 — A handled failure no longer leaves the caller looking cancelled (#204)
+
+On Python 3.11 and 3.12, the task-group machinery inside `process`, `stream`
+and `dispatch_tool_calls` left a "cancel requested" mark on the caller after
+a failure the caller had caught. Two things then went wrong. The caller's own
+timeout reported a cancellation instead of a timeout, and a real cancellation
+that arrived during the shutdown was silently lost. Python 3.13 fixed this in
+the standard library. The library now applies the same correction itself on
+3.11 and 3.12, so all three versions behave alike. Tests run the same checks
+on every version.

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import sys
 import time
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
@@ -178,6 +179,49 @@ class _CallerCancelProbe:
 
     def cancelled(self) -> bool:
         return self._task is not None and self._task.cancelling() > self._baseline
+
+
+class _TaskGroup(asyncio.TaskGroup):
+    """`asyncio.TaskGroup` that leaves the caller's cancel count as 3.13 does (#204).
+
+    #196 stopped the library *reading* the count a TaskGroup leaks on 3.11/3.12.
+    This stops the library's own TaskGroups *leaving* it on the caller. A child
+    failure cancels the parent task to wake ``__aexit__``. 3.11/3.12 uncancel
+    that request at the top of ``__aexit__``, so a request made while
+    ``__aexit__`` is already waiting on the children is never undone (fixed in
+    3.13 by moving the ``uncancel()`` after the wait, gh-116720). Measured on
+    3.11.14 and 3.12.12, after the README's handled fail-fast failure:
+
+        caller's asyncio.timeout fires later   -> CancelledError (3.14: TimeoutError)
+        external cancel during the teardown    -> lost, next await completes
+                                                  (3.14: CancelledError)
+
+    When the group exits with its errors, this backports both 3.13 steps.
+    First, uncancel a request the group made during ``__aexit__``. A request
+    made before it was already uncancelled, so it is excluded and the count is
+    never undone twice. Second, if a cancellation is still pending, re-arm it,
+    so a cancel the group swallowed while aborting reaches the caller's next
+    await. Restoring a baseline recorded on entry would be wrong: it cannot
+    tell the group's own request from a real external cancel, and would erase
+    the external one.
+    """
+
+    async def __aexit__(self, et: Any, exc: Any, tb: Any) -> None:
+        if sys.version_info >= (3, 13):
+            await super().__aexit__(et, exc, tb)
+            return
+        requested_before = self._parent_cancel_requested  # type: ignore[attr-defined]
+        parent = self._parent_task  # type: ignore[attr-defined]  # 3.12 clears it on exit
+        try:
+            await super().__aexit__(et, exc, tb)
+        except BaseExceptionGroup:
+            if parent is not None:
+                if self._parent_cancel_requested and not requested_before:  # type: ignore[attr-defined]
+                    parent.uncancel()
+                if parent.cancelling():
+                    parent.uncancel()
+                    parent.cancel()
+            raise
 
 
 def _stray_cancellation_as_error(
@@ -464,7 +508,7 @@ async def process(
                         raise
                     raise e  # noqa: B904 -- `__cause__` is already `caught`
 
-    async with asyncio.TaskGroup() as tg:
+    async with _TaskGroup() as tg:
         for i, item in enumerate(items_list):
             tg.create_task(_run_one(i, item))
 
@@ -667,7 +711,7 @@ async def stream(
             if m is not None:
                 m.consumed += 1
 
-    async with asyncio.TaskGroup() as tg:
+    async with _TaskGroup() as tg:
         tg.create_task(_produce())
 
     return results
