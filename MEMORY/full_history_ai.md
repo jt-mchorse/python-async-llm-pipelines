@@ -2065,3 +2065,23 @@ context_for_next_session:
   - "149_WROTE_ITS_REASON_IN_A_COMMENT_AND_APPLIED_IT_TO_ONE_BRANCH_grep_the_rejected_expression_max_queue_values_after_a_fix_names_it"
 followups: []
 ---
+
+---
+session: 2026-10-20T07:28Z
+issue: 204
+branch: session/2026-10-20-0735-issue-204
+focus: THE_LIBRARYS_OWN_TASKGROUP_LEFT_THE_CALLERS_CANCELLING_COUNT_AT_1_ON_3_11_3_12_AFTER_A_HANDLED_FAIL_FAST_FAILURE
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 15
+  suite: "796 passed on 3.11.14, 3.12.12 and 3.14; ruff check + format clean; mypy 3 errors, all pre-existing on main"
+decisions_made: []
+measured: "3.11/3.12 main: after except* ValueError around process/stream/dispatch the caller's cancelling() == 1; the caller's asyncio.timeout raised CancelledError; an external cancel at 100 ms during a 200 ms teardown was lost (next await completed). After: count 0, TimeoutError, CancelledError at the next await with count 1, as on 3.14. Revert 9 of 15 red on both; 6 green are the two controls. Restore-to-entry-baseline wrong fix: 3 collision arms red."
+context_for_next_session:
+  - "_TaskGroup_IS_A_NO_OP_ON_3_13_PLUS_the_backport_only_runs_when_the_group_raises_its_BaseExceptionGroup"
+  - "_parent_task_IS_CLEARED_IN_3_12s___aexit___FINALLY_so_the_subclass_captures_it_before_calling_super"
+  - "_CallerCancelProbe_STILL_READS_THE_RAISED_COUNT_DURING_THE_GROUP_the_fix_only_changes_what_is_left_after_exit"
+  - "MYPY_IS_NOT_A_CI_GATE_HERE_3_errors_preexist_on_main_benchmark_py_x2_core_py_nonlocal_failed"
+followups: []
+---
