@@ -38,6 +38,7 @@ from .core import (
     _deadline_escaped,
     _require_timeout_seconds,
     _stray_cancellation_as_error,
+    _TaskGroup,
 )
 
 # A tool function is async, takes a single dict of arguments, and returns
@@ -277,7 +278,7 @@ async def dispatch_tool_calls(
         results[idx] = result
 
     try:
-        async with asyncio.TaskGroup() as tg:
+        async with _TaskGroup() as tg:
             for idx, (call, fn) in enumerate(resolved):
                 tg.create_task(_run_one(idx, call, fn))
     except* Exception as eg:
