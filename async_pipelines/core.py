@@ -206,6 +206,18 @@ class _TaskGroup(asyncio.TaskGroup):
     the external one.
     """
 
+    _entry_cancelling = 0
+
+    async def __aenter__(self) -> _TaskGroup:
+        # The caller's count on entry (#206). On 3.11/3.12 it may already be
+        # raised by a TaskGroup of the caller's own that handled a failure (the
+        # #196 leak), and that is not a pending cancellation: re-arming it below
+        # raised a `CancelledError` nobody asked for. 3.13 leaks nothing there.
+        task = asyncio.current_task()
+        self._entry_cancelling = task.cancelling() if task is not None else 0
+        await super().__aenter__()
+        return self
+
     async def __aexit__(self, et: Any, exc: Any, tb: Any) -> None:
         if sys.version_info >= (3, 13):
             await super().__aexit__(et, exc, tb)
@@ -218,7 +230,9 @@ class _TaskGroup(asyncio.TaskGroup):
             if parent is not None:
                 if self._parent_cancel_requested and not requested_before:  # type: ignore[attr-defined]
                     parent.uncancel()
-                if parent.cancelling():
+                # Only a cancel that arrived while the group was open (#206):
+                # a count the caller brought in is not one this group swallowed.
+                if parent.cancelling() > self._entry_cancelling:
                     parent.uncancel()
                     parent.cancel()
             raise

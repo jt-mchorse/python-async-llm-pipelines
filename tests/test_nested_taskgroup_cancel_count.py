@@ -306,3 +306,53 @@ async def test_without_a_failure_the_count_and_results_are_untouched(primitive: 
         return out
 
     assert sorted(await asyncio.create_task(caller())) == [0, 1, 2]  # type: ignore[arg-type]
+
+
+# --- #206: a count the caller brought in is not a cancel to re-arm -------------
+#
+# #204's re-arm fired whenever `cancelling()` was non-zero after a fail-fast
+# exit. On 3.11/3.12 a caller whose OWN TaskGroup had handled a failure earlier
+# sits at 1 (the #196 leak), so the library's next handled failure raised a
+# `CancelledError` nobody asked for (measured: `asyncio.run` died on 3.11.14 and
+# 3.12.12; 3.14 and pre-#204 finished). 3.13+ leak nothing, so these hold there.
+
+
+async def _callers_own_handled_taskgroup_failure() -> None:
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(_fails())
+    except* ValueError:
+        pass
+
+
+@PRIMITIVES
+async def test_a_count_the_caller_brought_in_is_not_re_armed(primitive: str) -> None:
+    async def caller() -> str:
+        await _callers_own_handled_taskgroup_failure()
+        await _handled(primitive)()
+        await asyncio.sleep(0)
+        return "finished"
+
+    assert await asyncio.create_task(caller()) == "finished"
+
+
+@PRIMITIVES
+async def test_an_external_cancel_still_arrives_on_top_of_a_brought_in_count(
+    primitive: str,
+) -> None:
+    # Control for the fix: the entry count must not swallow a real cancel.
+    seen: list[str] = []
+
+    async def caller() -> None:
+        await _callers_own_handled_taskgroup_failure()
+        await _handled(primitive, fail_at=0.05, cleanup=0.2)()
+        seen.append("returned")
+        await asyncio.sleep(1)
+        seen.append("cancel lost")
+
+    task = asyncio.create_task(caller())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert seen == ["returned"]
