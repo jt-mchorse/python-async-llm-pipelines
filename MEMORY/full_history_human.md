@@ -1704,3 +1704,12 @@ that arrived during the shutdown was silently lost. Python 3.13 fixed this in
 the standard library. The library now applies the same correction itself on
 3.11 and 3.12, so all three versions behave alike. Tests run the same checks
 on every version.
+
+## 2026-10-20 — This morning's cancellation fix no longer cancels by mistake (#206)
+
+The #204 fix re-delivered a cancellation whenever the caller looked "being
+cancelled" after a handled failure. On Python 3.11 and 3.12, a caller that had
+earlier handled a failure in a task group of its own already looked that way,
+even though nobody had cancelled it. The library then cancelled it for real,
+and the program stopped. The fix now only re-delivers a cancellation that
+arrived while the library was working.

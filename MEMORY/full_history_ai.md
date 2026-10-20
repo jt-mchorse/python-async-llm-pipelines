@@ -2085,3 +2085,21 @@ context_for_next_session:
   - "MYPY_IS_NOT_A_CI_GATE_HERE_3_errors_preexist_on_main_benchmark_py_x2_core_py_nonlocal_failed"
 followups: []
 ---
+
+---
+session: 2026-10-20T07:58Z
+issue: 206
+branch: session/2026-10-20-0800-issue-206
+focus: REGRESSION_FROM_204_THE_REARM_TURNED_A_COUNT_THE_CALLERS_OWN_TASKGROUP_LEAKED_INTO_A_REAL_CANCELLEDERROR
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 6
+  suite: "802 passed on 3.11.14, 3.12.12 and 3.14; ruff clean; mypy 3 pre-existing errors"
+decisions_made: []
+measured: "main 63b0583, caller's own TaskGroup handles a failure then process/stream/dispatch fail-fast handled: 3.11/3.12 CancelledError and asyncio.run died; 3.14 and pre-204 finished. After: finished on all three. Revert 3 of 6 red on 3.11 and 3.12; the 3 green are the external-cancel-on-top-of-a-brought-in-count controls."
+context_for_next_session:
+  - "MY_OWN_204_RE_ARM_READ_THE_COUNT_196_CALLS_NOT_A_SIGNAL_compare_against_the_entry_count_never_against_zero"
+  - "A_HUNT_ON_THE_RUNS_OWN_MERGE_FOUND_IT_WITHIN_THE_HOUR"
+followups: []
+---
