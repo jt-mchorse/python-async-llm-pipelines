@@ -2103,3 +2103,20 @@ context_for_next_session:
   - "A_HUNT_ON_THE_RUNS_OWN_MERGE_FOUND_IT_WITHIN_THE_HOUR"
 followups: []
 ---
+
+---
+session: 2026-10-20T08:02Z
+issue: 208
+branch: session/2026-10-20-0812-issue-208
+focus: BENCH_BACKPRESSURE_SINGLE_N_ADVICE_QUOTED_FILLED_QUEUES_WHICH_INCLUDES_THE_4X_COMPARE_ROW_ONCE_IT_ALSO_FILLS_THIRD_BRANCH_OF_149_202
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 3
+  suite: "796 -> 799 passed on 3.12; ruff check + format clean"
+decisions_made: []
+measured: "main 63b0583, --n 30 --queue-size 4 --consumer-ms 1 --concurrency 2 --compare --compare-n: rows q=4 13 pauses, q=16 7 pauses, n=3 q=4 0 pauses -> 'n // 10 exceeds the queue_size ([4, 16])'. After: (4). Revert 2/3 red; green = single-queue control. docs/backpressure.md takes the every-row-filled branch, unchanged."
+context_for_next_session:
+  - "ONE_base_queue_EQUALS_min_queue_values_NOW_FEEDS_BOTH_ADVICE_BRANCHES_filled_queues_IS_GONE_any_new_advice_sentence_should_reuse_it"
+followups: []
+---
