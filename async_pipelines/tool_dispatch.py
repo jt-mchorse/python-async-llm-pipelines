@@ -25,6 +25,7 @@ Two failure modes:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import copy
 import time
 from collections.abc import Awaitable, Callable, Sequence
@@ -326,37 +327,34 @@ async def _invoke_tool(
     failed: list[bool] | None = None,
     owner: object | None = None,
 ) -> ToolResult | None:
-    if semaphore is not None:
-        async with semaphore:
-            # Latched by the first propagating failure before its slot is
-            # released (#146): the release woke the next waiting call ahead of
-            # the TaskGroup's cancellation, and it invoked its tool -- after the
-            # dispatch had already failed. `process` has the same latch.
-            if failed is not None and failed[0]:
-                return None
-            try:
-                return await _run_with_telemetry(
-                    idx,
-                    call,
-                    fn,
-                    return_exceptions=return_exceptions,
-                    timeout=timeout,
-                    owner=owner,
-                    stopping=stopping,
-                )
-            except BaseException:
-                if failed is not None:
-                    failed[0] = True
-                raise
-    return await _run_with_telemetry(
-        idx,
-        call,
-        fn,
-        return_exceptions=return_exceptions,
-        timeout=timeout,
-        owner=owner,
-        stopping=stopping,
-    )
+    # Unbounded (`concurrency=None`, the default) runs the same latched body
+    # without a slot (#212). The latch lived only under the semaphore, so with
+    # no bound nothing was latched: every task is created in one loop tick and
+    # the TaskGroup reacts on the next, so a tool that raised before its first
+    # await still let every sibling invoke its tool -- [0, 1, 2, 3, 4] for 5
+    # calls where `concurrency=5` gave [0]. The README's "fail-fast (parity
+    # with `process`)" did not hold on the default setting.
+    async with semaphore if semaphore is not None else contextlib.nullcontext():
+        # Latched by the first propagating failure before its slot is
+        # released (#146): the release woke the next waiting call ahead of
+        # the TaskGroup's cancellation, and it invoked its tool -- after the
+        # dispatch had already failed. `process` has the same latch.
+        if failed is not None and failed[0]:
+            return None
+        try:
+            return await _run_with_telemetry(
+                idx,
+                call,
+                fn,
+                return_exceptions=return_exceptions,
+                timeout=timeout,
+                owner=owner,
+                stopping=stopping,
+            )
+        except BaseException:
+            if failed is not None:
+                failed[0] = True
+            raise
 
 
 async def _run_with_telemetry(
