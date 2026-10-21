@@ -1735,3 +1735,13 @@ waits one step before re-delivering, and checks again whether anyone is still
 cancelling. A cancellation from outside still arrives as before. One known
 difference with 3.13 remains and is now written in the code: a caller that is
 already being cancelled and runs a pipeline as cleanup continues on 3.11/3.12.
+
+## 2026-10-21 — Tool dispatch stops after a failure on the default setting too (#212)
+
+The #146 "start nothing new after a failure" guard only ran when a
+`concurrency` limit was set. On the default (no limit), every tool call starts
+in the same moment. A tool that failed straight away, such as a `KeyError` on a
+missing argument, still let all its siblings run, side effects included: 5 calls
+ran 5 tools, where a limit of 5 ran one. Both paths now share the same guarded
+code, so the default stops after the first failure like every other setting.
+Collect-all mode (`return_exceptions=True`) still runs every tool. PR #213.
