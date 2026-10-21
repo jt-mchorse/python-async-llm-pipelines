@@ -2138,3 +2138,21 @@ context_for_next_session:
   - "CANCELLED_CALLER_RUNNING_A_PIPELINE_AS_CLEANUP_STILL_DIFFERS_3_11_3_12_continue_3_13_rearms_DOCSTRING_SAYS_SO_not_fixed"
 followups: []
 ---
+
+---
+session: 2026-10-21T07:54Z
+issue: 212
+branch: session/2026-10-21-0754-issue-212
+focus: DISPATCH_FAIL_FAST_LATCH_FROM_146_LIVED_ONLY_ON_THE_SEMAPHORE_PATH_SO_THE_DEFAULT_concurrency_None_RAN_EVERY_SIBLING_TOOL
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 23
+  suite: "814 -> 837 passed on 3.11.14, 3.12.12 and 3.14.7; ruff check + format clean"
+decisions_made: []
+measured: "main ba133c6, 5 calls, tool raises KeyError before its first await at i == 0: concurrency=None -> tools [0, 1, 2, 3, 4]; 1, 5, 8 -> [0]. After: [0] at every setting. Revert 4 of 23 red on all three (default/None x timeout None/5.0); the 19 green are bounded, return_exceptions, fail-after-await and process controls. PR #213."
+context_for_next_session:
+  - "_invoke_tool_NOW_RUNS_ONE_LATCHED_BODY_UNDER_semaphore_OR_contextlib_nullcontext_a_new_branch_there_must_not_bypass_it"
+  - "process_HAS_NO_UNBOUNDED_MODE_concurrency_None_IS_ValueError_so_issue_fix_shapes_asking_for_process_None_do_not_apply"
+followups: []
+---
