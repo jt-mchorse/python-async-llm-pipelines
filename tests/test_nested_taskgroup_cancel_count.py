@@ -356,3 +356,77 @@ async def test_an_external_cancel_still_arrives_on_top_of_a_brought_in_count(
     with pytest.raises(asyncio.CancelledError):
         await task
     assert seen == ["returned"]
+
+
+# --- #210: a re-armed cancel its owner already uncancelled ----------------------
+#
+# #204's re-arm ran `uncancel(); cancel()` while the caller was the running task,
+# so `cancel()` set `_must_cancel`. When the cancel belonged to an enclosing
+# `asyncio.timeout` or TaskGroup, that owner uncancelled it as it unwound, but
+# 3.11/3.12's `uncancel()` leaves `_must_cancel` set (3.13 clears it), so the
+# stale flag fired at the caller's next await. Measured on 3.11.14/3.12.12 for
+# all three primitives: CancelledError (3.14 and pre-#205: finished). The re-arm
+# now waits one loop step and re-checks. 3.13+ hold either way.
+
+
+@PRIMITIVES
+async def test_the_callers_timeout_firing_during_the_teardown_is_left_to_it(
+    primitive: str,
+) -> None:
+    # Item 0 fails at 50 ms; the others take 200 ms to clean up; the caller's
+    # deadline fires at 100 ms, while the group is aborting, and is exited
+    # before the caller awaits again.
+    async def caller() -> str:
+        try:
+            async with asyncio.timeout(0.1):
+                await _handled(primitive, fail_at=0.05, cleanup=0.2)()
+        except TimeoutError:
+            pass
+        await asyncio.sleep(0.01)
+        return "finished"
+
+    assert await _bounded(asyncio.create_task(caller())) == "finished"
+
+
+@PRIMITIVES
+async def test_the_callers_taskgroup_sibling_failing_during_the_teardown_is_left_to_it(
+    primitive: str,
+) -> None:
+    # The caller's own TaskGroup cancels it (a sibling fails at 100 ms) while
+    # the library's group is aborting; the caller's group handles that.
+    async def sibling() -> None:
+        await asyncio.sleep(0.1)
+        raise KeyError("sibling")
+
+    async def caller() -> str:
+        try:
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(sibling())
+                await _handled(primitive, fail_at=0.05, cleanup=0.2)()
+        except* KeyError:
+            pass
+        await asyncio.sleep(0.01)
+        return "finished"
+
+    assert await _bounded(asyncio.create_task(caller())) == "finished"
+
+
+@PRIMITIVES
+async def test_a_timeout_firing_during_the_teardown_still_reaches_its_own_block(
+    primitive: str,
+) -> None:
+    # Control: deferring the re-arm must not drop it. The deadline fires during
+    # the teardown and the caller awaits again *inside* the timeout block, so
+    # the swallowed cancel must land there and surface as TimeoutError.
+    seen: list[str] = []
+
+    async def caller() -> None:
+        async with asyncio.timeout(0.1):
+            await _handled(primitive, fail_at=0.05, cleanup=0.2)()
+            seen.append("returned")
+            await asyncio.sleep(1)
+            seen.append("deadline lost")
+
+    with pytest.raises(TimeoutError):
+        await _bounded(asyncio.create_task(caller()))
+    assert seen == ["returned"]

@@ -2120,3 +2120,21 @@ context_for_next_session:
   - "ONE_base_queue_EQUALS_min_queue_values_NOW_FEEDS_BOTH_ADVICE_BRANCHES_filled_queues_IS_GONE_any_new_advice_sentence_should_reuse_it"
 followups: []
 ---
+
+---
+session: 2026-10-21T07:15Z
+issue: 210
+branch: session/2026-10-21-0715-issue-210
+focus: REGRESSION_FROM_205_THE_REARMS_CANCEL_SET__must_cancel_WHICH_3_11_3_12_UNCANCEL_NEVER_CLEARS_SO_AN_OWNERS_UNCANCEL_DID_NOT_STICK
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 9
+  suite: "805 -> 814 passed on 3.11.14, 3.12.12 and 3.14.7; ruff check + format clean"
+decisions_made: []
+measured: "main 04a2dad, fail at 50 ms, 200 ms cleanup, caller's asyncio.timeout(0.1) or caller TaskGroup sibling failing at 100 ms: 3.11/3.12 CancelledError for process/stream/dispatch; 3.14 finished. After: finished on all three. Revert 6 of 9 red on 3.11 and 3.12; the 3 green are the timeout-fires-then-awaits-inside-its-block controls. Dropping the re-arm entirely: 9 red on 3.11."
+context_for_next_session:
+  - "NEVER_cancel()_THE_RUNNING_TASK_ON_3_11_3_12_IF_SOMEONE_MAY_uncancel()_IT_defer_with_call_soon_and_re_check_cancelling()"
+  - "CANCELLED_CALLER_RUNNING_A_PIPELINE_AS_CLEANUP_STILL_DIFFERS_3_11_3_12_continue_3_13_rearms_DOCSTRING_SAYS_SO_not_fixed"
+followups: []
+---

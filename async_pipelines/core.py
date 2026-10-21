@@ -199,11 +199,17 @@ class _TaskGroup(asyncio.TaskGroup):
     When the group exits with its errors, this backports both 3.13 steps.
     First, uncancel a request the group made during ``__aexit__``. A request
     made before it was already uncancelled, so it is excluded and the count is
-    never undone twice. Second, if a cancellation is still pending, re-arm it,
-    so a cancel the group swallowed while aborting reaches the caller's next
-    await. Restoring a baseline recorded on entry would be wrong: it cannot
-    tell the group's own request from a real external cancel, and would erase
-    the external one.
+    never undone twice. Second, if a cancellation is still pending one loop
+    step later (#210), re-arm it, so a cancel the group swallowed while
+    aborting reaches the caller's next await. Restoring a baseline recorded on
+    entry would be wrong: it cannot tell the group's own request from a real
+    external cancel, and would erase the external one.
+
+    It matches 3.13 for the shapes measured in #204, #206 and #210, not
+    everywhere. A caller that is already being cancelled and runs a pipeline as
+    cleanup (``except CancelledError: await process(...)``) brings that cancel
+    in, so a handled failure there lets the cleanup continue on 3.11/3.12,
+    where 3.13+ re-arms the cancel at its next await.
     """
 
     _entry_cancelling = 0
@@ -230,12 +236,28 @@ class _TaskGroup(asyncio.TaskGroup):
             if parent is not None:
                 if self._parent_cancel_requested and not requested_before:  # type: ignore[attr-defined]
                     parent.uncancel()
-                # Only a cancel that arrived while the group was open (#206):
-                # a count the caller brought in is not one this group swallowed.
-                if parent.cancelling() > self._entry_cancelling:
-                    parent.uncancel()
-                    parent.cancel()
+                # One loop step later (#210): `parent` is the running task here,
+                # so `cancel()` would set `_must_cancel`, and 3.11/3.12's
+                # `uncancel()` never clears it. An enclosing timeout or TaskGroup
+                # that owned the cancel uncancels it as it unwinds, and the stale
+                # flag still fired at the caller's next await.
+                parent.get_loop().call_soon(_rearm_pending_cancel, parent, self._entry_cancelling)
             raise
+
+
+def _rearm_pending_cancel(parent: asyncio.Task[Any], entry_cancelling: int) -> None:
+    """Re-deliver a cancel a `_TaskGroup` swallowed while aborting (#204, #210).
+
+    Runs one loop step after the group exits, so an owner that unwound in the
+    meantime (an enclosing ``asyncio.timeout`` or TaskGroup) has already
+    uncancelled its request and nothing is left to re-arm. A cancel nobody will
+    uncancel, such as an external ``task.cancel()``, is still pending and lands
+    at the caller's next await. Only a cancel that arrived while the group was
+    open counts (#206): a count the caller brought in is not one it swallowed.
+    """
+    if not parent.done() and parent.cancelling() > entry_cancelling:
+        parent.uncancel()
+        parent.cancel()
 
 
 def _stray_cancellation_as_error(

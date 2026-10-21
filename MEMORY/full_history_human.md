@@ -1723,3 +1723,15 @@ needed when `--n` 50 already works. A `--compare-n` row always runs at the
 base `--queue-size`. Both advice sentences now quote that one number, so this
 third variant of the #149/#202 mistake is gone. The committed benchmark doc
 does not reach this sentence, so it is unchanged.
+
+## 2026-10-21 — A timeout that already did its job no longer cancels the caller later (#210)
+
+The #204 fix re-delivered a swallowed cancellation the moment the library's
+task group finished. On Python 3.11 and 3.12 that left a hidden "cancel at the
+next pause" flag on the caller. If the cancellation actually came from the
+caller's own timeout or task group, that owner cleaned it up on the way out,
+but the flag survived. The caller was then cancelled anyway. The library now
+waits one step before re-delivering, and checks again whether anyone is still
+cancelling. A cancellation from outside still arrives as before. One known
+difference with 3.13 remains and is now written in the code: a caller that is
+already being cancelled and runs a pipeline as cleanup continues on 3.11/3.12.
