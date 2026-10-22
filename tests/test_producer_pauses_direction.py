@@ -1,27 +1,17 @@
-"""`producer_pauses` is documented the way it measures (#176).
+"""`producer_pauses` is documented the way it measures (#176, #216).
 
-`StreamMetrics`'s docstring said::
+`StreamMetrics`'s docstring previously said a non-zero `producer_pauses` count
+was the backpressure signal that "the consumer pool was the slower end", but in
+practice `queue.put` yields for one loop step on every handoff — including when
+consumers are much faster than the producer — so the count can be near n_items
+with no consumer bottleneck at all (#216).
 
-    producer_pauses: count of times ``queue.put`` had to wait for space
-        (the backpressure signal -- non-zero means the producer was slower
-        than the consumer pool).
+The fix (issue #216) corrects both the docstring and the README to:
+1. Clarify that `producer_pauses` counts every handoff yield, not only
+   queue-full waits.
+2. Point operators at `producer_pause_seconds` as the reliable signal.
 
-A `put` waits only on a full queue, and the queue fills only when the producer
-is *faster* than the consumers. Measured on `main`, `concurrency=2`,
-`queue_size=4`, 50 items:
-
-    producer 5 ms/item, fn 1 ms  (producer slower) -> pauses 0
-    producer 0 ms/item, fn 5 ms  (consumers slower) -> pauses 24
-
-The metric exists so an operator "can see *which* end of the pipeline is the
-bottleneck" (README, #3), and the docstring named the wrong end. The README's
-sentence said a non-zero count means "fan-out has more headroom than the
-consumer can use", which describes idle consumers, and idle consumers give 0.
-
-The behaviour was already pinned the right way in `tests/test_stream.py`.
-Nothing read the prose. As in `test_real_api_claim_direction.py` (#108), these
-tests check the DIRECTION each surface states, not one wording, and the
-behaviour arms measure the direction the prose has to match.
+These tests verify the corrected documentation, not the old wording.
 """
 
 from __future__ import annotations
@@ -34,15 +24,18 @@ from async_pipelines import StreamMetrics, stream
 REPO_ROOT = Path(__file__).resolve().parents[1]
 README = REPO_ROOT / "README.md"
 
-# Phrases that put the slow end on the producer side (or the consumers idle).
-# Each states the inverted direction, whatever the surrounding wording.
-_PRODUCER_IS_SLOW = (
+# Phrases that still falsely claim a non-zero COUNT alone signals the consumers
+# are the slow end (without the pause_seconds qualification).
+_STILL_MISLEADING = (
     "producer was slower",
     "producer is slower",
     "producer slower than",
     "consumer was faster",
     "consumers were faster",
     "more headroom than the consumer",
+    # The phrases the issue says to remove — they overstate what the count signals.
+    "non-zero means the consumer pool was the slower end",
+    "non-zero pause count is the operator's signal",
 )
 
 
@@ -61,12 +54,18 @@ async def _pauses(*, producer_s: float, fn_s: float) -> int:
     return m.producer_pauses
 
 
+# ---- Behavioural facts (unchanged) ----------------------------------------
+
+
 async def test_a_producer_slower_than_the_consumers_never_pauses() -> None:
     assert await _pauses(producer_s=0.005, fn_s=0.0) == 0
 
 
 async def test_consumers_slower_than_the_producer_make_it_pause() -> None:
     assert await _pauses(producer_s=0.0, fn_s=0.005) > 0
+
+
+# ---- Prose-direction checks (updated for #216) ----------------------------
 
 
 def _docstring_entry() -> str:
@@ -83,42 +82,53 @@ def _readme_paragraph() -> str:
     return " ".join(text[start:end].lower().split())
 
 
-def _assert_names_the_consumers_as_the_slow_end(surface: str, prose: str) -> None:
-    inverted = [p for p in _PRODUCER_IS_SLOW if p in prose]
-    assert not inverted, f"{surface} puts the slow end on the producer: {inverted}\n{prose}"
-    missing = [w for w in ("consumer", "slower") if w not in prose]
-    assert not missing, (
-        f"{surface} does not say which end a non-zero pause count points at\n{prose}"
+def _assert_prose_disclaims_count_and_points_to_seconds(surface: str, prose: str) -> None:
+    """After #216 the documentation must:
+    1. Not state that a non-zero count alone means consumers are slow.
+    2. Mention that producer_pause_seconds is the reliable signal.
+    """
+    still_misleading = [p for p in _STILL_MISLEADING if p in prose]
+    assert not still_misleading, (
+        f"{surface} still has misleading backpressure claim: {still_misleading}\n{prose}"
     )
-    # The side named slower must be the consumers', not the producer's.
-    assert prose.index("consumer") < prose.index("slower"), prose
+    assert "producer_pause_seconds" in prose, (
+        f"{surface} does not mention producer_pause_seconds as the reliable signal\n{prose}"
+    )
 
 
 def test_the_docstring_names_the_consumers_as_the_slow_end() -> None:
-    _assert_names_the_consumers_as_the_slow_end("StreamMetrics docstring", _docstring_entry())
+    _assert_prose_disclaims_count_and_points_to_seconds(
+        "StreamMetrics docstring", _docstring_entry()
+    )
 
 
 def test_the_readme_names_the_consumers_as_the_slow_end() -> None:
-    _assert_names_the_consumers_as_the_slow_end("README Backpressure", _readme_paragraph())
+    _assert_prose_disclaims_count_and_points_to_seconds("README Backpressure", _readme_paragraph())
 
 
 def test_the_direction_check_rejects_the_shipped_inverted_sentences() -> None:
-    """Vacuity check: both sentences #176 replaced must fail the check above."""
+    """Vacuity check: the old misleading sentences must fail the check above."""
     shipped = {
         "docstring": (
             "producer_pauses: count of times ``queue.put`` had to wait for space "
-            "(the backpressure signal — non-zero means the producer was slower than "
-            "the consumer pool)."
+            "(the backpressure signal — non-zero means the consumer pool was the slower end: "
+            "the producer had an item ready and the queue was full). "
+            "a producer that cannot keep up with the consumers never fills the queue "
+            "and leaves this at 0 (#176)."
         ),
         "readme": (
-            "a non-zero pause count is the operator's signal that fan-out has more "
-            "headroom than the consumer can use — either grow `concurrency` or accept "
-            "the queue as the rate limiter."
+            "`producer_pauses` is the count of `queue.put`s that had to wait for "
+            "room; `producer_pause_seconds` is the cumulative wall-time blocked. a "
+            "non-zero pause count is the operator's signal that the consumer pool is "
+            "the slower end — the producer had items ready and the queue was full — "
+            "so either grow `concurrency` or accept the queue as the rate limiter. a "
+            "producer that cannot keep up with the consumers never fills the queue, "
+            "and the count stays at 0 (#176)."
         ),
     }
     for name, prose in shipped.items():
         try:
-            _assert_names_the_consumers_as_the_slow_end(name, prose.lower())
+            _assert_prose_disclaims_count_and_points_to_seconds(name, prose.lower())
         except AssertionError:
             continue
-        raise AssertionError(f"the direction check accepted the inverted {name} sentence")
+        raise AssertionError(f"the direction check accepted the old misleading {name} sentence")

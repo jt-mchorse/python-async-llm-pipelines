@@ -164,13 +164,16 @@ print(
 )
 ```
 
-`producer_pauses` is the count of `queue.put`s that had to wait for
-room; `producer_pause_seconds` is the cumulative wall-time blocked. A
-non-zero pause count is the operator's signal that the consumer pool is
-the slower end — the producer had items ready and the queue was full —
-so either grow `concurrency` or accept the queue as the rate limiter. A
-producer that cannot keep up with the consumers never fills the queue,
-and the count stays at 0 (#176).
+`producer_pauses` is the count of `queue.put`s that yielded for at least
+one event-loop step; `producer_pause_seconds` is the cumulative wall-time
+the producer spent waiting. **Note:** `producer_pauses` counts every
+handoff yield, including the normal one-step yield that occurs when a
+consumer picks up a slot — so it can be near `n_items` even when
+`concurrency` far exceeds `n` and there is no backpressure at all (#216).
+Use `producer_pause_seconds` as your primary signal: a large total pause
+time indicates the consumer pool could not keep up; a near-zero total time
+(even paired with a high `producer_pauses` count) means the queue never
+held the producer back for long and growing `concurrency` will not help.
 
 Real numbers from `scripts/bench_backpressure.py`, read from the committed
 `docs/backpressure.json` so this table and the linked report are the same
