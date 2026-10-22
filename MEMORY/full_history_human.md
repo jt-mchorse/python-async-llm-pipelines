@@ -1745,3 +1745,16 @@ missing argument, still let all its siblings run, side effects included: 5 calls
 ran 5 tools, where a limit of 5 ran one. Both paths now share the same guarded
 code, so the default stops after the first failure like every other setting.
 Collect-all mode (`return_exceptions=True`) still runs every tool. PR #213.
+
+## 2026-10-22 — A cancel already waiting when a pipeline starts is a cancel again (#215)
+
+The #196 fix decided "the caller cancelled us" by checking whether the caller's
+cancel count went up after the pipeline started. A cancel that was already
+waiting when the call began had raised the count beforehand. So `process` and
+tool dispatch reported each interrupted item as "fn raised CancelledError, but
+the pipeline was not cancelled", and the caller got an error instead of being
+cancelled. This happened on every Python version. The usual way in is a retry
+loop around a fail-fast call that gets cancelled mid-teardown. On 3.11/3.12 the
+library's own delayed re-delivery of that cancel also leaves the count
+unchanged. The check now also treats a cancel waiting at the start, or
+re-delivered after it, as a cancellation. `stream` was already right. PR #217.

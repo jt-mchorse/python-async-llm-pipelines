@@ -2156,3 +2156,20 @@ context_for_next_session:
   - "process_HAS_NO_UNBOUNDED_MODE_concurrency_None_IS_ValueError_so_issue_fix_shapes_asking_for_process_None_do_not_apply"
 followups: []
 ---
+
+---
+session: 2026-10-22T07:37Z
+issue: 215
+branch: session/2026-10-22-0737-issue-215
+focus: REGRESSION_FROM_197_A_CANCEL_PENDING_AT_PIPELINE_ENTRY_OR_REARMED_AFTER_ENTRY_NEVER_RAISES_cancelling()_ABOVE_THE_PROBES_BASELINE_SO_IT_WAS_RELABELLED_PipelineError
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 14
+  suite: "837 -> 851 passed on 3.11.14, 3.12.12 and 3.14.7; ruff check + format clean"
+decisions_made: []
+measured: "main ace58d1, current_task().cancel() then the call: process ExceptionGroup[PipelineError('...not cancelled')], dispatch PipelineError, stream CancelledError, on all three. Retry loop cancelled at 100 ms during attempt 1's teardown: process/dispatch PipelineError on all three. After: CancelledError everywhere. Revert 4 of 14 red on each interpreter; the 10 green are stream, return_exceptions and #196 delivered-count controls. _must_cancel alone left the retry arms red on 3.11/3.12 (deferred #211 re-arm lands after entry). PR #217."
+context_for_next_session:
+  - "_CallerCancelProbe_NOW_READS_THREE_SIGNALS_count_above_baseline_OR__must_cancel_at_entry_OR__REARMS_generation_changed_a_214_fix_that_rearms_differently_must_still_bump__REARMS_or_set__must_cancel"
+followups: []
+---
