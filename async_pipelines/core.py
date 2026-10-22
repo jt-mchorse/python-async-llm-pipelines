@@ -23,6 +23,7 @@ import asyncio
 import math
 import sys
 import time
+import weakref
 from collections.abc import AsyncIterable, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
@@ -169,16 +170,50 @@ class _CallerCancelProbe:
     ``TaskGroup`` cancels its parent to wake ``__aexit__`` when a child fails --
     the *caller's* count rises above where it stood on entry. A TaskGroup inside
     `fn` raises only the child's count, so it no longer reads as a cancellation.
+
+    Two cancellations never move the count above the entry value (#215). A
+    cancel already *pending* on entry (``task.cancel()`` then the call, or a
+    retry after a fail-fast teardown that re-armed the caller's cancel, as 3.13+
+    does) raised the count before the baseline was read. And on 3.11/3.12 the
+    `_TaskGroup` re-arm is ``uncancel()`` + ``cancel()`` one loop step later
+    (#211), which can land after the next pipeline has entered. Each child's
+    `CancelledError` then read as `fn`'s own. Measured on 3.11.14, 3.12.12 and
+    3.14, ``asyncio.current_task().cancel()`` then a call:
+
+        raw TaskGroup / asyncio.gather / stream  -> CancelledError
+        process / dispatch_tool_calls            -> PipelineError("... the
+                                                    pipeline was not cancelled")
+
+    So a request pending on entry counts (``_must_cancel``: requested, not yet
+    delivered; a stale leaked count is delivered, so #196 stays a non-signal),
+    and so does a re-arm made after entry.
     """
 
-    __slots__ = ("_baseline", "_task")
+    __slots__ = ("_baseline", "_pending", "_rearms", "_task")
 
     def __init__(self) -> None:
         self._task = asyncio.current_task()
-        self._baseline = self._task.cancelling() if self._task is not None else 0
+        if self._task is None:
+            self._baseline, self._pending, self._rearms = 0, False, 0
+            return
+        self._baseline = self._task.cancelling()
+        # Private, but on both the C and the pure-Python Task since 3.7. A Task
+        # without it falls back to the count alone.
+        self._pending = bool(getattr(self._task, "_must_cancel", False))
+        self._rearms = _REARMS.get(self._task, 0)
 
     def cancelled(self) -> bool:
-        return self._task is not None and self._task.cancelling() > self._baseline
+        if self._task is None:
+            return False
+        if self._pending or _REARMS.get(self._task, 0) != self._rearms:
+            return True
+        return self._task.cancelling() > self._baseline
+
+
+# How many times `_rearm_pending_cancel` re-delivered a cancel to each task
+# (#215). A re-arm leaves the count where it was, so `_CallerCancelProbe`
+# compares this instead. Weak: the entry goes with the task.
+_REARMS: weakref.WeakKeyDictionary[asyncio.Task[Any], int] = weakref.WeakKeyDictionary()
 
 
 class _TaskGroup(asyncio.TaskGroup):
@@ -258,6 +293,7 @@ def _rearm_pending_cancel(parent: asyncio.Task[Any], entry_cancelling: int) -> N
     if not parent.done() and parent.cancelling() > entry_cancelling:
         parent.uncancel()
         parent.cancel()
+        _REARMS[parent] = _REARMS.get(parent, 0) + 1  # #215: see `_CallerCancelProbe`
 
 
 def _stray_cancellation_as_error(
