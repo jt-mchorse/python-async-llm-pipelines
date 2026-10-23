@@ -205,9 +205,20 @@ class _CallerCancelProbe:
     def cancelled(self) -> bool:
         if self._task is None:
             return False
-        if self._pending or _REARMS.get(self._task, 0) != self._rearms:
+        if self.brought_in_a_live_cancel():
             return True
         return self._task.cancelling() > self._baseline
+
+    def brought_in_a_live_cancel(self) -> bool:
+        """Is one of the entry count's cancels real, not a leak? (#215, #219)
+
+        True when a cancel was pending on entry or a re-arm landed after it:
+        either way the baseline already counts a cancel nobody has delivered.
+        `_TaskGroup` lowers its re-arm baseline by one on the same signals.
+        """
+        if self._task is None:
+            return False
+        return self._pending or _REARMS.get(self._task, 0) != self._rearms
 
 
 # How many times `_rearm_pending_cancel` re-delivered a cancel to each task
@@ -240,7 +251,7 @@ class _TaskGroup(asyncio.TaskGroup):
     entry would be wrong: it cannot tell the group's own request from a real
     external cancel, and would erase the external one.
 
-    It matches 3.13 for the shapes measured in #204, #206 and #210, not
+    It matches 3.13 for the shapes measured in #204, #206, #210 and #219, not
     everywhere. A caller that is already being cancelled and runs a pipeline as
     cleanup (``except CancelledError: await process(...)``) brings that cancel
     in, so a handled failure there lets the cleanup continue on 3.11/3.12,
@@ -248,14 +259,20 @@ class _TaskGroup(asyncio.TaskGroup):
     """
 
     _entry_cancelling = 0
+    _entry_probe: _CallerCancelProbe | None = None
 
     async def __aenter__(self) -> _TaskGroup:
         # The caller's count on entry (#206). On 3.11/3.12 it may already be
         # raised by a TaskGroup of the caller's own that handled a failure (the
         # #196 leak), and that is not a pending cancellation: re-arming it below
         # raised a `CancelledError` nobody asked for. 3.13 leaks nothing there.
+        # But the count also includes a cancel pending on entry, or one a
+        # previous group's deferred re-arm delivers after entry (a retry with
+        # no await in between). The group swallows those too, so the probe's
+        # #215 signals lower the baseline at re-arm time (#219).
         task = asyncio.current_task()
         self._entry_cancelling = task.cancelling() if task is not None else 0
+        self._entry_probe = _CallerCancelProbe()
         await super().__aenter__()
         return self
 
@@ -276,11 +293,17 @@ class _TaskGroup(asyncio.TaskGroup):
                 # `uncancel()` never clears it. An enclosing timeout or TaskGroup
                 # that owned the cancel uncancels it as it unwinds, and the stale
                 # flag still fired at the caller's next await.
-                parent.get_loop().call_soon(_rearm_pending_cancel, parent, self._entry_cancelling)
+                parent.get_loop().call_soon(
+                    _rearm_pending_cancel, parent, self._entry_cancelling, self._entry_probe
+                )
             raise
 
 
-def _rearm_pending_cancel(parent: asyncio.Task[Any], entry_cancelling: int) -> None:
+def _rearm_pending_cancel(
+    parent: asyncio.Task[Any],
+    entry_cancelling: int,
+    entry_probe: _CallerCancelProbe | None = None,
+) -> None:
     """Re-deliver a cancel a `_TaskGroup` swallowed while aborting (#204, #210).
 
     Runs one loop step after the group exits, so an owner that unwound in the
@@ -289,7 +312,12 @@ def _rearm_pending_cancel(parent: asyncio.Task[Any], entry_cancelling: int) -> N
     uncancel, such as an external ``task.cancel()``, is still pending and lands
     at the caller's next await. Only a cancel that arrived while the group was
     open counts (#206): a count the caller brought in is not one it swallowed.
+    Except one the caller brought in still live (#219): pending on entry, or
+    re-armed after it. The group swallowed that one as well, so the baseline
+    drops by one -- never more, so a leaked count under it stays a non-signal.
     """
+    if entry_probe is not None and entry_probe.brought_in_a_live_cancel():
+        entry_cancelling -= 1
     if not parent.done() and parent.cancelling() > entry_cancelling:
         parent.uncancel()
         parent.cancel()
