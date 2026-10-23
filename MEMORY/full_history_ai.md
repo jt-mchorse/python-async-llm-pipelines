@@ -2207,3 +2207,21 @@ context_for_next_session:
   - "_rearm_pending_cancel_NOW_LOWERS_entry_cancelling_BY_ONE_WHEN__CallerCancelProbe.brought_in_a_live_cancel()_pending_at_entry_OR__REARMS_changed_EVALUATED_AT_THE_DEFERRED_STEP_never_by_more_than_one"
 followups: []
 ---
+
+---
+session: 2026-10-23T07:59Z
+issue: 220
+branch: session/2026-10-23-0810-issue-220
+focus: BENCH_1000_DOC_DERIVED_JSON_PATH_KEPT_THE_NAMES_APART_118_BUT_atomic_write_text_FOLLOWS_A_SYMLINK_157_SO_bench_json_TO_bench_md_REPLACED_THE_REPORT_AT_EXIT_0
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 7
+  suite: "851 -> 858 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "main 8f0d57c, ln -s bench.md bench.json, --n 8 --latency 0.001 --out bench.md: exit 0, both wrote lines, bench.md starts with '{ \"results\": ['. After: exit 2 'name the same file' before the run, nothing written. Revert 5 of 7 red (4 symlink shapes + hard-link parity arm); the 2 green are a plain --out and a JSON symlink to a different file. PR #222."
+context_for_next_session:
+  - "BOTH_BENCH_SCRIPTS_NOW_RUN_THE_SAME_realpath_PLUS_samefile_CHECK_INLINE_a_third_artifact_path_must_join_it_or_factor_a_shared_io_utils_helper"
+  - "A_HARD_LINKED_PAIR_IS_REFUSED_FOR_188_PARITY_THOUGH_os_replace_MAKES_IT_HARMLESS"
+followups: []
+---

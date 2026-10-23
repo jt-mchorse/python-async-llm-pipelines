@@ -1782,3 +1782,13 @@ that cancel and nothing re-delivered it, so a cancelled caller ran to
 completion. The backport now uses the same two signals #215 gave the pipeline's
 cancel check, and counts one such cancel as its own. A leftover count on its own
 is still left alone. 3.13+ already behaved this way. PR #224.
+
+## 2026-10-23 — bench_1000_doc refuses a symlink that would merge its two reports (#220)
+
+`bench_1000_doc` works out its JSON path from `--out`, and since #118 the two
+names never clash. But the writer follows symlinks. So if `bench.json` was a
+symlink to `bench.md`, the raw results replaced the markdown report, both
+"wrote" lines still printed, and the run exited 0. The script now runs the same
+same-file check `bench_backpressure` has used since #188. If the pair resolves
+to one file, it exits 2 before the benchmark runs and writes nothing. That
+script's comment claiming bench_1000_doc was already safe is corrected. PR #222.
