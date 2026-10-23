@@ -1769,3 +1769,16 @@ timeouts section and the architecture doc already said so. The bullet now names
 fail-fast as the default and limits the claim to `return_exceptions=True`. A new
 test checks every "doesn't poison" claim in the README and docs. Each claim must
 name `return_exceptions=True` in its own paragraph or bullet. PR #223.
+
+## 2026-10-23 — A cancel waiting when a pipeline starts is no longer lost on 3.11/3.12 (#219)
+
+The #206 fix stopped the library's TaskGroup backport from re-delivering a
+cancel count the caller brought in, because on 3.11/3.12 that count can be a
+harmless leftover. But a count brought in can also be a real cancel: one
+already waiting when the call began, or one the previous call's delayed
+re-delivery lands just after the next call starts (a retry with no pause in
+between). If an item then failed before its first await, the group swallowed
+that cancel and nothing re-delivered it, so a cancelled caller ran to
+completion. The backport now uses the same two signals #215 gave the pipeline's
+cancel check, and counts one such cancel as its own. A leftover count on its own
+is still left alone. 3.13+ already behaved this way. PR #224.

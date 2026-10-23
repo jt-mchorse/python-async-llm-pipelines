@@ -2190,3 +2190,20 @@ context_for_next_session:
   - "tests/test_readme_poison_claim_scope.py_SPLITS_ON_BLANK_LINES_AND_TOP_LEVEL_LIST_ITEMS_any_new_poison_claim_in_README_or_docs_must_name_return_exceptions_True_in_its_own_block"
 followups: []
 ---
+
+---
+session: 2026-10-23T07:59Z
+issue: 219
+branch: session/2026-10-23-0810-issue-219
+focus: TASKGROUP_206_REARM_BASELINE_TREATED_A_LIVE_CANCEL_COUNTED_ON_ENTRY_AS_A_LEAK_SO_A_PENDING_OR_LATE_REARMED_CANCEL_WAS_LOST_WHEN_AN_ITEM_FAILED_BEFORE_ITS_FIRST_AWAIT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 24
+  suite: "851 -> 875 passed on 3.11.14 and 3.12.12 (new file also 24/24 on 3.14.7); ruff check + format clean"
+decisions_made: []
+measured: "main 8f0d57c on 3.11.14/3.12.12: retry after teardown cancel with attempt 2 item 0 raising before any await -> caller ran to completion, cancelled() False; current_task().cancel() then the call then sleep(0.2) -> process/dispatch await COMPLETED. 3.14.7 CancelledError. After: CancelledError on both. Revert 8 of 24 red on 3.11 and 3.12 (process+dispatch x pending-at-entry, pending-over-leak, retry-before-first-await, retry-inside-timeout); 16 green are stream, #206 leak, no-retry and fails-after-await controls. Pending-only neighbour: 4 red; unconditional baseline drop: 6 red. #214 catch-and-return unchanged. PR #224."
+context_for_next_session:
+  - "_rearm_pending_cancel_NOW_LOWERS_entry_cancelling_BY_ONE_WHEN__CallerCancelProbe.brought_in_a_live_cancel()_pending_at_entry_OR__REARMS_changed_EVALUATED_AT_THE_DEFERRED_STEP_never_by_more_than_one"
+followups: []
+---
