@@ -46,9 +46,11 @@ parentheses:
   batched row needs a real batch endpoint, #181).
 - **Per-item timeouts + cooperative cancellation** (#5) — `timeout`
   parameter on both `process()` and `stream()` raises
-  `PipelineTimeoutError` at the per-item level without poisoning the
-  rest of the batch; structured-concurrency teardown ensures no
-  orphaned tasks.
+  `PipelineTimeoutError` at the per-item level. The default is
+  fail-fast (one timeout cancels the batch); with
+  `return_exceptions=True` the timeout lands in-line at its index
+  without poisoning the rest of the batch (#221). Structured-concurrency
+  teardown ensures no orphaned tasks in either mode.
 
 The wrapper itself stays runtime-dep-free (D-002). The architecture
 diagram below names the five layers and the D-002…D-011 decisions
