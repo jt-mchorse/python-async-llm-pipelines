@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import platform
 import sys
 import time
@@ -287,8 +288,25 @@ async def amain(args: argparse.Namespace) -> int:
     # whole benchmark, and a bad JSON path left a freshly written .md beside no
     # raw results.
     try:
-        for path in (out_path, _json_path_for(out_path)):
+        json_path = _json_path_for(out_path)
+        for path in (out_path, json_path):
             check_writable(path)
+        # The derived pair can still name one file (#220). `_json_path_for`
+        # keeps the two *names* apart (#118), but `atomic_write_text` follows a
+        # symlink (#157), so a `bench.json -> bench.md` link let the JSON
+        # replace the report, both "wrote" lines printed, exit 0. The same
+        # resolved-identity check `bench_backpressure.py` runs on its two flags
+        # (#188): `realpath` for a symlink, existing or dangling; `samefile` for
+        # an existing alias `realpath` cannot see (a case-only symlink target
+        # on a case-insensitive filesystem, or a hard link).
+        md, js = os.path.realpath(out_path), os.path.realpath(json_path)
+        if md == js or (os.path.exists(md) and os.path.exists(js) and os.path.samefile(md, js)):
+            print(
+                f"could not write report: --out {args.out!r} and its raw-results "
+                f"path {str(json_path)!r} name the same file",
+                file=sys.stderr,
+            )
+            return 2
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2
@@ -306,7 +324,6 @@ async def amain(args: argparse.Namespace) -> int:
         print(md)
         print(f"\nbenchmarks wrote {display_path(out_path)}")
         # Stash raw results next to the markdown for further analysis.
-        json_path = _json_path_for(out_path)
         dump_benchmark_json(json_path, workload=workload, results=results)
         print(f"raw results wrote {display_path(json_path)}")
     except OSError as e:

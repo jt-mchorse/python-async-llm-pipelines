@@ -361,7 +361,8 @@ async def main_async(args: argparse.Namespace) -> int:
                 check_writable(path)
         # Two flags that name one file (#188): the JSON write replaced the
         # markdown report and both "wrote" lines printed, exit 0. bench_1000_doc
-        # derives its JSON path and has kept the pair apart since #118; here the
+        # derives its JSON path, which keeps the two names apart (#118) but not
+        # a symlink between them, so it runs this same check (#220); here the
         # two paths are independent operator input, so compare them. `realpath`
         # covers `./`, `..` and symlinks; `samefile` an existing hard link or a
         # case-only alias on a case-insensitive filesystem.
