@@ -2173,3 +2173,20 @@ context_for_next_session:
   - "_CallerCancelProbe_NOW_READS_THREE_SIGNALS_count_above_baseline_OR__must_cancel_at_entry_OR__REARMS_generation_changed_a_214_fix_that_rearms_differently_must_still_bump__REARMS_or_set__must_cancel"
 followups: []
 ---
+
+---
+session: 2026-10-23T07:59Z
+issue: 221
+branch: session/2026-10-23-0810-issue-221
+focus: README_FEATURE_BULLET_SAID_TIMEOUT_DOES_NOT_POISON_THE_BATCH_THAT_HOLDS_ONLY_WITH_return_exceptions_True_DEFAULT_IS_FAIL_FAST
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 6
+  suite: "851 -> 857 passed on 3.11 and 3.12; ruff check + format clean"
+decisions_made: []
+measured: "main 8f0d57c, process(range(5), fn, concurrency=10, timeout=0.15), item 0 sleeps 10 s, 1-2 take 50 ms, 3-4 take 200 ms: default ExceptionGroup of 3 PipelineTimeoutError (0, 3, 4), results 1-2 discarded; return_exceptions=True -> [TO, 1, 2, TO, TO]. Docs-only fix. Revert of README.md: 2 of 6 red on 3.11 and 3.12; the 4 green are the anti-vacuity count, the already-qualified tool-dispatch comment and the two behavioural premise controls. PR #223."
+context_for_next_session:
+  - "tests/test_readme_poison_claim_scope.py_SPLITS_ON_BLANK_LINES_AND_TOP_LEVEL_LIST_ITEMS_any_new_poison_claim_in_README_or_docs_must_name_return_exceptions_True_in_its_own_block"
+followups: []
+---
