@@ -1758,3 +1758,14 @@ loop around a fail-fast call that gets cancelled mid-teardown. On 3.11/3.12 the
 library's own delayed re-delivery of that cancel also leaves the count
 unchanged. The check now also treats a cancel waiting at the start, or
 re-delivered after it, as a cancellation. `stream` was already right. PR #217.
+
+## 2026-10-23 — The README's timeout feature bullet now says when the batch survives (#221)
+
+The feature list said a `timeout` raises `PipelineTimeoutError` per item
+"without poisoning the rest of the batch". That only holds with
+`return_exceptions=True`. By default `process` is fail-fast: one timeout cancels
+the batch and the results that had already finished are thrown away. The
+timeouts section and the architecture doc already said so. The bullet now names
+fail-fast as the default and limits the claim to `return_exceptions=True`. A new
+test checks every "doesn't poison" claim in the README and docs. Each claim must
+name `return_exceptions=True` in its own paragraph or bullet. PR #223.
