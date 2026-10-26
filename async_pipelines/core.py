@@ -19,7 +19,9 @@ source must end (#115).
 
 from __future__ import annotations
 
+import array
 import asyncio
+import collections
 import math
 import sys
 import time
@@ -125,6 +127,12 @@ class StreamMetrics:
         }
 
 
+# `array.array` typecodes whose items are characters (#225); 'w' is 3.13+.
+_TEXT_TYPECODES = frozenset({"u", "w"})
+# `memoryview` formats that view raw bytes, as `memoryview(b"...")` does (#225).
+_BYTE_FORMATS = frozenset({"B", "b", "c"})
+
+
 def _refuse_bare_string(name: str, value: object) -> None:
     """Raise ``ValueError`` if *value* is a bare ``str``/``bytes`` (#126).
 
@@ -133,16 +141,30 @@ def _refuse_bare_string(name: str, value: object) -> None:
     ``run_pipeline(SerialPipeline(llm, llm), "summarize this doc")`` reported
     ``n_docs=18`` and made 36 LLM calls. ``bytes`` fans out over ints.
 
+    The stdlib's own wrappers of those two shapes fan out the same way (#225):
+    ``collections.UserString`` per character, a byte ``memoryview`` per int,
+    and an ``array.array`` with a text typecode (``'u'``, and ``'w'`` on 3.13+)
+    per character. A numeric ``array``, or a ``memoryview`` over one, is a
+    collection of numbers, not one document, so it is still accepted.
+
     Only the bare-string shape. Every other iterable is still accepted, and
     ``stream`` needs no call -- a ``str`` is not an ``AsyncIterable``, so it
     already fails loud.
     """
-    if isinstance(value, (str, bytes, bytearray)):
-        fix = f"pass [{value!r}]" if isinstance(value, str) else "decode it to str first"
-        raise ValueError(
-            f"{name} must be a collection of items, not a bare {type(value).__name__}: "
-            f"{value!r} would be split into its characters -- {fix}"
-        )
+    if isinstance(value, (str, collections.UserString)):
+        fix = f"pass [{value!r}]"
+    elif isinstance(value, (bytes, bytearray)) or (
+        isinstance(value, memoryview) and value.format in _BYTE_FORMATS
+    ):
+        fix = "decode it to str first"
+    elif isinstance(value, array.array) and value.typecode in _TEXT_TYPECODES:
+        fix = "convert it with .tounicode() first"
+    else:
+        return
+    raise ValueError(
+        f"{name} must be a collection of items, not a bare {type(value).__name__}: "
+        f"{value!r} would be split into its characters -- {fix}"
+    )
 
 
 class _CallerCancelProbe:
