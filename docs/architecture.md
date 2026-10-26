@@ -180,7 +180,9 @@ batched modes. Doesn't depend on tool dispatch.
 - **D-008.** Batched pipeline does one round-trip per batch via a
   `make_batch` caller seam — the caller decides how to pack
   individual items into a single API call (e.g., one prompt with N
-  embedded sub-prompts, one tool call with N inputs).
+  embedded sub-prompts, one tool call with N inputs). It must return
+  one output per input, in input order; a batch that comes back
+  shorter or longer raises `ValueError` naming the batch (#226).
 
 **JSON observability surface (#44).** `Workload.to_dict()` /
 `RunResult.to_dict()` pin the per-instance JSON contract so downstream
