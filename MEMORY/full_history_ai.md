@@ -2225,3 +2225,20 @@ context_for_next_session:
   - "A_HARD_LINKED_PAIR_IS_REFUSED_FOR_188_PARITY_THOUGH_os_replace_MAKES_IT_HARMLESS"
 followups: []
 ---
+
+---
+session: 2026-10-26T07:23Z
+issue: 225
+branch: session/2026-10-26-0723-issue-225
+focus: BARE_STRING_GUARD_126_TUPLE_WAS_str_bytes_bytearray_FROM_MEMORY_SO_UserString_BYTE_memoryview_AND_TEXT_array_STILL_FANNED_ONE_DOC_OUT_PER_CHAR_OR_INT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 23
+  suite: "888 -> 911 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "main a7b8190 py3.11.14: process(memoryview(b'hello')) -> [104,101,108,108,111]; process(UserString('hello')) and process(array('u','hello')) -> per char; run_pipeline(SerialPipeline, UserString(doc)) -> n_docs 18, 36 calls. After: ValueError before any call. Revert 18 of 51 red (every new refusal arm); 33 green are the 28 pre-existing cases and 5 accept-controls (list of UserString, array i/d, memoryview over array i, memoryview.tolist). PR #227."
+context_for_next_session:
+  - "_refuse_bare_string_REFUSES_memoryview_ONLY_FOR_FORMATS_B_b_c_AND_array_ONLY_FOR_TYPECODES_u_w_numeric_buffers_are_collections_of_numbers_and_stay_accepted"
+followups: []
+---
