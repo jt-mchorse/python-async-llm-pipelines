@@ -17,7 +17,9 @@ failure (see `tests/test_exception_contract.py`).
 
 from __future__ import annotations
 
+import array
 import asyncio
+from collections import UserString
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -136,3 +138,89 @@ def test_empty_docs_send_no_batch() -> None:
     llm1, llm2 = _Caller(_short), _Caller(_short)
     assert asyncio.run(_pipeline(llm1, llm2).run([])) == []
     assert llm1.sent == llm2.sent == []
+
+
+# --- #229: a bare string of the right length is one output, not N ---------
+#
+# #228 checked only `len(got)`. A `str` whose length matched the batch passed,
+# and `flat.extend` split it into one "output" per character. Measured on
+# `main` (a40b2d1, py3.11.14 and 3.12.12), 8 docs, `batch_size=4`: llm1 or
+# llm2 returning "ABAB" -> ['A','B','A','B','A','B','A','B'], `b"ABAB"` ->
+# [65, 66, ...], and `batch_size=1` returning "Y" -> ['Y', 'Y'].
+
+
+def _const(value: Any) -> BatchCaller:
+    async def caller(batch: list[str]) -> Any:
+        return value
+
+    return caller
+
+
+# Each has length 4, the batch size, so the #226 length check alone passes it.
+_BARE_OUTPUTS = [
+    pytest.param("ABAB", "bare str", id="str"),
+    pytest.param(b"ABAB", "bare bytes", id="bytes"),
+    pytest.param(bytearray(b"ABAB"), "bare bytearray", id="bytearray"),
+    pytest.param(UserString("ABAB"), "bare UserString", id="UserString"),
+    pytest.param(memoryview(b"ABAB"), "bare memoryview", id="memoryview"),
+    pytest.param(array.array("u", "ABAB"), "bare array", id="array-u"),
+]
+
+
+@pytest.mark.parametrize(("bare", "shape"), _BARE_OUTPUTS)
+def test_llm1_batch_bare_string_of_matching_length_is_refused(bare: Any, shape: str) -> None:
+    llm2 = _Caller()
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_const(bare), llm2).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err).startswith(
+        f"llm1_batch output for batch 0 must be a collection of items, not a {shape}"
+    )
+    assert llm2.sent == []
+
+
+@pytest.mark.parametrize(("bare", "shape"), _BARE_OUTPUTS)
+def test_llm2_batch_bare_string_of_matching_length_is_refused(bare: Any, shape: str) -> None:
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_Caller(), _const(bare)).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err).startswith(
+        f"llm2_batch output for batch 0 must be a collection of items, not a {shape}"
+    )
+
+
+def test_run_pipeline_produces_no_result_for_a_bare_string_batch() -> None:
+    result = None
+    with pytest.raises(ExceptionGroup) as exc:
+        result = asyncio.run(run_pipeline(_pipeline(_const("ABAB"), _Caller()), _DOCS))
+    _only_value_error(exc.value)
+    assert result is None
+
+
+def test_a_one_char_string_is_refused_at_batch_size_one() -> None:
+    # len("Y") == 1 == batch_size: the shortest matching-length string.
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_Caller(), _const("Y"), batch_size=1).run(_DOCS[:2]))
+    err = _only_value_error(exc.value)
+    assert "not a bare str: 'Y'" in str(err)
+
+
+def test_a_mismatched_string_is_not_reported_as_n_outputs() -> None:
+    # Was "llm2_batch returned 3 outputs for batch 0 of 1 items": characters
+    # counted as outputs. The bare-string refusal runs before the length check.
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_Caller(), _const("YES"), batch_size=1).run(_DOCS[:2]))
+    err = _only_value_error(exc.value)
+    assert "not a bare str: 'YES'" in str(err)
+    assert "outputs" not in str(err)
+
+
+@pytest.mark.parametrize("container", [list, tuple], ids=["list", "tuple"])
+def test_a_collection_of_strings_is_still_accepted(container: Any) -> None:
+    # Control: only the bare-string shape is refused; a tuple is one output per
+    # input too, so `list` is not required (same rule as `docs`, #126).
+    async def caller(batch: list[str]) -> Any:
+        return container(f"{item}+" for item in batch)
+
+    out = asyncio.run(_pipeline(caller, caller, batch_size=3).run(_DOCS))
+    assert out == [f"{doc}++" for doc in _DOCS]

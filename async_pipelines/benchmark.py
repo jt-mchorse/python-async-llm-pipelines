@@ -347,6 +347,8 @@ class BatchedAsyncPipeline:
     (#226): real batch APIs drop errored or expired items, and a short batch
     used to shorten the output silently while `run_pipeline` still counted
     every doc, and shift every later doc onto the wrong output.
+    A caller that returns a bare ``str``/``bytes`` instead of a collection
+    raises too (#229), even when its length matches the batch.
     """
 
     name = "async+batched"
@@ -399,7 +401,14 @@ class BatchedAsyncPipeline:
 
 
 def _check_batch_len(caller: str, index: int, sent: list[str], got: list[str]) -> None:
-    """Raise ``ValueError`` unless a batch caller returned one output per input (#226)."""
+    """Raise ``ValueError`` unless a batch caller returned one output per input (#226).
+
+    A bare ``str`` is one output, not ``len(str)`` of them (#229): one whose
+    length matched the batch passed the length check and `flat.extend` split
+    it into a character per doc. Refused first, so a non-matching one is not
+    reported as "N outputs" either. Any other collection is still accepted.
+    """
+    _refuse_bare_string(f"{caller} output for batch {index}", got)
     if len(got) != len(sent):
         raise ValueError(
             f"{caller} returned {len(got)} outputs for batch {index} of {len(sent)} items; "
