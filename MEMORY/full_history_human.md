@@ -1792,3 +1792,14 @@ symlink to `bench.md`, the raw results replaced the markdown report, both
 same-file check `bench_backpressure` has used since #188. If the pair resolves
 to one file, it exits 2 before the benchmark runs and writes nothing. That
 script's comment claiming bench_1000_doc was already safe is corrected. PR #222.
+
+## 2026-10-26 — The bare-string guard also refuses the stdlib's string and bytes wrappers (#225)
+
+The #126 guard refused a bare `str`, `bytes` or `bytearray` passed where a
+collection of documents is expected. But `collections.UserString`, a
+`memoryview` of bytes and an `array('u', ...)` got through and were split into
+one item per character or byte, exactly what #126 was meant to stop. One
+`UserString` document became 18 documents and 36 LLM calls. The guard now
+refuses all three, each with a hint for the working spelling. A numeric array,
+or a memoryview over one, is still accepted because it really is a collection
+of numbers. PR #227.
