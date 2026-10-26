@@ -2242,3 +2242,21 @@ context_for_next_session:
   - "_refuse_bare_string_REFUSES_memoryview_ONLY_FOR_FORMATS_B_b_c_AND_array_ONLY_FOR_TYPECODES_u_w_numeric_buffers_are_collections_of_numbers_and_stay_accepted"
 followups: []
 ---
+
+---
+session: 2026-10-26T07:32Z
+issue: 226
+branch: session/2026-10-26-0732-issue-226
+focus: BATCHED_PIPELINE_NEVER_CHECKED_A_BATCH_CALLER_RETURNED_ONE_OUTPUT_PER_INPUT_SO_A_SHORT_BATCH_DROPPED_DOCS_SHIFTED_LATER_PAIRINGS_AND_run_pipeline_STILL_COUNTED_n_docs_len_docs
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 10
+  suite: "911 -> 921 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "main 9e98ad7 py3.11.14, 8 docs, batch_size=4, short=batch[:-1]: short/short -> 4 outputs, short/ident and ident/short -> 6 outputs, run_pipeline n_docs 8 in all three, no error. After: ExceptionGroup[ValueError] naming caller, batch index, expected vs got; llm2_batch never called after an llm1 mismatch. Revert 8 of 10 red; the 2 green are the equal-length and empty-docs controls. PR #228."
+context_for_next_session:
+  - "BatchedAsyncPipeline_process_batch_NOW_TAKES_A_BATCH_INDEX_and__check_batch_len_RUNS_AFTER_EACH_CALLER_a_new_batch_stage_must_join_it"
+  - "run_pipeline_STILL_PUBLISHES_n_docs_len_docs_FOR_A_THIRD_PARTY_PIPELINE_WHATEVER_run_RETURNS_tests_test_zero_duration_fields_agree_RELIES_ON_run_RETURNING_EMPTY"
+followups: []
+---
