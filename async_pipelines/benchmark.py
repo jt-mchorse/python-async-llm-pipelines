@@ -341,7 +341,12 @@ class BatchedAsyncPipeline:
     in production it's "one HTTP request per batch" with the model
     processing them on its side.
 
-    Per-doc ordering inside a batch is preserved by index.
+    Per-doc ordering inside a batch is preserved by index. That needs each
+    batch caller to return exactly one output per input, in input order. A
+    caller that returns more or fewer raises ``ValueError`` naming the batch
+    (#226): real batch APIs drop errored or expired items, and a short batch
+    used to shorten the output silently while `run_pipeline` still counted
+    every doc, and shift every later doc onto the wrong output.
     """
 
     name = "async+batched"
@@ -374,11 +379,16 @@ class BatchedAsyncPipeline:
         _refuse_bare_string("docs", docs)  # #126: `_chunk` would slice the string
         batches = _chunk(docs, self.batch_size)
 
-        async def process_batch(batch: list[str]) -> list[str]:
+        async def process_batch(index: int) -> list[str]:
+            batch = batches[index]
             mids = await self.llm1_batch(batch)
-            return await self.llm2_batch(mids)
+            # Before `llm2_batch` sees `mids`: a misaligned batch is never sent on.
+            _check_batch_len("llm1_batch", index, batch, mids)
+            outs = await self.llm2_batch(mids)
+            _check_batch_len("llm2_batch", index, mids, outs)
+            return outs
 
-        outs = await process(batches, process_batch, concurrency=self.concurrency)
+        outs = await process(range(len(batches)), process_batch, concurrency=self.concurrency)
         # Flatten preserving order; each batch result is already in the
         # batch's input order, so concatenation reconstructs the original
         # doc sequence.
@@ -386,6 +396,15 @@ class BatchedAsyncPipeline:
         for batch_out in outs:
             flat.extend(batch_out)
         return flat
+
+
+def _check_batch_len(caller: str, index: int, sent: list[str], got: list[str]) -> None:
+    """Raise ``ValueError`` unless a batch caller returned one output per input (#226)."""
+    if len(got) != len(sent):
+        raise ValueError(
+            f"{caller} returned {len(got)} outputs for batch {index} of {len(sent)} items; "
+            f"expected {len(sent)} (one per input, in input order)"
+        )
 
 
 def _chunk(items: list[str], size: int) -> list[list[str]]:

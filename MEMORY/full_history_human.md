@@ -1803,3 +1803,15 @@ one item per character or byte, exactly what #126 was meant to stop. One
 refuses all three, each with a hint for the working spelling. A numeric array,
 or a memoryview over one, is still accepted because it really is a collection
 of numbers. PR #227.
+
+## 2026-10-26 — The batched pipeline refuses a batch that comes back the wrong length (#226)
+
+`BatchedAsyncPipeline` assumed each batch caller returns one output per input,
+in order, but never checked it. Real batch APIs can drop errored or expired
+items. When a batch came back short, the pipeline quietly lost docs, and
+`run_pipeline` still counted every doc, so docs/s looked better than it was.
+The second caller also got the shortened list, so later docs were paired with
+the wrong outputs. Each batch is now checked after each caller. A mismatch
+raises `ValueError` naming which caller, which batch, and how many outputs were
+expected versus returned, and the second caller is never sent a misaligned
+batch. PR #228.
