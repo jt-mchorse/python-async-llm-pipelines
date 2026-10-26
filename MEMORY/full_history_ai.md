@@ -2260,3 +2260,20 @@ context_for_next_session:
   - "run_pipeline_STILL_PUBLISHES_n_docs_len_docs_FOR_A_THIRD_PARTY_PIPELINE_WHATEVER_run_RETURNS_tests_test_zero_duration_fields_agree_RELIES_ON_run_RETURNING_EMPTY"
 followups: []
 ---
+
+---
+session: 2026-10-26T07:50Z
+issue: 229
+branch: session/2026-10-26-0750-issue-229
+focus: BATCH_LENGTH_CHECK_228_COMPARED_ONLY_len_got_SO_A_BARE_str_OF_MATCHING_LENGTH_PASSED_AND_flat_extend_SPLIT_IT_ONE_OUTPUT_PER_CHAR
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 17
+  suite: "921 -> 938 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "main a40b2d1 py3.11.14 and 3.12.12, 8 docs, batch_size=4: llm1 or llm2 returning 'ABAB' -> ['A','B','A','B','A','B','A','B'], run_pipeline n_docs 8; b'ABAB' -> [65,66,...]; UserString per char; batch_size=1 'Y' -> ['Y','Y'], 'YES' -> 'returned 3 outputs'. After: ValueError '<caller> output for batch <i> must be a collection of items, not a bare <type>' before the length check; llm2 never called after a bare llm1 output. Revert 15 of 17 red on both; the 2 green are the list and tuple accept-controls. PR #230."
+context_for_next_session:
+  - "_check_batch_len_NOW_CALLS__refuse_bare_string_FIRST_list_IS_NOT_REQUIRED_a_tuple_of_outputs_is_accepted_SAME_RULE_AS_docs_126"
+followups: []
+---
