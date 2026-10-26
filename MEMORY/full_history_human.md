@@ -1815,3 +1815,14 @@ the wrong outputs. Each batch is now checked after each caller. A mismatch
 raises `ValueError` naming which caller, which batch, and how many outputs were
 expected versus returned, and the second caller is never sent a misaligned
 batch. PR #228.
+
+## 2026-10-26 — The batched pipeline refuses a batch caller that returns one string (#229)
+
+The #226 check compared how many outputs a batch caller returned with how many
+inputs it was sent, but a plain string has a length too. A caller that returned
+`"ABAB"` for a batch of four passed the check, and the pipeline split it into
+four one-letter outputs. A string of the wrong length was reported as "returned
+3 outputs", counting letters. The check now first refuses a bare string or
+bytes value (and the stdlib wrappers from #225), with the same message the
+`docs` guard uses, naming the caller and the batch. Any real collection,
+including a tuple, is still accepted. PR #230.
