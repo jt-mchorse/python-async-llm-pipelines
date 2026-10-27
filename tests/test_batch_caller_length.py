@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import array
 import asyncio
+import collections
+import itertools
 from collections import UserString
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -223,4 +225,157 @@ def test_a_collection_of_strings_is_still_accepted(container: Any) -> None:
         return container(f"{item}+" for item in batch)
 
     out = asyncio.run(_pipeline(caller, caller, batch_size=3).run(_DOCS))
+    assert out == [f"{doc}++" for doc in _DOCS]
+
+
+# --- #231: an iterator is read once; an unordered collection is refused -----
+#
+# #228's `len(got)` made every non-`Sized` output a raw `TypeError` that named
+# neither the caller nor the batch, and a `set` passed it and came back in hash
+# order. Measured on `main` (2081b24, py3.11.14 and 3.12.12), 6 docs,
+# `batch_size=3`: a generator, `map`, `filter`, `iter(list)` or `reversed`
+# from either caller -> `TypeError: object of type 'generator' has no len()`;
+# a `set` -> no error, docs out of order; `dict.items()` -> `(i, doc)` tuples.
+
+
+def _reply(shape: Callable[[list[str]], Any]) -> BatchCaller:
+    async def caller(batch: list[str]) -> Any:
+        return shape([f"{item}+" for item in batch])
+
+    return caller
+
+
+# Iterated in hash or key order, so position no longer names the input.
+_UNORDERED_OUTPUTS = [
+    pytest.param(set, "set", id="set"),
+    pytest.param(frozenset, "frozenset", id="frozenset"),
+    pytest.param(dict.fromkeys, "dict", id="dict"),
+    pytest.param(lambda outs: dict.fromkeys(outs).keys(), "dict_keys", id="dict-keys"),
+    pytest.param(lambda outs: dict(enumerate(outs)).items(), "dict_items", id="dict-items"),
+]
+
+
+@pytest.mark.parametrize(("shape", "name"), _UNORDERED_OUTPUTS)
+def test_llm1_batch_unordered_output_is_refused(shape: Any, name: str) -> None:
+    llm2 = _Caller()
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_reply(shape), llm2).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err) == (
+        f"llm1_batch output for batch 0 must be an ordered collection, not a {name}: "
+        "outputs are matched to inputs by position -- return a list"
+    )
+    assert llm2.sent == []
+
+
+@pytest.mark.parametrize(("shape", "name"), _UNORDERED_OUTPUTS)
+def test_llm2_batch_unordered_output_is_refused(shape: Any, name: str) -> None:
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_Caller(), _reply(shape)).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err).startswith(
+        f"llm2_batch output for batch 0 must be an ordered collection, not a {name}"
+    )
+
+
+def test_a_one_item_set_is_refused_too() -> None:
+    # The shape is refused, not the outcome: a one-item set cannot reorder,
+    # but a caller that returns one would reorder at any larger batch.
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_reply(set), _Caller(), batch_size=1).run(_DOCS[:2]))
+    assert "not a set" in str(_only_value_error(exc.value))
+
+
+def test_run_pipeline_produces_no_result_for_a_set_batch() -> None:
+    result = None
+    with pytest.raises(ExceptionGroup) as exc:
+        result = asyncio.run(run_pipeline(_pipeline(_Caller(), _reply(set)), _DOCS))
+    _only_value_error(exc.value)
+    assert result is None
+
+
+_ITERATOR_OUTPUTS = [
+    pytest.param(lambda outs: (o for o in outs), id="generator"),
+    pytest.param(lambda outs: map(str, outs), id="map"),
+    pytest.param(lambda outs: filter(None, outs), id="filter"),
+    pytest.param(lambda outs: iter(outs), id="list-iterator"),
+    pytest.param(lambda outs: reversed(outs[::-1]), id="reversed"),
+]
+
+
+@pytest.mark.parametrize("shape", _ITERATOR_OUTPUTS)
+def test_llm1_batch_iterator_is_read_once_and_passed_on_as_a_list(shape: Any) -> None:
+    llm2 = _Caller()
+    seen: list[type] = []
+
+    async def recording_llm2(batch: list[str]) -> list[str]:
+        seen.append(type(batch))
+        return await llm2(batch)
+
+    out = asyncio.run(_pipeline(_reply(shape), recording_llm2, batch_size=3).run(_DOCS))
+    assert out == [f"{doc}++" for doc in _DOCS]
+    # Read once: a second read of a one-shot iterator would hand llm2 nothing.
+    assert llm2.sent == [["d0+", "d1+", "d2+"], ["d3+", "d4+", "d5+"], ["d6+", "d7+"]]
+    assert seen == [list, list, list]
+
+
+@pytest.mark.parametrize("shape", _ITERATOR_OUTPUTS)
+def test_llm2_batch_iterator_is_accepted(shape: Any) -> None:
+    out = asyncio.run(_pipeline(_Caller(), _reply(shape), batch_size=3).run(_DOCS))
+    assert out == [f"{doc}++" for doc in _DOCS]
+
+
+def test_a_short_generator_is_counted_and_named() -> None:
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_reply(lambda outs: iter(outs[:-1])), _Caller()).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err) == (
+        "llm1_batch returned 3 outputs for batch 0 of 4 items; "
+        "expected 4 (one per input, in input order)"
+    )
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        pytest.param(lambda outs: iter([*outs, "extra"]), id="one-extra"),
+        pytest.param(lambda outs: itertools.repeat("x"), id="endless"),
+    ],
+)
+def test_a_long_or_endless_generator_raises_instead_of_hanging(shape: Any) -> None:
+    # At most one item past the batch is read, so `repeat` cannot hang the run.
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_Caller(), _reply(shape)).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err) == (
+        "llm2_batch returned more than 4 outputs for batch 0 of 4 items; "
+        "expected 4 (one per input, in input order)"
+    )
+
+
+@pytest.mark.parametrize("value", [None, 4], ids=["None", "int"])
+def test_a_non_iterable_output_is_named(value: Any) -> None:
+    # A caller that forgot to `return` hands back None: was a raw
+    # `TypeError: object of type 'NoneType' has no len()`.
+    llm2 = _Caller()
+    with pytest.raises(ExceptionGroup) as exc:
+        asyncio.run(_pipeline(_const(value), llm2).run(_DOCS))
+    err = _only_value_error(exc.value)
+    assert str(err) == (
+        f"llm1_batch output for batch 0 must be a collection of items, not "
+        f"{type(value).__name__}: return a list with one output per input"
+    )
+    assert llm2.sent == []
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        pytest.param(collections.deque, id="deque"),
+        pytest.param(lambda outs: dict(enumerate(outs)).values(), id="dict-values"),
+    ],
+)
+def test_an_ordered_collection_is_still_accepted(shape: Any) -> None:
+    # Controls: ordered and sized, so neither refused nor re-read.
+    out = asyncio.run(_pipeline(_reply(shape), _reply(shape), batch_size=3).run(_DOCS))
     assert out == [f"{doc}++" for doc in _DOCS]

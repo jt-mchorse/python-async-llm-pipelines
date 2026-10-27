@@ -183,7 +183,9 @@ batched modes. Doesn't depend on tool dispatch.
   embedded sub-prompts, one tool call with N inputs). It must return
   one output per input, in input order; a batch that comes back
   shorter or longer raises `ValueError` naming the batch (#226), and
-  so does a bare `str`/`bytes` output, whatever its length (#229).
+  so does a bare `str`/`bytes` output, whatever its length (#229),
+  or an unordered `set`/`dict` (#231). A generator or other iterator
+  is read once into a list and passed on (#231).
 
 **JSON observability surface (#44).** `Workload.to_dict()` /
 `RunResult.to_dict()` pin the per-instance JSON contract so downstream

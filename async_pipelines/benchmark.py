@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import itertools
 import json
 import math
 import time
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Iterable, Mapping, Sequence, Set
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -348,7 +349,9 @@ class BatchedAsyncPipeline:
     used to shorten the output silently while `run_pipeline` still counted
     every doc, and shift every later doc onto the wrong output.
     A caller that returns a bare ``str``/``bytes`` instead of a collection
-    raises too (#229), even when its length matches the batch.
+    raises too (#229), even when its length matches the batch, and so does an
+    unordered ``set`` or ``dict`` (#231). A generator or other iterator is
+    accepted and read once.
     """
 
     name = "async+batched"
@@ -383,12 +386,11 @@ class BatchedAsyncPipeline:
 
         async def process_batch(index: int) -> list[str]:
             batch = batches[index]
-            mids = await self.llm1_batch(batch)
             # Before `llm2_batch` sees `mids`: a misaligned batch is never sent on.
-            _check_batch_len("llm1_batch", index, batch, mids)
+            # Each check returns the list it read, so a generator is consumed once.
+            mids = _check_batch_len("llm1_batch", index, batch, await self.llm1_batch(batch))
             outs = await self.llm2_batch(mids)
-            _check_batch_len("llm2_batch", index, mids, outs)
-            return outs
+            return _check_batch_len("llm2_batch", index, mids, outs)
 
         outs = await process(range(len(batches)), process_batch, concurrency=self.concurrency)
         # Flatten preserving order; each batch result is already in the
@@ -400,20 +402,56 @@ class BatchedAsyncPipeline:
         return flat
 
 
-def _check_batch_len(caller: str, index: int, sent: list[str], got: list[str]) -> None:
-    """Raise ``ValueError`` unless a batch caller returned one output per input (#226).
+def _check_batch_len(caller: str, index: int, sent: list[str], got: object) -> list[str]:
+    """Return a batch caller's output as a list, one output per input (#226).
 
     A bare ``str`` is one output, not ``len(str)`` of them (#229): one whose
     length matched the batch passed the length check and `flat.extend` split
     it into a character per doc. Refused first, so a non-matching one is not
-    reported as "N outputs" either. Any other collection is still accepted.
+    reported as "N outputs" either.
+
+    An unordered collection is refused whatever its length (#231): a ``set``
+    of distinct outputs passed the length check and came back in hash order,
+    pairing docs with the wrong outputs. ``collections.abc.Set`` covers
+    ``frozenset`` and a dict's ``keys()``/``items()`` views, and a
+    ``Mapping`` is refused too: a ``{doc: output}`` dict iterates its keys,
+    which are the inputs. A dict's ``values()`` view is ordered and accepted.
+
+    An iterator (a generator, ``map``, ``filter``) is read into a list rather
+    than refused. #228's ``len()`` call made it a raw ``TypeError``; before
+    that it worked, and ``process`` accepts any iterable for `docs` and reads
+    it once the same way. At most one item past the batch size is read, so an
+    endless generator raises instead of hanging. The list is what is returned
+    and passed on, so `llm2_batch` gets a ``list`` whatever ``llm1_batch``
+    returned, and a one-shot iterator is never read twice.
     """
-    _refuse_bare_string(f"{caller} output for batch {index}", got)
-    if len(got) != len(sent):
+    name = f"{caller} output for batch {index}"
+    _refuse_bare_string(name, got)
+    if isinstance(got, (Set, Mapping)):
         raise ValueError(
-            f"{caller} returned {len(got)} outputs for batch {index} of {len(sent)} items; "
+            f"{name} must be an ordered collection, not a {type(got).__name__}: "
+            "outputs are matched to inputs by position -- return a list"
+        )
+    if isinstance(got, Collection):
+        outputs = list(got)
+    elif isinstance(got, Iterable):
+        outputs = list(itertools.islice(got, len(sent) + 1))
+        if len(outputs) > len(sent):
+            raise ValueError(
+                f"{caller} returned more than {len(sent)} outputs for batch {index} of "
+                f"{len(sent)} items; expected {len(sent)} (one per input, in input order)"
+            )
+    else:
+        raise ValueError(
+            f"{name} must be a collection of items, not {type(got).__name__}: "
+            "return a list with one output per input"
+        )
+    if len(outputs) != len(sent):
+        raise ValueError(
+            f"{caller} returned {len(outputs)} outputs for batch {index} of {len(sent)} items; "
             f"expected {len(sent)} (one per input, in input order)"
         )
+    return outputs
 
 
 def _chunk(items: list[str], size: int) -> list[list[str]]:
