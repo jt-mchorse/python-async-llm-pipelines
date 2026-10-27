@@ -1826,3 +1826,16 @@ four one-letter outputs. A string of the wrong length was reported as "returned
 bytes value (and the stdlib wrappers from #225), with the same message the
 `docs` guard uses, naming the caller and the batch. Any real collection,
 including a tuple, is still accepted. PR #230.
+
+## 2026-10-27 — The batched pipeline reads a generator batch once and refuses a set (#231)
+
+The #226 check called `len()` on each batch caller's output. A caller that
+returned a generator or `map`, which worked before #226, then failed with a
+bare `TypeError` that named neither the caller nor the batch. A caller that
+returned a `set` passed the check, and its outputs came back in hash order,
+so docs were paired with the wrong outputs. Sets and dicts (and dict key or
+item views) are now refused with a named error, because outputs are matched
+to inputs by position. Any other iterator is read once into a list, stopping
+one item past the batch size so an endless generator fails instead of hanging.
+That list is what the second caller receives. A caller that returns `None`
+also gets a named error. PR #233.
