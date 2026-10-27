@@ -2277,3 +2277,21 @@ context_for_next_session:
   - "_check_batch_len_NOW_CALLS__refuse_bare_string_FIRST_list_IS_NOT_REQUIRED_a_tuple_of_outputs_is_accepted_SAME_RULE_AS_docs_126"
 followups: []
 ---
+
+---
+session: 2026-10-27T07:57Z
+issue: 231
+branch: session/2026-10-27-0757-issue-231
+focus: BATCH_LENGTH_CHECK_228_CALLED_len_got_SO_A_GENERATOR_OR_map_OUTPUT_WAS_A_RAW_TypeError_AND_A_set_PASSED_AND_REORDERED_DOCS
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 29
+  suite: "938 -> 967 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "main 2081b24 py3.11.14 and 3.12.12, 6 docs, batch_size=3, both callers: generator/map/filter/iter(list)/reversed -> raw TypeError 'object of type X has no len()'; set/frozenset -> no error, docs reordered; dict.items -> (i, doc) tuples; None -> raw TypeError. Pre-#228 9e98ad7: generator and map ok, set reordered. After: Set/Mapping refused with named ValueError, iterators read once (islice batch+1) and the list passed on, None named. Revert 27 of 29 red on both; 2 green are deque and dict.values accept-controls. Neighbour (check the list, pass the generator on): 5 red. PR #233."
+context_for_next_session:
+  - "_check_batch_len_NOW_RETURNS_THE_LIST_IT_READ_AND_process_batch_PASSES_THAT_ON_llm2_batch_ALWAYS_GETS_A_list_a_new_batch_stage_must_use_the_return_value"
+  - "ELEMENT_TYPES_ARE_NOT_CHECKED_range_n_FROM_A_CALLER_YIELDS_INTS"
+followups: []
+---
