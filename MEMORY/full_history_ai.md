@@ -2313,3 +2313,20 @@ context_for_next_session:
   - "OPEN_FROM_THE_SAME_HUNT_run_pipeline_with_a_generator_spends_every_LLM_call_then_TypeErrors_on_len_low_not_yet_filed"
 followups: []
 ---
+
+---
+session: 2026-10-28T08:21Z
+issue: 236
+branch: session/2026-10-28-0821-issue-236
+focus: RUN_PIPELINE_TOOK_LEN_OF_DOCS_AFTER_THE_RUN_SO_A_GENERATOR_SPENT_EVERY_LLM_CALL_THEN_RAISED_TYPEERROR
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 18
+  suite: "994 passed; ruff clean (mypy: same 3 pre-existing errors as main)"
+decisions_made: []
+measured: "hunt agent, origin/main fc90b96: generator docs -> serial/async 10 calls then TypeError, batched 0 calls TypeError. After: list(docs) once up front; generator/map/iter/tuple/dict-keys equal to the list control on all three. Revert 13 red / 5 green (Sized rows). PR on #236."
+context_for_next_session:
+  - "RUN_PIPELINE_NOW_ACCEPTS_ANY_ITERABLE_annotation_Iterable_str"
+followups: []
+---
