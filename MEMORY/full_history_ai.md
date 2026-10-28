@@ -2295,3 +2295,21 @@ context_for_next_session:
   - "ELEMENT_TYPES_ARE_NOT_CHECKED_range_n_FROM_A_CALLER_YIELDS_INTS"
 followups: []
 ---
+
+---
+session: 2026-10-28T08:12Z
+issue: 234
+branch: session/2026-10-28-0812-issue-234
+focus: BENCH_SAME_FILE_GUARD_RAN_SAMEFILE_ONLY_WHEN_BOTH_EXISTED_SO_A_CASE_ONLY_ALIAS_ON_A_FRESH_DIR_LET_THE_JSON_REPLACE_THE_REPORT_ON_MACOS
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 9
+  suite: "976 passed; ruff check + format clean"
+decisions_made: []
+measured: "origin/main fc90b96 on macOS APFS: bench_backpressure --out-md Report.md --out-json report.md on a fresh dir -> exit 0, Report.md holds JSON; rerun refused (guard depended on existence). bench_1000_doc with bench.json -> BENCH.md dangling -> exit 0. After: both exit 2, nothing written. same_file asks the filesystem for two absent names (exclusive create + exists + unlink). Probes: scripts at main -> 2 e2e arms red; exists-only same_file -> 3 red. Case arms skip on case-sensitive FS (Linux CI). PR #235."
+context_for_next_session:
+  - "CI_IS_CASE_SENSITIVE_LINUX_so_the_case_alias_arms_only_run_locally_on_macOS_a_green_CI_does_not_cover_234"
+  - "OPEN_FROM_THE_SAME_HUNT_run_pipeline_with_a_generator_spends_every_LLM_call_then_TypeErrors_on_len_low_not_yet_filed"
+followups: []
+---

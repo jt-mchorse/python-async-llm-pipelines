@@ -1839,3 +1839,13 @@ to inputs by position. Any other iterator is read once into a list, stopping
 one item past the batch size so an endless generator fails instead of hanging.
 That list is what the second caller receives. A caller that returns `None`
 also gets a named error. PR #233.
+
+## 2026-10-28 — Bench output names that differ only in case are refused on macOS (#234)
+
+The benchmark scripts refuse to write the report and the raw JSON to the same
+file. On a Mac, `Report.md` and `report.md` are the same file, but the check
+only noticed when the file already existed. On a fresh folder, the JSON
+silently replaced the report. The scripts now ask the filesystem directly
+whether the two names are one file, so the run is refused before it starts.
+The new tests run on a Mac and are skipped on the Linux CI machines, which
+cannot show the problem. PR #235.
