@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import platform
 import sys
 import time
@@ -39,7 +38,12 @@ from async_pipelines.benchmark import (  # noqa: E402
     make_batch_caller,
     run_pipeline,
 )
-from async_pipelines.io_utils import atomic_write_text, check_writable, display_path  # noqa: E402
+from async_pipelines.io_utils import (  # noqa: E402
+    atomic_write_text,
+    check_writable,
+    display_path,
+    same_file,
+)
 
 #: The workload the README's numbers and the "5-20x" spec range describe. The
 #: argparse defaults read from it, so the report can say which flags a run
@@ -296,11 +300,9 @@ async def amain(args: argparse.Namespace) -> int:
         # symlink (#157), so a `bench.json -> bench.md` link let the JSON
         # replace the report, both "wrote" lines printed, exit 0. The same
         # resolved-identity check `bench_backpressure.py` runs on its two flags
-        # (#188): `realpath` for a symlink, existing or dangling; `samefile` for
-        # an existing alias `realpath` cannot see (a case-only symlink target
-        # on a case-insensitive filesystem, or a hard link).
-        md, js = os.path.realpath(out_path), os.path.realpath(json_path)
-        if md == js or (os.path.exists(md) and os.path.exists(js) and os.path.samefile(md, js)):
+        # (#188), through `same_file`, which also asks the filesystem about two
+        # names that do not exist yet (#234).
+        if same_file(out_path, json_path):
             print(
                 f"could not write report: --out {args.out!r} and its raw-results "
                 f"path {str(json_path)!r} name the same file",

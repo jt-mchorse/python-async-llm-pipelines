@@ -36,7 +36,6 @@ import argparse
 import asyncio
 import json
 import math
-import os
 import sys
 import time
 import tracemalloc
@@ -49,7 +48,12 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from async_pipelines import StreamMetrics, stream  # noqa: E402
-from async_pipelines.io_utils import atomic_write_text, check_writable, display_path  # noqa: E402
+from async_pipelines.io_utils import (  # noqa: E402
+    atomic_write_text,
+    check_writable,
+    display_path,
+    same_file,
+)
 
 
 @dataclass
@@ -363,18 +367,16 @@ async def main_async(args: argparse.Namespace) -> int:
         # markdown report and both "wrote" lines printed, exit 0. bench_1000_doc
         # derives its JSON path, which keeps the two names apart (#118) but not
         # a symlink between them, so it runs this same check (#220); here the
-        # two paths are independent operator input, so compare them. `realpath`
-        # covers `./`, `..` and symlinks; `samefile` an existing hard link or a
-        # case-only alias on a case-insensitive filesystem.
-        if args.out_md and args.out_json:
-            md, js = os.path.realpath(args.out_md), os.path.realpath(args.out_json)
-            if md == js or (os.path.exists(md) and os.path.exists(js) and os.path.samefile(md, js)):
-                print(
-                    f"could not write report: --out-md {args.out_md!r} and "
-                    f"--out-json {args.out_json!r} name the same file",
-                    file=sys.stderr,
-                )
-                return 2
+        # two paths are independent operator input, so compare them, through
+        # `same_file` (#234): a case-only alias of a file that does not exist
+        # yet was missed.
+        if args.out_md and args.out_json and same_file(args.out_md, args.out_json):
+            print(
+                f"could not write report: --out-md {args.out_md!r} and "
+                f"--out-json {args.out_json!r} name the same file",
+                file=sys.stderr,
+            )
+            return 2
     except OSError as e:
         print(f"could not write report: {e}", file=sys.stderr)
         return 2
