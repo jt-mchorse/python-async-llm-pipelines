@@ -530,12 +530,18 @@ def make_batch_caller(
 # ---------------------------------------------------------------------
 
 
-async def run_pipeline(pipeline: Any, docs: list[str]) -> RunResult:
+async def run_pipeline(pipeline: Any, docs: Iterable[str]) -> RunResult:
     """Time a pipeline's `.run(docs)` call. Returns a `RunResult`."""
     # Here as well as in each pipeline's `.run`: `pipeline` is `Any`, and
     # `n_docs=len(docs)` below would publish a character count for a third-party
     # pipeline that does not check (#126).
     _refuse_bare_string("docs", docs)
+    # Read once, before any work (#236). `len(docs)` below ran *after* the
+    # pipeline, so a generator had every LLM call spent on the serial and async
+    # pipelines -- paid calls with a real client -- and then raised `TypeError`,
+    # while the batched one failed in `_chunk` with none. The timed workload is
+    # this list for every pipeline, as `process` reads any iterable once (#231).
+    docs = list(docs)
     t0 = time.perf_counter()
     await pipeline.run(docs)
     elapsed = time.perf_counter() - t0

@@ -1849,3 +1849,11 @@ silently replaced the report. The scripts now ask the filesystem directly
 whether the two names are one file, so the run is refused before it starts.
 The new tests run on a Mac and are skipped on the Linux CI machines, which
 cannot show the problem. PR #235.
+
+## 2026-10-28 — The benchmark runner accepts any list-like input (#236)
+
+Passing the documents as a generator made the serial and async benchmarks run
+every model call and only then fail while counting the documents. The batched
+one failed straight away, so the three disagreed. The documents are now read
+once, up front, so a generator is timed exactly like a list on all three
+pipelines.
