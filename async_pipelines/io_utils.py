@@ -139,6 +139,37 @@ def check_writable(path: str | Path) -> None:
     tmp_path.unlink()
 
 
+def same_file(a: str | Path, b: str | Path) -> bool:
+    """Whether writing *a* and writing *b* would write one file (#188, #220, #234).
+
+    `realpath` covers `./`, `..` and symlinks, existing or dangling, and
+    `samefile` covers an existing alias it cannot see (a hard link, or a name
+    that differs only in case or Unicode normalization on a filesystem that
+    ignores the difference, which is macOS's default). The bench scripts ran
+    `samefile` only when *both* files existed, so on a fresh output directory
+    `Report.md` and `report.md` compared as different, both writes landed in one
+    file, and the JSON replaced the report at exit 0 (#234). Whether two absent
+    names alias is the filesystem's rule, not a string comparison, so it is
+    asked: *a* is created exclusively, *b* is checked, and *a* is removed. If
+    only one of them exists they cannot be one file. Call after `check_writable`
+    on both, which creates the parent directories.
+    """
+    ra, rb = os.path.realpath(a), os.path.realpath(b)
+    if ra == rb:
+        return True
+    a_exists, b_exists = os.path.exists(ra), os.path.exists(rb)
+    if a_exists and b_exists:
+        return os.path.samefile(ra, rb)
+    if a_exists or b_exists:
+        return False
+    fd = os.open(ra, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    os.close(fd)
+    try:
+        return os.path.exists(rb) and os.path.samefile(ra, rb)
+    finally:
+        os.unlink(ra)
+
+
 def display_path(path: str | Path) -> str:
     """*path* as text any UTF-8 stream can print, e.g. a "wrote <path>" line (#186).
 
