@@ -23,6 +23,7 @@ import array
 import asyncio
 import collections
 import math
+import mmap
 import sys
 import time
 import weakref
@@ -133,6 +134,18 @@ _TEXT_TYPECODES = frozenset({"u", "w"})
 _BYTE_FORMATS = frozenset({"B", "b", "c"})
 
 
+def _is_ctypes_char_array(value: object) -> bool:
+    """Is *value* a ``ctypes`` array of ``c_char`` / ``c_wchar`` (#239)?
+
+    Read through ``sys.modules``: a value can only be a ``ctypes`` array if the
+    caller already imported ``ctypes``, so the guard never imports it itself.
+    """
+    ctypes = sys.modules.get("ctypes")
+    if ctypes is None or not isinstance(value, ctypes.Array):
+        return False
+    return value._type_ in (ctypes.c_char, ctypes.c_wchar)
+
+
 def _refuse_bare_string(name: str, value: object) -> None:
     """Raise ``ValueError`` if *value* is a bare ``str``/``bytes`` (#126).
 
@@ -147,18 +160,27 @@ def _refuse_bare_string(name: str, value: object) -> None:
     per character. A numeric ``array``, or a ``memoryview`` over one, is a
     collection of numbers, not one document, so it is still accepted.
 
+    The two other stdlib buffers that iterate one byte or character at a time
+    (#239): an ``mmap.mmap`` per one-byte ``bytes``, and a ``ctypes`` array of
+    ``c_char`` / ``c_wchar`` (``create_string_buffer`` /
+    ``create_unicode_buffer``) per character. A numeric ``ctypes`` array, like a
+    numeric ``array``, is still accepted. A ``memoryview`` over a ``ctypes``
+    buffer needs nothing: iterating one raises ``NotImplementedError``.
+
     Only the bare-string shape. Every other iterable is still accepted, and
     ``stream`` needs no call -- a ``str`` is not an ``AsyncIterable``, so it
     already fails loud.
     """
     if isinstance(value, (str, collections.UserString)):
         fix = f"pass [{value!r}]"
-    elif isinstance(value, (bytes, bytearray)) or (
+    elif isinstance(value, (bytes, bytearray, mmap.mmap)) or (
         isinstance(value, memoryview) and value.format in _BYTE_FORMATS
     ):
         fix = "decode it to str first"
     elif isinstance(value, array.array) and value.typecode in _TEXT_TYPECODES:
         fix = "convert it with .tounicode() first"
+    elif _is_ctypes_char_array(value):
+        fix = "read its .value first"
     else:
         return
     raise ValueError(
