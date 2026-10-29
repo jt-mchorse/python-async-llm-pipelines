@@ -2347,3 +2347,21 @@ context_for_next_session:
   - "BENCH_BACKPRESSURE_OUT_FLAGS_DEFAULT_None_resolved_by__resolve_out_paths_IN_main_async_a_test_that_builds_args_by_hand_must_go_through_it"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:28Z
+issue: 239
+branch: session/2026-10-29-0728-issue-239
+focus: BARE_STRING_GUARD_LET_MMAP_THROUGH_SO_ONE_MAPPED_DOC_FANNED_OUT_PER_BYTE_AND_CTYPES_CHAR_BUFFERS_FANNED_OUT_PER_CHAR
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 34
+  suite: "994 -> 1028 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "origin/main ef71f03 py3.12.12: run_pipeline(SerialPipeline, mmap of 'summarize this doc') -> n_docs 18, 36 calls; memoryview(mmap) already refused. Stdlib catalog walk (2533 classes, __buffer__ + iterable): bytes/bytearray/AuthenticationString, memoryview, array (handled), mmap (gap), ctypes Array/pointer. create_string_buffer(b'doc') -> [b'd',b'o',b'c',b'\\x00'], create_unicode_buffer per char; memoryview over ctypes buffers (<c/<u/<B) -> NotImplementedError, already loud. After: mmap -> 'decode it to str first', ctypes c_char/c_wchar arrays -> 'read its .value first'; array('B'), c_ubyte, c_int arrays accepted. Revert 29 red / 5 green (controls). Over-broad neighbour (any byte-format buffer): 10 red incl. array-B and c_ubyte controls. PR #242."
+context_for_next_session:
+  - "CTYPES_CHECK_READS_sys_modules_ctypes_SO_THE_GUARD_NEVER_IMPORTS_CTYPES_a_ctypes_array_can_only_exist_if_the_caller_imported_it"
+  - "MEMORYVIEW_FORMAT_CHECK_IS_BYTE_ORDER_UNAWARE_<c_<u_<B_ARE_NOT_IN__BYTE_FORMATS_but_iterating_those_raises_NotImplementedError_so_it_is_loud_today"
+followups: []
+---

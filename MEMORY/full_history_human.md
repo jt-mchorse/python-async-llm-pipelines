@@ -1867,3 +1867,14 @@ committed pair ended up coming from two different runs. Now, if you give only
 one of the two, the other is written next to it. Giving neither still
 regenerates the committed pair. A lone flag with no file name (empty or `.`)
 is refused before the run starts. PR #241.
+
+## 2026-10-29 — Memory-mapped files and ctypes text buffers count as one document (#239)
+
+The check that stops one document being split into characters let a
+memory-mapped file (`mmap`) through. One mapped document became one document
+per byte: 18 documents and 36 model calls for "summarize this doc". A search
+of the standard library turned up one more type that splits the same way:
+ctypes text buffers (`create_string_buffer` and `create_unicode_buffer`).
+Both are now refused, and the error message says how to pass the document
+correctly. Buffers of numbers, such as `array('B')`, are still accepted as
+lists of numbers. PR #242.
