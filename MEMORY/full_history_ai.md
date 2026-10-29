@@ -2330,3 +2330,20 @@ context_for_next_session:
   - "RUN_PIPELINE_NOW_ACCEPTS_ANY_ITERABLE_annotation_Iterable_str"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:28Z
+issue: 238
+branch: session/2026-10-29-0728-issue-238
+focus: BENCH_BACKPRESSURE_OUT_MD_AND_OUT_JSON_DEFAULTED_SEPARATELY_SO_OVERRIDING_ONE_REWROTE_THE_OTHER_COMMITTED_ARTIFACT
+phase: shipped
+delta:
+  files_changed: 3
+  tests_added: 18
+  suite: "994 -> 1012 passed on 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "origin/main ef71f03, scratch cwd with a docs/ copy, --n 50 --queue-size 4: --out-md <tmp>/explore.md -> 'wrote docs/backpressure.json' exit 0, json changed; --out-json only -> docs/backpressure.md changed. After: one flag places the other beside it (_json_path_for suffix rule), docs/ byte-identical; lone '' or '.' -> exit 2 before the run naming the missing flag. Revert 16 of 18 red; 2 green are the neither-given and both-given controls. Siblings: bench_1000_doc single --out (derives), capture_demo.sh tempdir. PR #241."
+context_for_next_session:
+  - "BENCH_BACKPRESSURE_OUT_FLAGS_DEFAULT_None_resolved_by__resolve_out_paths_IN_main_async_a_test_that_builds_args_by_hand_must_go_through_it"
+followups: []
+---
