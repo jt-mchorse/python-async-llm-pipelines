@@ -2365,3 +2365,20 @@ context_for_next_session:
   - "MEMORYVIEW_FORMAT_CHECK_IS_BYTE_ORDER_UNAWARE_<c_<u_<B_ARE_NOT_IN__BYTE_FORMATS_but_iterating_those_raises_NotImplementedError_so_it_is_loud_today"
 followups: []
 ---
+
+---
+session: 2026-10-29T07:28Z
+issue: 240
+branch: session/2026-10-29-0728-issue-240
+focus: BATCHED_PIPELINE_RUN_PASSED_DOCS_TO__chunk_WHICH_SLICES_AND_LENS_SO_A_GENERATOR_DEQUE_OR_KEYS_VIEW_WAS_A_RAW_TypeError_236_FIXED_ONLY_run_pipeline
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 34
+  suite: "994 -> 1028 passed on 3.11.14 and 3.12.12; ruff check + format clean"
+decisions_made: []
+measured: "origin/main ef71f03 py3.12.12, 5 docs, .run() direct: generator/map/iter -> TypeError no len(); deque -> 'sequence index must be integer, not slice'; dict_keys -> 'not subscriptable'; serial and async 5 out for all; tuple 5 out on all three. After: 5 out on all three for every shape. Siblings probed clean (run_pipeline, attach_speedup, dump_benchmark_json, make_batch_caller callable, _check_batch_len). Revert 14 red / 20 green; green = 16 serial/async rows + list/tuple controls. PR #243."
+context_for_next_session:
+  - "ALL_THREE_PIPELINE_run_METHODS_NOW_ANNOTATED_Iterable_str_batched_reads_list_docs_after__refuse_bare_string"
+followups: []
+---

@@ -1878,3 +1878,12 @@ ctypes text buffers (`create_string_buffer` and `create_unicode_buffer`).
 Both are now refused, and the error message says how to pass the document
 correctly. Buffers of numbers, such as `array('B')`, are still accepted as
 lists of numbers. PR #242.
+
+## 2026-10-29 — The batched pipeline accepts any list-like input when called directly (#240)
+
+The previous fix made the benchmark runner read the documents into a list
+first, but calling the batched pipeline's own `run` with a generator, a deque
+or a dictionary's keys still crashed, because it sliced and counted the input
+before reading it. The serial and async pipelines already accepted those. The
+batched pipeline now reads the documents once, up front, so all three behave
+the same. PR #243.
