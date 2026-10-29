@@ -204,7 +204,8 @@ machine and are deliberately **not** pinned across surfaces — only the
 This is the command that produced the committed snapshot, and running it
 **rewrites `docs/backpressure.md` and `docs/backpressure.json`** (the
 `--out-md`/`--out-json` defaults). To explore without touching them, add
-`--out-md /tmp/backpressure.md --out-json /tmp/backpressure.json`.
+`--out-md /tmp/backpressure.md --out-json /tmp/backpressure.json`; give only
+one and the other is written beside it, never to `docs/`.
 
 ```bash
 python scripts/bench_backpressure.py --n 5000 --queue-size 8 \

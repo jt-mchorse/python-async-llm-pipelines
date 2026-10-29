@@ -14,7 +14,9 @@ shows it, and the claim sentence it renders now says so from the rows.
 
 Numbers are real and reproducible. ``--out-md``/``--out-json`` default to the
 COMMITTED ``docs/backpressure.{md,json}``, so a run that omits them rewrites
-the artifact the doc-surface tests pin (#132). To explore:
+the artifact the doc-surface tests pin (#132). Give only one and the other is
+placed beside it (#238), so a run never writes half of the committed pair. To
+explore:
 
     python scripts/bench_backpressure.py --n 5000 --queue-size 8 \\
         --consumer-ms 1 --concurrency 2 \\
@@ -357,6 +359,17 @@ async def main_async(args: argparse.Namespace) -> int:
             )
         )
 
+    # The pair comes from one run (#111), so it is resolved as a pair (#238).
+    # The two flags used to default separately to the committed files: an
+    # operator who redirected only `--out-md` still had `docs/backpressure.json`
+    # rewritten -- exit 0 -- leaving a committed `.json` from this run beside a
+    # committed `.md` from another, which is the #120/#138 harm.
+    try:
+        args.out_md, args.out_json = _resolve_out_paths(args.out_md, args.out_json)
+    except ValueError as e:
+        print(f"could not write report: {e}", file=sys.stderr)
+        return 2
+
     # Every artifact path, before the run (#167), with the same message and code
     # as the write below.
     try:
@@ -417,6 +430,53 @@ async def main_async(args: argparse.Namespace) -> int:
     return 0
 
 
+#: The committed pair a run writes when neither output flag is given (#132).
+_DEFAULT_OUT_MD = "docs/backpressure.md"
+_DEFAULT_OUT_JSON = "docs/backpressure.json"
+
+
+def _sibling(path: str, own: str, other: str) -> str:
+    """The `other`-suffixed file beside `path`, by `bench_1000_doc._json_path_for`'s rule.
+
+    Swap the suffix when it is the flag's own (`bp.md` -> `bp.json`), append
+    otherwise (`run.a` -> `run.a.json`), so two runs with different suffixes do
+    not share a sibling (#118). Appending to the name rather than calling
+    `with_name` keeps a path like `..` from raising; `check_writable` refuses it
+    as a directory with the usual exit 2.
+    """
+    p = Path(path)
+    if p.suffix == own:
+        return str(p.with_suffix(other))
+    return str(p.parent / (p.name + other))
+
+
+def _resolve_out_paths(out_md: str | None, out_json: str | None) -> tuple[str, str]:
+    """`(--out-md, --out-json)` as one pair (#238).
+
+    Neither given: the committed pair. Both given: as given (an empty string
+    still skips that half). Exactly one given: the other goes beside it, never
+    to the committed default -- the operator who redirected one output has said
+    they do not want to touch the committed artifact. A lone flag that names no
+    file (`''`, `.`) has no "beside", so it is refused, naming the flag.
+    """
+    if out_md is None and out_json is None:
+        return _DEFAULT_OUT_MD, _DEFAULT_OUT_JSON
+    if out_md is not None and out_json is not None:
+        return out_md, out_json
+    if out_md is not None:
+        given, flag, missing, own, other = out_md, "--out-md", "--out-json", ".md", ".json"
+    else:
+        assert out_json is not None
+        given, flag, missing, own, other = out_json, "--out-json", "--out-md", ".json", ".md"
+    if not Path(given).name:
+        raise ValueError(
+            f"{flag} {given!r} names no file, so {missing} cannot be placed beside "
+            f"it; pass {missing} too"
+        )
+    derived = _sibling(given, own, other)
+    return (given, derived) if flag == "--out-md" else (derived, given)
+
+
 #: `--compare-n` runs a second cell at `n // this`, same `queue_size`. Ten is
 #: enough to make the row visibly a different `n` while keeping the extra runtime
 #: proportional to a tenth of the main cell (#111).
@@ -445,8 +505,18 @@ def _build_parser() -> argparse.ArgumentParser:
             "table exhibits the bound across n rather than only across queue_size"
         ),
     )
-    p.add_argument("--out-md", default="docs/backpressure.md", help="markdown report")
-    p.add_argument("--out-json", default="docs/backpressure.json", help="json report")
+    # `None`, not the committed path, so `main_async` can tell an omitted flag
+    # from one that names the default, and place the other beside it (#238).
+    p.add_argument(
+        "--out-md",
+        default=None,
+        help=f"markdown report (default {_DEFAULT_OUT_MD}; beside --out-json if only that is given)",
+    )
+    p.add_argument(
+        "--out-json",
+        default=None,
+        help=f"json report (default {_DEFAULT_OUT_JSON}; beside --out-md if only that is given)",
+    )
     return p
 
 
