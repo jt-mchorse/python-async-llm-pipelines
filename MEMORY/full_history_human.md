@@ -1857,3 +1857,13 @@ every model call and only then fail while counting the documents. The batched
 one failed straight away, so the three disagreed. The documents are now read
 once, up front, so a generator is timed exactly like a list on all three
 pipelines.
+
+## 2026-10-29 — Redirecting one backpressure output no longer rewrites the other committed file (#238)
+
+The backpressure demo writes a markdown report and a JSON file, and both
+defaulted to the committed copies in `docs/`. If you sent only one of them
+somewhere else, the other one still overwrote its committed file, so the
+committed pair ended up coming from two different runs. Now, if you give only
+one of the two, the other is written next to it. Giving neither still
+regenerates the committed pair. A lone flag with no file name (empty or `.`)
+is refused before the run starts. PR #241.
