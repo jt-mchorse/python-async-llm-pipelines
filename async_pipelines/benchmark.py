@@ -281,7 +281,7 @@ class SerialPipeline:
         self.llm1 = llm1
         self.llm2 = llm2
 
-    async def run(self, docs: list[str]) -> list[str]:
+    async def run(self, docs: Iterable[str]) -> list[str]:
         _refuse_bare_string("docs", docs)  # #126: before the first LLM call
         out: list[str] = []
         for doc in docs:
@@ -323,7 +323,7 @@ class AsyncPipeline:
         self.llm2 = llm2
         self.concurrency = concurrency
 
-    async def run(self, docs: list[str]) -> list[str]:
+    async def run(self, docs: Iterable[str]) -> list[str]:
         _refuse_bare_string("docs", docs)  # #126: named `docs`, not `process`'s `items`
 
         async def process_one(doc: str) -> str:
@@ -380,9 +380,13 @@ class BatchedAsyncPipeline:
         self.concurrency = concurrency
         self.batch_size = batch_size
 
-    async def run(self, docs: list[str]) -> list[str]:
+    async def run(self, docs: Iterable[str]) -> list[str]:
         _refuse_bare_string("docs", docs)  # #126: `_chunk` would slice the string
-        batches = _chunk(docs, self.batch_size)
+        # Read once (#240). `_chunk` slices and takes `len()`, so a generator,
+        # a `deque` or a dict-keys view raised a raw `TypeError` here while the
+        # serial and async pipelines, which iterate `docs` once, accepted them.
+        # #236 added this read to `run_pipeline` only, so `.run` still failed.
+        batches = _chunk(list(docs), self.batch_size)
 
         async def process_batch(index: int) -> list[str]:
             batch = batches[index]
