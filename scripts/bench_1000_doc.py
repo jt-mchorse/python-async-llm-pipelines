@@ -347,8 +347,8 @@ def _json_path_for(out_path: Path) -> Path:
     the first run's raw results. Applying the guard's remedy to every non-`.md`
     suffix covers both: `foo.json` still gets `foo.json.json`,
     `docs/benchmarks.md` still gets `docs/benchmarks.json`. The rule lives in
-    `sibling_path`, shared with `bench_backpressure`, which matches `.MD` as
-    `.md` (#244).
+    `sibling_path`, shared with `bench_backpressure`, which swaps `.MD` only
+    where the filesystem makes it the `.md` (#244, #248).
     """
     return sibling_path(out_path, ".md", ".json")
 

@@ -439,9 +439,10 @@ _DEFAULT_OUT_JSON = "docs/backpressure.json"
 def _sibling(path: str, own: str, other: str) -> str:
     """The `other`-suffixed file beside `path`, by `bench_1000_doc._json_path_for`'s rule.
 
-    Both scripts call `sibling_path`: swap the flag's own suffix, matched
-    ignoring case so `.MD` stays with the committed pair on macOS (#244), and
-    append to anything else (#118).
+    Both scripts call `sibling_path`: swap the flag's own suffix, and a
+    case-variant of it only where the filesystem makes it the same file, so
+    `.MD` stays with the committed pair on macOS (#244) and leaves it alone on
+    a case-sensitive one (#248); append to anything else (#118).
     """
     return str(sibling_path(path, own, other))
 
