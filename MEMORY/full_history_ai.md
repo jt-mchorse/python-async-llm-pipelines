@@ -2399,3 +2399,21 @@ context_for_next_session:
   - "END_TO_END_ALIAS_ARMS_PROBE_THE_TMP_DIR_FOR_CASE_INSENSITIVITY_AND_SKIP_ON_LINUX_CI_the_derivation_arms_are_the_ones_CI_runs"
 followups: []
 ---
+
+---
+session: 2026-10-30T07:41Z
+issue: 246
+branch: session/2026-10-30-0732-issue-246
+focus: ATOMIC_WRITE_TEXT_RENAMED_OVER_A_READ_ONLY_0444_OUTPUT_AND_CHECK_WRITABLE_APPROVED_IT_SO_THE_BENCH_RAN_THEN_OVERWROTE_IT_NOW_EACCES_LIKE_PATH_WRITE_TEXT
+phase: shipped
+delta:
+  files_changed: 2
+  tests_added: 13
+  suite: "1104 -> 1117 passed on 3.12.12 (macOS); ruff check + format clean"
+decisions_made: []
+measured: "origin/main a5392ff macOS uid 502: atomic_write_text on 0444 -> no error, contents replaced, mode still 0444; check_writable passed; Path.write_text PermissionError(13). After: both EACCES, file unchanged, no .tmp; bench_1000_doc --out and bench_backpressure --out-md/--out-json on a 0444 file -> exit 2 before running, incl. a writable --out beside a 0444 derived .json (vsas#301 shape; every bench output is pre-flighted). Only rename writer is atomic_write_text. Revert 8 of 13 red; 5 green = 2 write_text parity + 3 writable/missing controls. Writer-only partial fix: 4 red (check_writable + 3 bench arms). Port of prompt-regression-suite#318. PR #247."
+context_for_next_session:
+  - "_refuse_unwritable_target_RUNS_AFTER_SYMLINK_RESOLVE_IN_BOTH_atomic_write_text_AND_check_writable_os_stat_then_os_access_W_OK_root_still_writes"
+  - "READ_ONLY_TESTS_SKIP_AS_ROOT_github_ubuntu_runners_are_non_root_so_CI_runs_them"
+followups: []
+---

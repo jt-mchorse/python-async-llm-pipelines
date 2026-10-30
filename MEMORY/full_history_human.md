@@ -1897,3 +1897,16 @@ it by swapping the suffix. That swap only happened for a lowercase `.md` or
 report was rewritten and the committed JSON was left over from an older run.
 Both scripts now share one helper that ignores the suffix's case, so `.MD`
 writes next to the committed JSON and both files change together. PR #245.
+
+## 2026-10-30 — A read-only benchmark output is no longer silently overwritten (#246)
+
+Every output goes through a helper that writes a temporary file and renames it
+over the target, so an interrupted write cannot leave a half-written file. A
+rename only needs permission on the directory, though, so a report made
+read-only with `chmod 444` was rewritten anyway, and the pre-flight check the
+benchmark scripts run before a benchmark approved it too. A plain file write
+refuses in that case, and the scripts already listed a read-only path as an
+unwritable output that should exit 2. The helper and the pre-flight now both
+check that an existing target is writable, so the scripts stop with exit 2
+before running and the file is left as it was. New files and writable files
+behave as before. PR #247.
