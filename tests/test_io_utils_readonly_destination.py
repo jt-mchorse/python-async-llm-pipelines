@@ -127,9 +127,15 @@ def test_check_writable_still_passes_writable_and_missing(tmp_path: Path) -> Non
     assert sorted(p.name for p in tmp_path.iterdir()) == ["owner.md"]
 
 
+@pytest.mark.parametrize("frozen_name", ["b.md", "b.json"])
 def test_bench_1000_doc_refuses_a_readonly_out_before_running(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    frozen_name: str,
 ) -> None:
+    # `b.json` is the derived raw-results path: a read-only one must stop the
+    # run before the markdown is written, not after (vector-search-at-scale#301).
     ran: list[str] = []
 
     async def run_all(workload):  # type: ignore[no-untyped-def]
@@ -137,20 +143,20 @@ def test_bench_1000_doc_refuses_a_readonly_out_before_running(
         return []
 
     monkeypatch.setattr(bench_1000_doc, "_run_all", run_all)
-    out = tmp_path / "b.md"
-    out.write_text("old\n")
-    out.chmod(0o444)
+    ro = tmp_path / frozen_name
+    ro.write_text("old\n")
+    ro.chmod(0o444)
     try:
         args = bench_1000_doc.build_arg_parser().parse_args(
-            ["--n", "1", "--latency", "0", "--out", str(out)]
+            ["--n", "1", "--latency", "0", "--out", str(tmp_path / "b.md")]
         )
         assert asyncio.run(bench_1000_doc.amain(args)) == 2
         assert ran == []
-        assert out.read_text() == "old\n"
-        assert not (tmp_path / "b.json").exists()
+        assert ro.read_text() == "old\n"
+        assert sorted(p.name for p in tmp_path.iterdir()) == [frozen_name]
         assert "could not write report" in capsys.readouterr().err
     finally:
-        out.chmod(0o644)
+        ro.chmod(0o644)
 
 
 @pytest.mark.parametrize("frozen_flag", ["--out-md", "--out-json"])
