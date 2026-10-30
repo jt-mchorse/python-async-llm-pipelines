@@ -1887,3 +1887,13 @@ or a dictionary's keys still crashed, because it sliced and counted the input
 before reading it. The serial and async pipelines already accepted those. The
 batched pipeline now reads the documents once, up front, so all three behave
 the same. PR #243.
+
+## 2026-10-30 — A lone output flag spelled `.MD` keeps the committed pair together (#244)
+
+When only one benchmark output was named, the scripts put the other one next to
+it by swapping the suffix. That swap only happened for a lowercase `.md` or
+`.json`, so `docs/backpressure.MD` got a new `backpressure.MD.json`. On a Mac,
+`backpressure.MD` is the same file as the committed `backpressure.md`, so the
+report was rewritten and the committed JSON was left over from an older run.
+Both scripts now share one helper that ignores the suffix's case, so `.MD`
+writes next to the committed JSON and both files change together. PR #245.
