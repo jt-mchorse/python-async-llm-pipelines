@@ -112,7 +112,7 @@ issue: 5
 focus: per_item_timeout_and_cancellation_regression
 delta:
   files_changed: 4
-  tests_added: 12
+  tests_added: 13
 context_for_next_session:
   - timeout_kwarg_added_to_process_and_stream_d_010
   - pipelinetimeouterror_subclass_of_pipelineerror_carries_index_and_timeout_s
@@ -261,7 +261,7 @@ focus: architecture_doc_drift_lock_dual_axis_test_only
 decisions_made: []
 delta:
   files_added: 1     # tests/test_architecture_doc.py
-  tests_added: 12
+  tests_added: 13
   test_pass_rate: "98/98"
 context_for_next_session:
   - test_only_lock_zero_doc_changes_doc_already_in_steady_state
@@ -1167,7 +1167,7 @@ focus: the_real_API_speedup_claim_pointed_the_WRONG_WAY_in_TWO_generators_and_co
 phase: night_session_multi_issue_loop_issue_9
 delta:
   files_changed: 4
-  tests_added: 12
+  tests_added: 13
   suite: 430_to_442_green
 measured:
   the_contradiction: "README says the synthetic 30x IS THE THEORETICAL UPPER BOUND and real lands in 5-20x BELOW it; docs/benchmarks.md said the ratios WILL WIDEN because real API I/O has MORE HEADROOM for fan-out. Both README:41 and the honest-framing paragraph state the README side"
@@ -1251,7 +1251,7 @@ phase: shipped
 duration_min: 8   # 07:51 hunt start -> 07:59 close, from date -u and the issue timestamps
 delta:
   files_changed: 7
-  tests_added: 12
+  tests_added: 13
   suite: "473 -> 485 green"
 decisions_made: []
 measured: "stream at queue_size=8 concurrency=2: peak heap 17.5/52.8/445.6 KB at n=500/5000/50000 returning None, 106/1082/10967 KB returning a small dict; peak LIVE INPUT 11 (8+2+1) at every n, live results == n. Probes: old README 1 red + 2 capture_demo errors, renderer drops sentence same, stream drops results 8 red, old bench script 4 red."
@@ -2408,10 +2408,10 @@ focus: ATOMIC_WRITE_TEXT_RENAMED_OVER_A_READ_ONLY_0444_OUTPUT_AND_CHECK_WRITABLE
 phase: shipped
 delta:
   files_changed: 2
-  tests_added: 12
-  suite: "1104 -> 1116 passed on 3.12.12 (macOS); ruff check + format clean"
+  tests_added: 13
+  suite: "1104 -> 1117 passed on 3.12.12 (macOS); ruff check + format clean"
 decisions_made: []
-measured: "origin/main a5392ff macOS uid 502: atomic_write_text on 0444 -> no error, contents replaced, mode still 0444; check_writable passed; Path.write_text PermissionError(13). After: both EACCES, file unchanged, no .tmp; bench_1000_doc --out and bench_backpressure --out-md/--out-json on a 0444 file -> exit 2 before running. Only rename writer is atomic_write_text. Revert 7 of 12 red; 5 green = 2 write_text parity + 3 writable/missing controls. Writer-only partial fix: 4 red (check_writable + 3 bench arms). Port of prompt-regression-suite#318. PR #247."
+measured: "origin/main a5392ff macOS uid 502: atomic_write_text on 0444 -> no error, contents replaced, mode still 0444; check_writable passed; Path.write_text PermissionError(13). After: both EACCES, file unchanged, no .tmp; bench_1000_doc --out and bench_backpressure --out-md/--out-json on a 0444 file -> exit 2 before running, incl. a writable --out beside a 0444 derived .json (vsas#301 shape; every bench output is pre-flighted). Only rename writer is atomic_write_text. Revert 8 of 13 red; 5 green = 2 write_text parity + 3 writable/missing controls. Writer-only partial fix: 4 red (check_writable + 3 bench arms). Port of prompt-regression-suite#318. PR #247."
 context_for_next_session:
   - "_refuse_unwritable_target_RUNS_AFTER_SYMLINK_RESOLVE_IN_BOTH_atomic_write_text_AND_check_writable_os_stat_then_os_access_W_OK_root_still_writes"
   - "READ_ONLY_TESTS_SKIP_AS_ROOT_github_ubuntu_runners_are_non_root_so_CI_runs_them"
