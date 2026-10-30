@@ -2417,3 +2417,20 @@ context_for_next_session:
   - "READ_ONLY_TESTS_SKIP_AS_ROOT_github_ubuntu_runners_are_non_root_so_CI_runs_them"
 followups: []
 ---
+
+---
+session: 2026-10-30T08:07Z
+issue: 248
+branch: session/2026-10-30-0749-issue-248
+focus: 245_LOWERED_THE_SIBLING_SUFFIX_EVERYWHERE_SO_ON_A_CASE_SENSITIVE_FS_A_LONE_DOT_MD_UPPER_DERIVED_THE_COMMITTED_JSON_AND_REWROTE_IT_NOW_SWAP_ONLY_WHERE_SAME_FILE_SAYS_IT_ALIASES
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 10
+  suite: "1117 -> 1127 collected; 1126 passed 1 skipped on macOS tmp, 1123 passed 4 skipped with --basetemp on a case-sensitive APFS volume (3.12.12); ruff check + format clean"
+decisions_made: []
+measured: "origin/main a5392ff, case-sensitive APFS dmg, scratch docs/ copy: --out-md docs/backpressure.MD -> exit 0, backpressure.json FAILED; --out-json docs/backpressure.JSON -> backpressure.md FAILED; bench_1000_doc --out docs/benchmarks.MD -> benchmarks.json FAILED. After: committed pair byte-identical, X.MD.json / X.JSON.md appended; macOS tmp still rewrites both of the pair, no stray (#244 kept). sibling_path: exact suffix swaps; case-variant swaps iff same_file(p, p.with_suffix(own)); missing parent or OSError appends. Revert (source to a5392ff): case-sensitive tmp 27 red / 7 green (6 FS-independent rows + .JSON-report control); macOS tmp 5 red (missing-parent arms) / 28 green / 1 skip. PR #249."
+context_for_next_session:
+  - "CASE_VARIANT_EXPECTATIONS_ARE_COMPUTED_FROM_A_PROBE_OF_THE_TEST_TMP_DIR_run_with_--basetemp_on_an_hdiutil_case_sensitive_APFS_volume_to_exercise_the_CI_answer_on_a_Mac"
+followups: []
+---

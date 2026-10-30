@@ -1910,3 +1910,14 @@ unwritable output that should exit 2. The helper and the pre-flight now both
 check that an existing target is writable, so the scripts stop with exit 2
 before running and the file is left as it was. New files and writable files
 behave as before. PR #247.
+
+## 2026-10-30 — `.MD` on Linux no longer rewrites the committed JSON (#248)
+
+The previous fix (#245) made a lone `--out-md docs/backpressure.MD` write its
+JSON to `backpressure.json`, because on a Mac `backpressure.MD` is the committed
+report. On Linux and in CI, though, it is a new file, so that swap overwrote the
+committed JSON from a different run, with exit 0. The scripts now ask the
+filesystem whether the differently-cased name really is the committed file. They
+swap the suffix only if it is, and otherwise write `backpressure.MD.json` beside
+it and leave the committed pair alone. The tests check whichever filesystem they
+run on, so CI now covers the Linux behaviour. PR #249.
