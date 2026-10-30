@@ -2382,3 +2382,20 @@ context_for_next_session:
   - "ALL_THREE_PIPELINE_run_METHODS_NOW_ANNOTATED_Iterable_str_batched_reads_list_docs_after__refuse_bare_string"
 followups: []
 ---
+
+---
+session: 2026-10-30T07:21Z
+issue: 244
+branch: session/2026-10-29-0810-issue-244
+focus: LONE_FLAG_SIBLING_SUFFIX_TEST_WAS_CASE_SENSITIVE_SO_DOT_MD_UPPER_DERIVED_MD_JSON_AND_ON_APFS_REWROTE_HALF_THE_COMMITTED_PAIR
+phase: shipped
+delta:
+  files_changed: 4
+  tests_added: 24
+  suite: "1104 passed on 3.12.12 (macOS); ruff check + format clean"
+decisions_made: []
+measured: "origin/main 13298fa macOS APFS scratch docs/ copy: bench_backpressure --out-md docs/backpressure.MD and bench_1000_doc --out docs/benchmarks.MD -> exit 0, wrote *.MD.json, shasum backpressure.md/benchmarks.md FAILED, both .json OK. After: io_utils.sibling_path lowers the suffix; .MD/.Md/.JSON derive the committed sibling, both files change, no stray *.MD.json. Only two sibling-derivation sites (grep suffix). Revert: pure revert errors at collection (sibling_path import); with an old-rule shim + origin/main scripts 17 red / 7 green (exact-case swaps and append controls). Resumed from an interrupted 10-29 draft. PR #245."
+context_for_next_session:
+  - "END_TO_END_ALIAS_ARMS_PROBE_THE_TMP_DIR_FOR_CASE_INSENSITIVITY_AND_SKIP_ON_LINUX_CI_the_derivation_arms_are_the_ones_CI_runs"
+followups: []
+---
