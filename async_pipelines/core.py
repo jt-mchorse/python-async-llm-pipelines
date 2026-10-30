@@ -90,14 +90,26 @@ class StreamMetrics:
         produced: number of items pulled from the producer.
         consumed: number of items finished by ``fn`` (success or
             exception when ``return_exceptions=True``).
-        producer_pauses: count of times ``queue.put`` had to wait for
-            space (the backpressure signal — non-zero means the consumer
-            pool was the slower end: the producer had an item ready and
-            the queue was full). A producer that cannot keep up with the
-            consumers never fills the queue and leaves this at 0 (#176).
+        producer_pauses: count of times the producer called ``queue.put``
+            and had to wait at least one loop step. **Important:** this
+            counter increments on every successful handoff to the queue,
+            not only when the queue was full — even at very high concurrency
+            (where consumers outpace the producer) it counts the normal one-
+            step yield that occurs each time a consumer slot frees up, and
+            can therefore be near ``n_items`` when there is no consumer
+            bottleneck at all (#216). Use ``producer_pause_seconds`` to
+            distinguish real backpressure (long total wait, consumer-bound)
+            from a fast handoff (near-zero total wait, producer-bound or
+            balanced); a high count with near-zero seconds is not a signal
+            to grow ``concurrency``.
         max_queue_depth: high-water mark of items sitting in the queue.
         producer_pause_seconds: cumulative wall time the producer spent
-            blocked on a full queue.
+            blocked on a full queue. Use this — not ``producer_pauses`` —
+            as the primary operator signal for consumer-bound backpressure:
+            a large total pause time means the consumer pool could not keep
+            up; a near-zero total time (even with a high ``producer_pauses``
+            count) means the producer moved faster than the consumers and the
+            queue never held the producer back for long.
 
     All fields default to zero; the dataclass is stdlib-only so this
     stays consistent with D-002 (runtime-dep-free wrapper).
