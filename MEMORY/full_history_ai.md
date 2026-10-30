@@ -112,7 +112,7 @@ issue: 5
 focus: per_item_timeout_and_cancellation_regression
 delta:
   files_changed: 4
-  tests_added: 13
+  tests_added: 12
 context_for_next_session:
   - timeout_kwarg_added_to_process_and_stream_d_010
   - pipelinetimeouterror_subclass_of_pipelineerror_carries_index_and_timeout_s
@@ -261,7 +261,7 @@ focus: architecture_doc_drift_lock_dual_axis_test_only
 decisions_made: []
 delta:
   files_added: 1     # tests/test_architecture_doc.py
-  tests_added: 13
+  tests_added: 12
   test_pass_rate: "98/98"
 context_for_next_session:
   - test_only_lock_zero_doc_changes_doc_already_in_steady_state
@@ -1167,7 +1167,7 @@ focus: the_real_API_speedup_claim_pointed_the_WRONG_WAY_in_TWO_generators_and_co
 phase: night_session_multi_issue_loop_issue_9
 delta:
   files_changed: 4
-  tests_added: 13
+  tests_added: 12
   suite: 430_to_442_green
 measured:
   the_contradiction: "README says the synthetic 30x IS THE THEORETICAL UPPER BOUND and real lands in 5-20x BELOW it; docs/benchmarks.md said the ratios WILL WIDEN because real API I/O has MORE HEADROOM for fan-out. Both README:41 and the honest-framing paragraph state the README side"
@@ -1251,7 +1251,7 @@ phase: shipped
 duration_min: 8   # 07:51 hunt start -> 07:59 close, from date -u and the issue timestamps
 delta:
   files_changed: 7
-  tests_added: 13
+  tests_added: 12
   suite: "473 -> 485 green"
 decisions_made: []
 measured: "stream at queue_size=8 concurrency=2: peak heap 17.5/52.8/445.6 KB at n=500/5000/50000 returning None, 106/1082/10967 KB returning a small dict; peak LIVE INPUT 11 (8+2+1) at every n, live results == n. Probes: old README 1 red + 2 capture_demo errors, renderer drops sentence same, stream drops results 8 red, old bench script 4 red."
