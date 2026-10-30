@@ -55,6 +55,7 @@ from async_pipelines.io_utils import (  # noqa: E402
     check_writable,
     display_path,
     same_file,
+    sibling_path,
 )
 
 
@@ -438,16 +439,11 @@ _DEFAULT_OUT_JSON = "docs/backpressure.json"
 def _sibling(path: str, own: str, other: str) -> str:
     """The `other`-suffixed file beside `path`, by `bench_1000_doc._json_path_for`'s rule.
 
-    Swap the suffix when it is the flag's own (`bp.md` -> `bp.json`), append
-    otherwise (`run.a` -> `run.a.json`), so two runs with different suffixes do
-    not share a sibling (#118). Appending to the name rather than calling
-    `with_name` keeps a path like `..` from raising; `check_writable` refuses it
-    as a directory with the usual exit 2.
+    Both scripts call `sibling_path`: swap the flag's own suffix, matched
+    ignoring case so `.MD` stays with the committed pair on macOS (#244), and
+    append to anything else (#118).
     """
-    p = Path(path)
-    if p.suffix == own:
-        return str(p.with_suffix(other))
-    return str(p.parent / (p.name + other))
+    return str(sibling_path(path, own, other))
 
 
 def _resolve_out_paths(out_md: str | None, out_json: str | None) -> tuple[str, str]:

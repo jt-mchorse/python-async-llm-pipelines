@@ -170,6 +170,30 @@ def same_file(a: str | Path, b: str | Path) -> bool:
         os.unlink(ra)
 
 
+def sibling_path(path: str | Path, own: str, other: str) -> Path:
+    """The `other`-suffixed file that belongs beside *path* (#118, #238, #244).
+
+    Swap the suffix when it is *path*'s own (`bp.md` -> `bp.json`), append
+    otherwise (`run.a` -> `run.a.json`), so two runs with different suffixes do
+    not share a sibling (#118). Appending to the name rather than calling
+    `with_name` keeps a path like `..` from raising; `check_writable` refuses it
+    as a directory.
+
+    The suffix test ignores case (#244). It was `==`, so `docs/backpressure.MD`
+    derived `backpressure.MD.json`; on macOS's default filesystem that `.MD` *is*
+    the committed `backpressure.md`, so the run rewrote the report and left the
+    committed JSON from another run, at exit 0. `same_file` cannot see that: the
+    two outputs really are different files. Lowering the suffix makes `.MD`
+    derive `.json`, which on such a filesystem is the committed JSON, so the
+    pair stays together; on a case-sensitive one the derived name is just a
+    new file, as it was for any other spelling.
+    """
+    p = Path(path)
+    if p.suffix.lower() == own:
+        return p.with_suffix(other)
+    return p.parent / (p.name + other)
+
+
 def display_path(path: str | Path) -> str:
     """*path* as text any UTF-8 stream can print, e.g. a "wrote <path>" line (#186).
 

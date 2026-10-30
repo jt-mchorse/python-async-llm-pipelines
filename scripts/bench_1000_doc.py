@@ -43,6 +43,7 @@ from async_pipelines.io_utils import (  # noqa: E402
     check_writable,
     display_path,
     same_file,
+    sibling_path,
 )
 
 #: The workload the README's numbers and the "5-20x" spec range describe. The
@@ -345,11 +346,11 @@ def _json_path_for(out_path: Path) -> Path:
     `--out run.b` both wrote `run.json`, and the second run silently overwrote
     the first run's raw results. Applying the guard's remedy to every non-`.md`
     suffix covers both: `foo.json` still gets `foo.json.json`,
-    `docs/benchmarks.md` still gets `docs/benchmarks.json`.
+    `docs/benchmarks.md` still gets `docs/benchmarks.json`. The rule lives in
+    `sibling_path`, shared with `bench_backpressure`, which matches `.MD` as
+    `.md` (#244).
     """
-    if out_path.suffix == ".md":
-        return out_path.with_suffix(".json")
-    return out_path.with_name(out_path.name + ".json")
+    return sibling_path(out_path, ".md", ".json")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
