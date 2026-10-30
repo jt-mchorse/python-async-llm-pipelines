@@ -177,7 +177,7 @@ def same_file(a: str | Path, b: str | Path) -> bool:
 
 
 def sibling_path(path: str | Path, own: str, other: str) -> Path:
-    """The `other`-suffixed file that belongs beside *path* (#118, #238, #244).
+    """The `other`-suffixed file that belongs beside *path* (#118, #238, #244, #248).
 
     Swap the suffix when it is *path*'s own (`bp.md` -> `bp.json`), append
     otherwise (`run.a` -> `run.a.json`), so two runs with different suffixes do
@@ -185,19 +185,35 @@ def sibling_path(path: str | Path, own: str, other: str) -> Path:
     `with_name` keeps a path like `..` from raising; `check_writable` refuses it
     as a directory.
 
-    The suffix test ignores case (#244). It was `==`, so `docs/backpressure.MD`
-    derived `backpressure.MD.json`; on macOS's default filesystem that `.MD` *is*
-    the committed `backpressure.md`, so the run rewrote the report and left the
-    committed JSON from another run, at exit 0. `same_file` cannot see that: the
-    two outputs really are different files. Lowering the suffix makes `.MD`
-    derive `.json`, which on such a filesystem is the committed JSON, so the
-    pair stays together; on a case-sensitive one the derived name is just a
-    new file, as it was for any other spelling.
+    A suffix that is *own* in another case (`.MD`) is the filesystem's call,
+    not a string comparison's. On macOS's default filesystem
+    `docs/backpressure.MD` *is* the committed `backpressure.md`, so appending
+    (`backpressure.MD.json`) rewrote the report and left the committed JSON
+    from another run, at exit 0 (#244). On a case-sensitive one it is a new
+    file, so swapping -- #245 lowered the suffix everywhere -- pointed the
+    derived JSON at the committed `backpressure.json` and rewrote that instead
+    (#248). So the suffix is swapped only when `same_file` says *path* aliases
+    `path.with_suffix(own)`, which keeps the pair together where it is one
+    pair, and appended otherwise, which touches nothing committed. With no
+    parent directory yet nothing there can be committed, so it appends; a probe
+    that fails appends too, and `check_writable` reports the error.
     """
     p = Path(path)
-    if p.suffix.lower() == own:
+    if p.suffix == own:
+        return p.with_suffix(other)
+    if p.suffix.lower() == own.lower() and _aliases(p, p.with_suffix(own)):
         return p.with_suffix(other)
     return p.parent / (p.name + other)
+
+
+def _aliases(a: Path, b: Path) -> bool:
+    """`same_file(a, b)` when *a*'s directory exists; `False` otherwise or on error."""
+    if not a.parent.is_dir():
+        return False
+    try:
+        return same_file(a, b)
+    except OSError:
+        return False
 
 
 def display_path(path: str | Path) -> str:
